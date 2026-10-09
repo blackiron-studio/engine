@@ -1,5 +1,5 @@
 // Cutout rigs: bones from a template, parts on them, procedural and keyframed clips, layers,
-// events, mirroring, and the parts loader that builds a rig from `kiln art parts` output.
+// events, mirroring, and the parts loader that builds a rig from `blackiron art parts` output.
 
 import { beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -101,7 +101,7 @@ describe("Rig2D", () => {
   });
 
   test("a parts sheet loads as a rig with the pivots the cut worked out", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "kiln-rig-"));
+    const dir = await mkdtemp(join(tmpdir(), "blackiron-rig-"));
     const p = new Painter(20, 12);
     p.rect(1, 1, 8, 10, "#f00");
     p.rect(10, 1, 8, 10, "#00f");

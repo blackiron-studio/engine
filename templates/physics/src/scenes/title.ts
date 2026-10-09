@@ -1,5 +1,5 @@
-import { createStore } from "@kiln/engine/save";
-import { Anchor, Button, Column, Label, RichText, Scene, TextInput, Tooltip } from "@kiln/engine/scene";
+import { createStore } from "@blackiron-studio/engine/save";
+import { Anchor, Button, Column, Label, RichText, Scene, TextInput, Tooltip } from "@blackiron-studio/engine/scene";
 import { PlayScene } from "./play.ts";
 
 export const saves = createStore<{ name: string; best: number }>({ key: "crate-yard", version: 1, initial: () => ({ name: "", best: 0 }) });

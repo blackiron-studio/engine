@@ -1,5 +1,5 @@
-import type { DrawContext } from "@kiln/engine/scene";
-import { Node2D, ParallaxLayer } from "@kiln/engine/scene";
+import type { DrawContext } from "@blackiron-studio/engine/scene";
+import { Node2D, ParallaxLayer } from "@blackiron-studio/engine/scene";
 
 /** Dusk sky bands that follow the camera. */
 class Sky extends Node2D {

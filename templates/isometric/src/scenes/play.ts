@@ -3,9 +3,9 @@
 // the hero's height, the shadows, the coin pool and the sparks all go through the kernel's
 // projected, depth-sorted pass; the script only moves the hero and keeps score.
 
-import { Rng, TileMapData } from "@kiln/engine/core";
-import { Anchor, Button, IsoTileMap, Label, Node2D, Panel, Scene, Sprite, SpritePool, type DrawContext } from "@kiln/engine/scene";
-import { HintLayer, Hints, PauseScene, glyphFor, keyName } from "@kiln/engine/shell";
+import { Rng, TileMapData } from "@blackiron-studio/engine/core";
+import { Anchor, Button, IsoTileMap, Label, Node2D, Panel, Scene, Sprite, SpritePool, type DrawContext } from "@blackiron-studio/engine/scene";
+import { HintLayer, Hints, PauseScene, glyphFor, keyName } from "@blackiron-studio/engine/shell";
 import { TILE } from "../art.ts";
 import { title } from "../main.ts";
 import { type Progress, shell } from "../shell.ts";

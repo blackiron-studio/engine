@@ -1,4 +1,4 @@
-import { defineAutotile, defineSprite, defineVariants, materials, ramp } from "@kiln/engine/art";
+import { defineAutotile, defineSprite, defineVariants, materials, ramp } from "@blackiron-studio/engine/art";
 
 const GRASS = ramp("#4f8f45");
 const PATH = ramp("#8f7150");

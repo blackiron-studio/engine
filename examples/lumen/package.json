@@ -1,1 +1,1 @@
-{"name":"lumen-salvage","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"bun ../../cli/kiln.ts dev","build":"bun ../../cli/kiln.ts build --report","test":"bun test"}}
+{"name":"lumen-salvage","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"bun ../../cli/blackiron.ts dev","build":"bun ../../cli/blackiron.ts build --report","test":"bun test"}}

@@ -1,6 +1,6 @@
 # Highground
 
-Kiln's 2.5D example is a small exploration game set on sunlit island terraces. All art is painted in TypeScript: layered tree canopies, stone cliffs, flowers, grass, water, the explorer, coins and effects. The engine projects ground coordinates and height into a depth-sorted isometric view.
+Blackiron's 2.5D example is a small exploration game set on sunlit island terraces. All art is painted in TypeScript: layered tree canopies, stone cliffs, flowers, grass, water, the explorer, coins and effects. The engine projects ground coordinates and height into a depth-sorted isometric view.
 
 Find all 30 sun coins, hop up ledges, and place crates on the island. The island chart shows terrain, coins and your position. Collecting every coin opens the completion card; **Explore again** starts a new run.
 

@@ -4,7 +4,7 @@ import {
   stepFrames,
   pressAction,
   holdAction,
-} from "@kiln/engine/testkit";
+} from "@blackiron-studio/engine/testkit";
 import main, { SalvageScene } from "./main.ts";
 import { CORES } from "./game.ts";
 test("Lumen integrates 3D, movement, pause, victory and clean restart", async () => {

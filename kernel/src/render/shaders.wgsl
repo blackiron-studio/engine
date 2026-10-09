@@ -1,4 +1,4 @@
-// Kiln's render passes in WGSL: the same maths as the WebGL2 and Metal shaders.
+// Blackiron's render passes in WGSL: the same maths as the WebGL2 and Metal shaders.
 
 struct SpriteUniforms { viewport: vec2<f32>, target_size: vec2<f32> };
 @group(0) @binding(0) var<uniform> su: SpriteUniforms;

@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import main, { BreachScene } from "./main.ts";
-import { createTestApp, stepFrames, pressAction } from "@kiln/engine/testkit";
-import { Vec3 } from "@kiln/engine/three";
+import { createTestApp, stepFrames, pressAction } from "@blackiron-studio/engine/testkit";
+import { Vec3 } from "@blackiron-studio/engine/three";
 
 test("Signal Breach owns controllers, targets and scenes across repeated restarts", async () => {
   const app = await createTestApp({

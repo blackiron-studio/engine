@@ -154,7 +154,7 @@ export class AnimationPlayer extends Node {
   play(name: string, opts: PlayOptions = {}): this {
     const clip = this.clips.get(name);
     if (!clip) {
-      console.warn(`[kiln] animation "${name}" is not defined`);
+      console.warn(`[blackiron] animation "${name}" is not defined`);
       return this;
     }
     if (this.current && this.current.name === name && !this.current.done && opts.from === undefined) return this;
@@ -304,7 +304,7 @@ export class StateMachine {
     const prev = from ? this.states.get(from) : undefined;
     const next = this.states.get(name);
     if (!next) {
-      console.warn(`[kiln] state "${name}" is not defined`);
+      console.warn(`[blackiron] state "${name}" is not defined`);
       return;
     }
     prev?.exit?.();

@@ -1,4 +1,4 @@
-# Kiln CI: engine tests on Linux, the kernel's tests, and native host builds with release
+# Blackiron CI: engine tests on Linux, the kernel's tests, and native host builds with release
 # artifacts and the visual harness on Linux (lavapipe), Windows (WARP) and macOS (Metal).
 name: Native and GPU validation
 
@@ -75,10 +75,10 @@ jobs:
         run: cargo test --locked --release --features v8
         working-directory: host
       - name: Build the demo for Linux
-        run: bun ../../cli/kiln.ts export desktop --platform linux
+        run: bun ../../cli/blackiron.ts export desktop --platform linux
         working-directory: examples/demo
       - name: Visual harness (lavapipe)
-        run: xvfb-run -a bun cli/kiln.ts verify --host desktop
+        run: xvfb-run -a bun cli/blackiron.ts verify --host desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -109,10 +109,10 @@ jobs:
         run: cargo test --locked --release --features v8
         working-directory: host
       - name: Build the demo for Windows
-        run: bun ../../cli/kiln.ts export desktop --platform windows
+        run: bun ../../cli/blackiron.ts export desktop --platform windows
         working-directory: examples/demo
       - name: Visual harness (WARP)
-        run: bun cli/kiln.ts verify --host desktop
+        run: bun cli/blackiron.ts verify --host desktop
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -151,14 +151,14 @@ jobs:
         run: cargo test --locked --release --features v8
         working-directory: host
       - name: Build the demo for macOS
-        run: bun ../../cli/kiln.ts export desktop --platform macos
+        run: bun ../../cli/blackiron.ts export desktop --platform macos
         working-directory: examples/demo
       - name: Visual harness (Metal)
-        run: bun cli/kiln.ts verify --host desktop
+        run: bun cli/blackiron.ts verify --host desktop
       - name: Kernel framework and an iOS simulator build of the demo
         run: |
           bun kernel/build.ts
-          cd examples/demo && bun ../../cli/kiln.ts export ios
+          cd examples/demo && bun ../../cli/blackiron.ts export ios
           xcodebuild -project dist/ios/WispHollow/WispHollow.xcodeproj -scheme WispHollow -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
       - uses: actions/upload-artifact@v4
         if: always()
@@ -175,7 +175,7 @@ jobs:
   hardware-soak:
     name: Manual hardware budgets (dedicated GPU runner)
     if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, kiln-gpu]
+    runs-on: [self-hosted, blackiron-gpu]
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -187,4 +187,4 @@ jobs:
         if: always()
         with:
           name: hardware-reliability
-          path: .kiln/verification/reliability
+          path: .blackiron/verification/reliability

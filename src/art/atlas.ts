@@ -99,7 +99,7 @@ export class Atlas {
     if (r) return r;
     if (!this.warned.has(name)) {
       this.warned.add(name);
-      console.warn(`[kiln] sprite "${name}" is not in the atlas`);
+      console.warn(`[blackiron] sprite "${name}" is not in the atlas`);
     }
     return this.missing;
   }

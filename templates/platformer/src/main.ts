@@ -1,5 +1,5 @@
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
+import type { App } from "@blackiron-studio/engine/app";
 import { TitleScene } from "./scenes/title.ts";
 
 /** Called by the entry wrapper once the App exists, on the web and natively. */

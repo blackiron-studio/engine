@@ -4,9 +4,9 @@
 // each frame the importer found.
 
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
-import { Rng } from "@kiln/engine/core";
-import { Anchor, AnimatedSprite, type DrawContext, Label, Node2D, Rig2D, Scene, TileMap } from "@kiln/engine/scene";
+import type { App } from "@blackiron-studio/engine/app";
+import { Rng } from "@blackiron-studio/engine/core";
+import { Anchor, AnimatedSprite, type DrawContext, Label, Node2D, Rig2D, Scene, TileMap } from "@blackiron-studio/engine/scene";
 
 const UI = { family: "Instrument Sans", size: 18, weight: 500 } as const;
 const FRAMES = 16;
@@ -67,7 +67,7 @@ class KnightScene extends Scene {
     this.ui.add(new Anchor({ x: "left", y: "top", dy: 12, safe: 10 })).add(new Strip());
     const foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -28, safe: 12 }));
     this.hint = foot.add(new Label("Move with WASD or the arrows. Space attacks, H hurts, V celebrates, E picks up, Shift guards. Click to attack.", 0, 0, { align: "center", color: 0xc8d0dc, font: UI, shadow: 0x000000 }));
-    foot.add(new Label("Left: the sheet's frames, picked by facing (kiln art import). Right: the same knight as a cutout rig, seven parts from frame 3 posed by clips (kiln art parts).", 0, -26, { align: "center", color: 0x8a98a8, font: UI, shadow: 0x000000 }));
+    foot.add(new Label("Left: the sheet's frames, picked by facing (blackiron art import). Right: the same knight as a cutout rig, seven parts from frame 3 posed by clips (blackiron art parts).", 0, -26, { align: "center", color: 0x8a98a8, font: UI, shadow: 0x000000 }));
   }
 
   /** One-shots on both: the sheet's animation and the rig's clip, on a layer when the legs should keep going. */

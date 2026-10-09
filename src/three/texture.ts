@@ -1,5 +1,5 @@
 import { glyphRows } from "../art/font.ts";
-import type { GlyphBitmap, KilnHostApi } from "../render/native.ts";
+import type { GlyphBitmap, BlackironHostApi } from "../render/native.ts";
 import type { Platform } from "../platform/types.ts";
 let nextTexture = 1;
 export type MinFilter3D = "nearest" | "linear" | "nearest-mipmap-nearest" | "linear-mipmap-nearest" | "nearest-mipmap-linear" | "linear-mipmap-linear";
@@ -44,7 +44,7 @@ export class Texture3D {
       background?: number;
       padding?: number;
     },
-    rasterize?: KilnHostApi["rasterizeGlyph"],
+    rasterize?: BlackironHostApi["rasterizeGlyph"],
   ): Texture3D {
     const { width, height, size } = options;
     if (text.length > 4096) throw RangeError("Text texture label is too long");
@@ -66,7 +66,7 @@ export class Texture3D {
       throw RangeError("Invalid text padding");
     const color = options.color ?? 0xffffff,
       background = options.background ?? 0x000000;
-    const host = (globalThis as { __kilnHost?: KilnHostApi }).__kilnHost;
+    const host = (globalThis as { __blackironHost?: BlackironHostApi }).__blackironHost;
     let paint = rasterize ?? host?.rasterizeGlyph?.bind(host);
     if (!paint && typeof document !== "undefined") {
       const canvas = document.createElement("canvas");

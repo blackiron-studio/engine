@@ -58,7 +58,7 @@ export interface GlyphBitmap {
 }
 
 /** What the host installs on the global before the game script runs. */
-export interface KilnHostApi {
+export interface BlackironHostApi {
   now(): number;
   /** Request OS relative mouse capture; acknowledgment arrives through HostBridge. */
   setPointerCapture?(capture:boolean):void;
@@ -88,7 +88,7 @@ export interface KilnHostApi {
   announce?(text: string): void;
   /** Show or hide the on-screen keyboard, where the host has one. */
   showKeyboard?(visible: boolean): void;
-  /** Set by hosts running a synthetic clock (`kiln verify`), so unseeded games stay reproducible. */
+  /** Set by hosts running a synthetic clock (`blackiron verify`), so unseeded games stay reproducible. */
   deterministic?: boolean;
   /** Current screen in points, device scale and safe-area insets (top, right, bottom, left). */
   screen: { width: number; height: number; scale: number; insets: [number, number, number, number] };
@@ -118,7 +118,7 @@ class NativeGlyphCache {
   dirty = false;
 
   constructor(
-    private readonly host: KilnHostApi,
+    private readonly host: BlackironHostApi,
     public pixelRatio = 1,
   ) {
     this.data = new Uint8ClampedArray(this.size * this.size * 4);
@@ -238,7 +238,7 @@ export class NativeRenderer implements Renderer {
   private readonly t0: number;
 
   constructor(
-    readonly host: KilnHostApi,
+    readonly host: BlackironHostApi,
     width: number,
     height: number,
     opts: RendererOptions = {},

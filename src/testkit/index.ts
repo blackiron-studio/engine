@@ -2,7 +2,7 @@
 // platform, manual frames, synthetic input. Game logic tests should not need this;
 // scene tests do.
 
-import { App, type KilnConfig } from "../app/app.ts";
+import { App, type BlackironConfig } from "../app/app.ts";
 import { HeadlessPlatform } from "../platform/headless.ts";
 import type { FakeOp } from "../render/fake.ts";
 import { FakeRenderer } from "../render/fake.ts";
@@ -10,7 +10,7 @@ import type { Scene } from "../scene/scene.ts";
 export { auditUILayout, type UILayoutIssue, type UILayoutAuditOptions } from "./ui-layout.ts";
 
 export interface TestAppOptions {
-  config?: Partial<KilnConfig>;
+  config?: Partial<BlackironConfig>;
   seed?: number | string;
   scene?: Scene;
   platform?: HeadlessPlatform;

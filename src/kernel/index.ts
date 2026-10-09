@@ -23,7 +23,7 @@ export async function createKernel(choice: KernelChoice = "auto", opts: KernelOp
       const k = await loadWasmKernel(opts);
       if (k) return k;
     } catch (err) {
-      console.warn("[kiln] compiled kernel failed to load, using the reference kernel:", err);
+      console.warn("[blackiron] compiled kernel failed to load, using the reference kernel:", err);
     }
   }
   return new TsKernel(opts);

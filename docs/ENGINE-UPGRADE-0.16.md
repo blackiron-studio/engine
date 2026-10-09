@@ -1,6 +1,6 @@
-# Kiln 0.16: native FPS and reliable exports
+# Blackiron 0.16: native FPS and reliable exports
 
-13 September 2026. Kiln keeps its own generic runtime and renderer. Game-specific rules, levels, missions and styling remain in the examples. This release extends the existing Signal Breach FPS to desktop native hosts and hardens the export system. It does not establish Unity/Godot parity or certify every device.
+13 September 2026. Blackiron keeps its own generic runtime and renderer. Game-specific rules, levels, missions and styling remain in the examples. This release extends the existing Signal Breach FPS to desktop native hosts and hardens the export system. It does not establish Unity/Godot parity or certify every device.
 
 ## Native gameplay and rendering
 
@@ -26,7 +26,7 @@ Live macOS checking confirmed native gameplay, mouse-button firing and pause. Th
 
 - Web builds replace only managed web outputs, preserving sibling desktop and mobile packages.
 - Native bundles and platform packages build in sibling staging directories. Failed builds retain the prior output. Publication errors roll back; an unsuccessful rollback preserves a recovery copy and reports its location. Locks reject concurrent exports to the same destination. These are application-level recovery guarantees, not a power-loss-safe filesystem transaction.
-- Single-file HTML includes managed assets, glTF buffers/images, physics/audio Wasm and declared font resources. The resource resolver is part of Kiln's platform API; arbitrary game code using raw `fetch()` for unrelated remote resources is not rewritten. Nested CSS `@import` is rejected explicitly. The HTML file itself is replaced only after its full content is written.
+- Single-file HTML includes managed assets, glTF buffers/images, physics/audio Wasm and declared font resources. The resource resolver is part of Blackiron's platform API; arbitrary game code using raw `fetch()` for unrelated remote resources is not rewritten. Nested CSS `@import` is rejected explicitly. The HTML file itself is replaced only after its full content is written.
 - Explicit project targets are enforced before export work. `native` is a wildcard for native platforms; desktop/mobile names allow narrower declarations. Unsafe source/ancestor paths and symlink aliases are rejected.
 - Native font packaging fails on missing or unsupported declared fonts instead of silently delivering an incomplete package. Local TTF/OTF and compatible local/remote stylesheets are supported; packaged resources may require network access at build time.
 - iOS custom output paths include the game bundle. Cargo checks framework freshness on each export. Projects target ARM64 devices and Apple Silicon simulators; Intel simulator binaries are not supplied.
@@ -45,11 +45,11 @@ Example project metadata:
 }
 ```
 
-Native adapter selection prefers hardware through native APIs, then hardware OpenGL, before allowing known software/emulated adapters. `KILN_REQUIRE_HARDWARE_GPU=1` rejects that fallback. Logs include adapter/backend/type. An adapter log and a build do not replace performance tests on the intended physical device.
+Native adapter selection prefers hardware through native APIs, then hardware OpenGL, before allowing known software/emulated adapters. `BLACKIRON_REQUIRE_HARDWARE_GPU=1` rejects that fallback. Logs include adapter/backend/type. An adapter log and a build do not replace performance tests on the intended physical device.
 
 ## Executed validation
 
-[Machine-readable evidence](validation/engine-0.16.json) records the final local results and limitations. Logs and captures remain in `.kiln/verification`.
+[Machine-readable evidence](validation/engine-0.16.json) records the final local results and limitations. Logs and captures remain in `.blackiron/verification`.
 
 - Local CI covers typechecking, Bun tests, Rust kernel/host tests, browser GPU/content/game checks, native content, the shared native FPS mission, offline export acceptance, reproducible web outputs and all native example goldens.
 - The shared FPS mission covers movement, jumping, the authored staircase, pause/resume, weapon changes/reload, all three combat waves, all relays/victory, defeat and restart disposal on browser and native physics.

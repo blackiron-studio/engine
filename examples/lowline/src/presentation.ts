@@ -1,5 +1,5 @@
-import { Graphics2D, Node2D, type DrawContext } from "@kiln/engine/scene";
-import { Rng } from "@kiln/engine/core";
+import { Graphics2D, Node2D, type DrawContext } from "@blackiron-studio/engine/scene";
+import { Rng } from "@blackiron-studio/engine/core";
 import { SIZE, XS, YS, buildings, type Car } from "./city.ts";
 export const C = {
   ink: 0x122a35,

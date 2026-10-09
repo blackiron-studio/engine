@@ -1,4 +1,4 @@
-module KilnKernel {
-    header "kiln_kernel.h"
+module BlackironKernel {
+    header "blackiron_kernel.h"
     export *
 }

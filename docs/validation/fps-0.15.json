@@ -125,7 +125,7 @@
         "name": "native",
         "command": [
           "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
-          "cli/kiln.ts",
+          "cli/blackiron.ts",
           "verify",
           "--host",
           "desktop",
@@ -303,8 +303,8 @@
     "capture": "Early WrongDocumentError resolved by explicit navigation after attaching Chrome test protocol; final strict capture and recapture passed.",
     "gpu": "Initial paced GPU sample missed the 8.3 ms budget. Replaced mid-pass MSAA depth clear with reserved world/viewmodel depth bands; final paced sample passed.",
     "previousArtifacts": [
-      ".kiln/verification/breach-input/performance-first-attempt.json",
-      ".kiln/verification/breach-input/capture-unavailable.json"
+      ".blackiron/verification/breach-input/performance-first-attempt.json",
+      ".blackiron/verification/breach-input/capture-unavailable.json"
     ]
   },
   "limits": [

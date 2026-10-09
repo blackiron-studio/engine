@@ -1,8 +1,8 @@
 [package]
-name = "kiln_kernel"
+name = "blackiron_kernel"
 version = "0.8.0"
 edition = "2021"
-description = "Kiln's compiled kernel: sprite batching, node tables, particles, audio, physics and the wgpu renderer behind a C ABI, for native hosts and WebAssembly."
+description = "Blackiron's compiled kernel: sprite batching, node tables, particles, audio, physics and the wgpu renderer behind a C ABI, for native hosts and WebAssembly."
 license = "MIT"
 repository = "https://github.com/blackiron-studio/engine"
 publish = false

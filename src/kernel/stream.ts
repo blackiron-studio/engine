@@ -26,7 +26,7 @@ export class StreamWriter {
     if (this.length + words > s.length) {
       if (!this.warned) {
         this.warned = true;
-        console.warn(`[kiln] kernel stream full (${s.length} words); raise kernel.streamWords in kiln.json`);
+        console.warn(`[blackiron] kernel stream full (${s.length} words); raise kernel.streamWords in blackiron.json`);
       }
       return null;
     }

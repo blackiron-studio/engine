@@ -1,5 +1,5 @@
-import { TAU } from "@kiln/engine/core";
-import { Anchor, Graphics2D, AnimatedSprite, Button, Label, Light2D, Node2D, Panel, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@kiln/engine/scene";
+import { TAU } from "@blackiron-studio/engine/core";
+import { Anchor, Graphics2D, AnimatedSprite, Button, Label, Light2D, Node2D, Panel, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
 import { LanternKeeper, EmberCompass } from "../scenery.ts";
 import { BUTTON, DISPLAY_SMALL, UI, UI_SMALL } from "../fonts.ts";
 import { type GameEvent, type GameState, RULES, WORLD_H, WORLD_W, createGame, tick } from "../game.ts";

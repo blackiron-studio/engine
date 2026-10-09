@@ -4,7 +4,7 @@
 use std::sync::{Arc, Mutex};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use kiln_kernel::audio::Audio;
+use blackiron_kernel::audio::Audio;
 
 pub struct AudioOut {
     _stream: cpal::Stream,

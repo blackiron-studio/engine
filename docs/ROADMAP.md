@@ -1,6 +1,6 @@
-# Kiln: quality and capability roadmap
+# Blackiron: quality and capability roadmap
 
-Updated 9 September 2026. Kiln remains our engine. Godot and Unity are engineering benchmarks, not migration targets. The previous roadmap overstated parity: feature names and a green unit suite did not prove correct lifecycle, real-time safety, import fidelity, visual quality or production export support. The [historical roadmap](ROADMAP-2026-09-03.md) records those earlier decisions; this document supersedes its status and its exclusion of 3D.
+Updated 9 September 2026. Blackiron remains our engine. Godot and Unity are engineering benchmarks, not migration targets. The previous roadmap overstated parity: feature names and a green unit suite did not prove correct lifecycle, real-time safety, import fidelity, visual quality or production export support. The [historical roadmap](ROADMAP-2026-09-03.md) records those earlier decisions; this document supersedes its status and its exclusion of 3D.
 
 ## The product direction
 
@@ -8,7 +8,7 @@ Keep one shared runtime for scenes, input, UI, audio, saves and tooling. Preserv
 
 Improve **Wisp Hollow** and **Highground** in place. Add **Lumen Salvage** as the missing 3D example. These three games are acceptance fixtures and design constraints for reusable engine features. Each should be playable, visually coherent, pausable and restartable, with instructions and useful failure feedback. Avoid adding unrelated showcases to hide deficiencies in the main games.
 
-This delivery establishes a stronger foundation. It does not establish general-purpose Godot or Unity parity. Kiln can be the right path for a small studio that accepts maintaining its engine; the proof is repeatable shipping quality in these games, not a growing feature checklist.
+This delivery establishes a stronger foundation. It does not establish general-purpose Godot or Unity parity. Blackiron can be the right path for a small studio that accepts maintaining its engine; the proof is repeatable shipping quality in these games, not a growing feature checklist.
 
 Neon Bastion is now a concrete minimum reference for geometry-based 2.5D. The [comparison and acceptance fixture](NEON-BENCHMARK.md) records the resulting stylized shading, per-instance tint, camera, ground movement and feedback work. Highground keeps its projected island design; Lumen demonstrates both perspective and orthographic views.
 
@@ -35,7 +35,7 @@ Implementation status and command results belong in [upgrade validation](UPGRADE
 
 The 0.14 [foundation upgrade](FOUNDATION-UPGRADE.md) implements the next layer of this roadmap. Its evidence table is authoritative for this delivery; the milestones below still describe the broader production gates.
 
-| Area | Current Kiln direction | Gate before claiming production parity |
+| Area | Current Blackiron direction | Gate before claiming production parity |
 |---|---|---|
 | 2D | Sprites, rigs, particles, tiles, vector shapes, lights, UI | Consistent typography, animation import semantics, reliable asset hot reload and packaging |
 | 2.5D | Projected height/depth, terrain, picking, sprite shadows | Camera rotations, tall-object occlusion, picking at every elevation, controller/mobile acceptance |

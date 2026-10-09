@@ -3,7 +3,7 @@
 
 import type { PhysicsBackend } from "./protocol.ts";
 
-/** What a native host exposes per world through `__kilnHost.createPhysics(ppm)`. */
+/** What a native host exposes per world through `__blackironHost.createPhysics(ppm)`. */
 export interface NativePhysicsWorld {
   readonly scratch: Float32Array;
   call(op: number, words: number): number;

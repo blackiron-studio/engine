@@ -14,13 +14,13 @@
   },
   "nativeContentHardwareOnly": {
     "status": "PASS",
-    "command": "KILN_REQUIRE_HARDWARE_GPU=1 bun run check:native-content",
+    "command": "BLACKIRON_REQUIRE_HARDWARE_GPU=1 bun run check:native-content",
     "differingFraction": 0.0006541666666666667,
     "tolerance": 0.02
   },
   "browserSoak": {
     "status": "PASS",
-    "command": "KILN_SOAK_SECONDS=240 bun run check:reliability",
+    "command": "BLACKIRON_SOAK_SECONDS=240 bun run check:reliability",
     "device": "ANGLE Metal on Apple M1 Pro",
     "seconds": 240.0215,
     "frames": 14389,

@@ -1,4 +1,4 @@
-import { Anchor, AnimatedSprite, Label, Node2D, ParticleEmitter, Scene, Sprite, TouchControls } from "@kiln/engine/scene";
+import { Anchor, AnimatedSprite, Label, Node2D, ParticleEmitter, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
 import { UI } from "../fonts.ts";
 import { type GameEvent, type GameState, RULES, WORLD_H, WORLD_W, createGame, tick } from "../game.ts";
 import { saves } from "../store.ts";

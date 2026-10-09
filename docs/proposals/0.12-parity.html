@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kiln 0.12: the parity pass</title>
+<title>Blackiron 0.12: the parity pass</title>
 <style>
   :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #2f5d8a; --ok: #2f7d4f; }
   @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #7fb0e0; --ok: #6fbf8a; } }
@@ -23,7 +23,7 @@
 <body>
 <main>
   <h1>The parity pass: what Godot and Unity give a 2D game, without the editor</h1>
-  <p class="sub">Kiln 0.12, 5 September 2026. Written as the record of a pass the user asked for after the 0.11 rigs: "improve the engine for now, don't focus on store plumbing and Windows, but do all the rest."</p>
+  <p class="sub">Blackiron 0.12, 5 September 2026. Written as the record of a pass the user asked for after the 0.11 rigs: "improve the engine for now, don't focus on store plumbing and Windows, but do all the rest."</p>
 
   <p>The gap list came from a straight comparison against the two engines for the games in the plan: pixel-art 2D, AI-written code, native exports. Everything below shipped in this release, in one protocol change for rendering and additions elsewhere. Store plumbing and Windows builds were set aside on purpose and remain the next two items.</p>
 
@@ -38,7 +38,7 @@
     <tr><td>Physics</td><td>Bodies, joints, rays, queries</td><td>Shape casts, one-way platforms in the character controller</td></tr>
     <tr><td>Tiles</td><td>Edge autotiles, AABB collision</td><td>Blob autotiles (47), tileset import with seam checks, A*, merged colliders into the physics world</td></tr>
     <tr><td>UI</td><td>Controls, rows, columns</td><td>Margin, Pages, Tabs; reversed stacks for right-to-left</td></tr>
-    <tr><td>Locale</td><td>None</td><td><code>@kiln/engine/i18n</code>: tables, plurals, selects, Intl, fallbacks, watchers</td></tr>
+    <tr><td>Locale</td><td>None</td><td><code>@blackiron-studio/engine/i18n</code>: tables, plurals, selects, Intl, fallbacks, watchers</td></tr>
     <tr><td>Accessibility</td><td>Shake scale, reduced motion, text scale</td><td>Screen reader announcements on web, iOS and Android; focus groups announce</td></tr>
     <tr><td>Input</td><td>Key and text events</td><td>Input-method composition on the web</td></tr>
   </table>

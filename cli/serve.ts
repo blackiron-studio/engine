@@ -1,6 +1,6 @@
 import { sceneStore } from "./scene-store.ts";
-// The development server. Serves one project at "/" for `kiln dev`, or several projects
-// under prefixes with an index page for `kiln gallery`. Bundles on request, caches until a
+// The development server. Serves one project at "/" for `blackiron dev`, or several projects
+// under prefixes with an index page for `blackiron gallery`. Bundles on request, caches until a
 // file changes, and tells open pages to reload over server-sent events.
 
 import { watch } from "node:fs";
@@ -82,7 +82,7 @@ export async function serve(entries: ServeEntry[], opts: ServeOptions): Promise<
   let timer: ReturnType<typeof setTimeout> | null = null;
   const invalidate = (targets: Live[]) => (_: unknown, filename: string | Buffer | null) => {
     const name = String(filename ?? "");
-    if (/(^|\/)(node_modules|dist|atlas|screenshots|\.kiln)(\/|$)/.test(name)) return;
+    if (/(^|\/)(node_modules|dist|atlas|screenshots|\.blackiron)(\/|$)/.test(name)) return;
     for (const l of targets) l.cached = null;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
@@ -98,7 +98,7 @@ export async function serve(entries: ServeEntry[], opts: ServeOptions): Promise<
   }
 
   const multi = entries.length > 1 || entries[0]?.prefix !== "";
-  const indexHtml = multi ? galleryHtml(entries, opts.title ?? "Kiln gallery") : null;
+  const indexHtml = multi ? galleryHtml(entries, opts.title ?? "Blackiron gallery") : null;
 
   const server = Bun.serve({
     port: opts.port,
@@ -132,14 +132,14 @@ export async function serve(entries: ServeEntry[], opts: ServeOptions): Promise<
       const sub = prefix ? path.slice(prefix.length) : path;
 
       if (sub === "/dev/scene") return sceneStore(project.root, req);
-      if (sub === "/dev/editor") return new Response('<!doctype html><html><head><meta charset="utf-8"><title>Kiln scene editor</title></head><body><script type="module" src="editor.js"></script></body></html>', { headers: { "content-type": MIME[".html"] } });
+      if (sub === "/dev/editor") return new Response('<!doctype html><html><head><meta charset="utf-8"><title>Blackiron scene editor</title></head><body><script type="module" src="editor.js"></script></body></html>', { headers: { "content-type": MIME[".html"] } });
       if (sub === "/dev/editor.js") {
         const result = await Bun.build({ entrypoints: [resolve(import.meta.dir, "editor.ts")], target: "browser" });
         if (!result.success) return new Response(result.logs.join("\n"), { status: 500 });
         return new Response(await result.outputs[0].text(), { headers: { "content-type": MIME[".js"] } });
       }
       if (sub === "/" || sub === "/index.html") {
-        // Re-read kiln.json so viewport and post changes apply on reload without a restart.
+        // Re-read blackiron.json so viewport and post changes apply on reload without a restart.
         const fresh = await loadProject(project.root).catch(() => project);
         live.entry.project = fresh;
         const html = pageHtml({ title: fresh.config.name, config: runtimeConfig(fresh), scriptSrc: "game.js", dev: true });
@@ -178,7 +178,7 @@ export async function serve(entries: ServeEntry[], opts: ServeOptions): Promise<
 
   const base = `http://localhost:${server.port}`;
   if (multi) {
-    console.log(`\n  ${opts.title ?? "Kiln gallery"} is running at ${base}\n`);
+    console.log(`\n  ${opts.title ?? "Blackiron gallery"} is running at ${base}\n`);
     for (const e of entries) console.log(`    ${e.project.config.name.padEnd(14)} ${base}${e.prefix}/`);
     console.log();
   } else console.log(`\n  ${entries[0].project.config.name} is running at ${base}\n`);
@@ -235,7 +235,7 @@ export function galleryHtml(entries: ServeEntry[], title: string): string {
   <p class="lead">Three dimensions. One engine. Explore Wisp Hollow, Highground, Lumen Salvage, Signal Breach and Lowline, then build with the focused starters below. Press <kbd>\`</kbd> in any game for the debug overlay.</p>
   <div class="grid">${cards}
   </div>
-  <footer>kiln gallery · ${entries.length} projects</footer>
+  <footer>blackiron gallery · ${entries.length} projects</footer>
 </div>
 </body>
 </html>

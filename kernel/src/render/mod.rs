@@ -145,14 +145,14 @@ impl Renderer {
         // One backend at a time: a surface created for Vulkan claims the native window, and an
         // EGL surface for the same window then fails. Native APIs first, then OpenGL; emulated
         // or software Vulkan (the Android emulator, SwiftShader, lavapipe) is only a last resort.
-        let require_hardware = std::env::var("KILN_REQUIRE_HARDWARE_GPU").as_deref() == Ok("1");
+        let require_hardware = std::env::var("BLACKIRON_REQUIRE_HARDWARE_GPU").as_deref() == Ok("1");
         let (_instance, surface, adapter) = pick_adapter(source, wgpu::Backends::PRIMARY, false)
             .or_else(|| pick_adapter(source, wgpu::Backends::GL, false))
             .or_else(|| if require_hardware { None } else { pick_adapter(source, wgpu::Backends::all(), true) })
             .expect("no GPU adapter");
         let info = adapter.get_info();
         log::info!("gpu: {} ({:?}, {:?}, {})", info.name, info.backend, info.device_type, if is_emulated(&info) { "software/emulated" } else { "hardware" });
-        if is_emulated(&info) { log::warn!("Software/emulated GPU selected; hardware acceleration is not certified. Set KILN_REQUIRE_HARDWARE_GPU=1 to require hardware."); }
+        if is_emulated(&info) { log::warn!("Software/emulated GPU selected; hardware acceleration is not certified. Set BLACKIRON_REQUIRE_HARDWARE_GPU=1 to require hardware."); }
         let color_samples = adapter.get_texture_format_features(TARGET_FORMAT).flags;
         let depth_samples = adapter.get_texture_format_features(wgpu::TextureFormat::Depth32Float).flags;
         let mesh_samples = if color_samples.contains(wgpu::TextureFormatFeatureFlags::MULTISAMPLE_X4 | wgpu::TextureFormatFeatureFlags::MULTISAMPLE_RESOLVE)
@@ -160,7 +160,7 @@ impl Renderer {
         log::info!("native 3D mesh MSAA: {}x", mesh_samples);
         let request = |limits: wgpu::Limits| {
             pollster::block_on(adapter.request_device(
-                &wgpu::DeviceDescriptor { label: Some("kiln"), required_features: wgpu::Features::empty(), required_limits: limits, memory_hints: wgpu::MemoryHints::default() },
+                &wgpu::DeviceDescriptor { label: Some("blackiron"), required_features: wgpu::Features::empty(), required_limits: limits, memory_hints: wgpu::MemoryHints::default() },
                 None,
             ))
         };
@@ -187,7 +187,7 @@ impl Renderer {
         surface.configure(&device, &config);
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("kiln shaders"),
+            label: Some("blackiron shaders"),
             source: wgpu::ShaderSource::Wgsl(include_str!("shaders.wgsl").into()),
         });
         let uniform_entry = |binding: u32| wgpu::BindGroupLayoutEntry {
@@ -869,7 +869,7 @@ fn pick_adapter(source: SurfaceSource, backends: wgpu::Backends, allow_emulated:
 /// # Safety
 /// `layer` must be a live CAMetalLayer that outlives the renderer.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_new_metal_layer(layer: *mut std::ffi::c_void, width: u32, height: u32, max_quads: u32) -> *mut Renderer {
+pub unsafe extern "C" fn blackiron_render_new_metal_layer(layer: *mut std::ffi::c_void, width: u32, height: u32, max_quads: u32) -> *mut Renderer {
     if layer.is_null() {
         return std::ptr::null_mut();
     }
@@ -880,16 +880,16 @@ pub unsafe extern "C" fn kiln_render_new_metal_layer(layer: *mut std::ffi::c_voi
 }
 
 /// # Safety
-/// `r` must come from a `kiln_render_new_*` call and not be used afterwards.
+/// `r` must come from a `blackiron_render_new_*` call and not be used afterwards.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_free(r: *mut Renderer) {
+pub unsafe extern "C" fn blackiron_render_free(r: *mut Renderer) {
     if !r.is_null() {
         drop(Box::from_raw(r));
     }
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_render_resize(r: *mut Renderer, width: u32, height: u32) {
+pub extern "C" fn blackiron_render_resize(r: *mut Renderer, width: u32, height: u32) {
     if let Some(r) = unsafe { r.as_mut() } {
         r.resize(width, height);
     }
@@ -898,7 +898,7 @@ pub extern "C" fn kiln_render_resize(r: *mut Renderer, width: u32, height: u32) 
 /// # Safety
 /// `rgba` must hold `width * height * 4` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_upload_texture(r: *mut Renderer, slot: u32, width: u32, height: u32, rgba: *const u8) {
+pub unsafe extern "C" fn blackiron_render_upload_texture(r: *mut Renderer, slot: u32, width: u32, height: u32, rgba: *const u8) {
     let Some(r) = r.as_mut() else { return };
     if rgba.is_null() || width == 0 || height == 0 {
         return;
@@ -912,7 +912,7 @@ pub unsafe extern "C" fn kiln_render_upload_texture(r: *mut Renderer, slot: u32,
 /// # Safety
 /// The pointers must hold `vertex_count * 10` floats, `command_count` words and `post_len` floats.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_frame(r: *mut Renderer, vertices: *const f32, vertex_count: u32, commands: *const u32, command_count: u32, post: *const f32, post_len: u32, capture: i32) -> i32 {
+pub unsafe extern "C" fn blackiron_render_frame(r: *mut Renderer, vertices: *const f32, vertex_count: u32, commands: *const u32, command_count: u32, post: *const f32, post_len: u32, capture: i32) -> i32 {
     let Some(r) = r.as_mut() else { return 0 };
     if vertices.is_null() || commands.is_null() || post.is_null() {
         return 0;
@@ -931,7 +931,7 @@ pub unsafe extern "C" fn kiln_render_frame(r: *mut Renderer, vertices: *const f3
 /// # Safety
 /// `width` and `height` may be null.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_capture_size(r: *mut Renderer, width: *mut u32, height: *mut u32) -> u32 {
+pub unsafe extern "C" fn blackiron_render_capture_size(r: *mut Renderer, width: *mut u32, height: *mut u32) -> u32 {
     let Some(r) = r.as_ref() else { return 0 };
     let Some((w, h, rgba)) = &r.capture else { return 0 };
     if !width.is_null() {
@@ -948,7 +948,7 @@ pub unsafe extern "C" fn kiln_render_capture_size(r: *mut Renderer, width: *mut 
 /// # Safety
 /// `out` must hold `cap` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_capture_read(r: *mut Renderer, out: *mut u8, cap: u32) -> u32 {
+pub unsafe extern "C" fn blackiron_render_capture_read(r: *mut Renderer, out: *mut u8, cap: u32) -> u32 {
     let Some(r) = r.as_mut() else { return 0 };
     let Some((_, _, rgba)) = r.capture.take() else { return 0 };
     if out.is_null() {
@@ -963,7 +963,7 @@ pub unsafe extern "C" fn kiln_render_capture_read(r: *mut Renderer, out: *mut u8
 /// # Safety
 /// bytes must contain len readable UTF-8 bytes; renderer must be live.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_render_mesh(r: *mut Renderer, bytes: *const u8, len: u32) -> i32 {
+pub unsafe extern "C" fn blackiron_render_mesh(r: *mut Renderer, bytes: *const u8, len: u32) -> i32 {
     let Some(r) = r.as_mut() else { return 0 };
     if bytes.is_null() || len > 64 * 1024 * 1024 { return 0; }
     let Ok(json) = std::str::from_utf8(std::slice::from_raw_parts(bytes, len as usize)) else { return 0 };
@@ -972,7 +972,7 @@ pub unsafe extern "C" fn kiln_render_mesh(r: *mut Renderer, bytes: *const u8, le
 
 /// Retained mesh geometry count, texture count, or estimated mesh-stage GPU bytes.
 #[no_mangle]
-pub extern "C" fn kiln_render_mesh_resource(r: *const Renderer, index: u32) -> u64 {
+pub extern "C" fn blackiron_render_mesh_resource(r: *const Renderer, index: u32) -> u64 {
     let Some(r) = (unsafe { r.as_ref() }) else { return 0 };
     let stats = r.mesh_resources();
     match index { 0 => stats.0 as u64, 1 => stats.1 as u64, 2 => stats.2 as u64, _ => 0 }

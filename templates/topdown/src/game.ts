@@ -1,7 +1,7 @@
 // Rules for the top-down starter. Pure state plus a tick function with a seeded rng, so
 // everything here runs in `bun test` without a browser.
 
-import { Rng, clamp } from "@kiln/engine/core";
+import { Rng, clamp } from "@blackiron-studio/engine/core";
 
 export const WORLD = { cols: 60, rows: 34, tile: 32 } as const;
 export const WORLD_W = WORLD.cols * WORLD.tile;

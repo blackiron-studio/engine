@@ -4,12 +4,12 @@ A generated sprite sheet, imported, twice over. `assets/knight-source.png` is si
 a knight as an image model drew them: transparent ground with a faint halo, pixels that wobble
 between four and six source pixels, poses wherever they landed.
 
-- `bun run import` turns it into `assets/knight.png` and `knight.json` through `kiln art
+- `bun run import` turns it into `assets/knight.png` and `knight.json` through `blackiron art
   import`, with facings (`walk=down:4,5;up:1;left:2,6;right:3,7`), a mirrored attack that
   fires `hit` on its second frame, a held hurt pose and a hitbox. `src/art.ts` loads it with
   one `defineSpriteSet` call; the scene plays `knight.walk` and sets `facing`.
 - `bun run parts` cuts frame 3 into seven parts (head, torso, cape as the far arm, sword arm,
-  sword, two legs) with `kiln art parts`, which packs them and works out the bone pivots.
+  sword, two legs) with `blackiron art parts`, which packs them and works out the bone pivots.
   `defineRig` loads them and `new Rig2D("knight-rig")` walks, swings and falls with the
   engine's procedural clips.
 

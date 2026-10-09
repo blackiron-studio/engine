@@ -1,15 +1,15 @@
-// `kiln art`: the art pipeline from the command line.
+// `blackiron art`: the art pipeline from the command line.
 //
-//   kiln art import <sheet.png> --name knight [--out assets] [--cell 300x320] [--key auto|none|#hex]
+//   blackiron art import <sheet.png> --name knight [--out assets] [--cell 300x320] [--key auto|none|#hex]
 //                  [--pixel auto|4] [--palette project|none] [--anchor feet|center] [--pad 1]
 //                  [--anim idle=0] [--anim walk=down:4,5;up:1;left:2,6;right:3,7] [--mirror attack]
 //                  [--event attack:1=hit] [--hold hurt=0.5] [--hitbox 8=20,10,30,40]
 //                  [--tolerance 40] [--merge 6] [--min 64] [--shrink 2] [--fps 8]
-//   kiln art parts <sheet.png> --frame 3 --name knight-rig [--template humanoid]
+//   blackiron art parts <sheet.png> --frame 3 --name knight-rig [--template humanoid]
 //                  --cut head=26,11,29,32 --cut torso=27,40,19,25 ... [--anchor weapon=0.5,0.85]
-//   kiln art check [assets]           lint imported sheets against the style bible
-//   kiln art brief [--subject "..."] [--height 64] [--poses "idle, walk 2, attack 2"]
-//   kiln art tileset <tiles.png> --tile 16 --name ground [--terrain blob|edges|none] [--pixel N] [--key none|#hex]
+//   blackiron art check [assets]           lint imported sheets against the style bible
+//   blackiron art brief [--subject "..."] [--height 64] [--poses "idle, walk 2, attack 2"]
+//   blackiron art tileset <tiles.png> --tile 16 --name ground [--terrain blob|edges|none] [--pixel N] [--key none|#hex]
 //
 // Import turns a generated or scanned sheet into game pixels: the ground is keyed out, poses are
 // found (or cells sliced), the real pixel size is measured and the image resampled to it, colours
@@ -135,7 +135,7 @@ async function readPNG(path: string): Promise<RawImage> {
 
 export async function artImport(args: Args): Promise<void> {
   const file = args._[1];
-  if (!file) throw new Error("Usage: kiln art import <sheet.png> [--name prefix] [--out dir] ...");
+  if (!file) throw new Error("Usage: blackiron art import <sheet.png> [--name prefix] [--out dir] ...");
   const src = resolve(process.cwd(), file);
   if (!existsSync(src)) throw new Error(`${file} does not exist`);
   const name = args.str("name", basename(file).replace(/\.[a-z]+$/i, "").replace(/[^a-z0-9_-]/gi, "-").toLowerCase());
@@ -237,7 +237,7 @@ interface Cut {
 /** Cut one frame into rig parts, pack them, and work out the bone pivots from where they sat. */
 export async function artParts(args: Args): Promise<void> {
   const file = args._[1];
-  if (!file) throw new Error("Usage: kiln art parts <sheet.png> --frame N --name prefix --cut part=x,y,w,h ...");
+  if (!file) throw new Error("Usage: blackiron art parts <sheet.png> --frame N --name prefix --cut part=x,y,w,h ...");
   const src = resolve(process.cwd(), file);
   if (!existsSync(src)) throw new Error(`${file} does not exist`);
   const name = args.str("name", `${basename(file).replace(/\.[a-z]+$/i, "")}-rig`);
@@ -342,7 +342,7 @@ export async function artParts(args: Args): Promise<void> {
 
   const json = {
     frames,
-    meta: { app: "kiln", image: `${name}.png`, size: { w: sheetW, h: sheetH }, scale: "1", rig: { template: templateName, height, pivots, anchors: { ...Object.fromEntries(template.bones.map((b) => [b.name, b.anchor])), ...anchors } } },
+    meta: { app: "blackiron", image: `${name}.png`, size: { w: sheetW, h: sheetH }, scale: "1", rig: { template: templateName, height, pivots, anchors: { ...Object.fromEntries(template.bones.map((b) => [b.name, b.anchor])), ...anchors } } },
   };
   await mkdir(outDir, { recursive: true });
   await Bun.write(resolve(outDir, `${name}.png`), encodePNG(sheet.width, sheet.height, sheet.data));
@@ -396,7 +396,7 @@ export async function artCheck(args: Args): Promise<void> {
     if (manifest.meta.pitch === undefined && !manifest.meta.rig) lines.push("no pitch recorded (imported before 0.11?); re-import to record it");
     const tallest = Math.max(...manifest.frames.map((fr) => fr.frame.h));
     if (!manifest.meta.rig) heights.push({ name: f.replace(/\.json$/, ""), height: Number(manifest.meta.height ?? tallest) });
-    if (!manifest.meta.animations && !manifest.meta.frameTags && !manifest.meta.rig) lines.push("no animations in the manifest; pass --anim to kiln art import");
+    if (!manifest.meta.animations && !manifest.meta.frameTags && !manifest.meta.rig) lines.push("no animations in the manifest; pass --anim to blackiron art import");
     console.log(`  ${f}: ${manifest.frames.length} frames${manifest.meta.rig ? ` (rig, ${(manifest.meta.rig as { template: string }).template})` : ""}, tallest ${tallest} px${lines.length ? "" : "  ok"}`);
     for (const l of lines) console.log(`    - ${l}`);
   }
@@ -430,7 +430,7 @@ export async function artBrief(args: Args): Promise<void> {
     "Same character, same proportions and same light direction (top-left) in every pose; no text, no labels, no grid lines, no background scenery.",
   ];
   console.log(lines.join("\n"));
-  console.log(`\n  Then: kiln art import <file.png> --name <name> --anim idle=0 --anim walk=1,2 ...`);
+  console.log(`\n  Then: blackiron art import <file.png> --name <name> --anim idle=0 --anim walk=1,2 ...`);
 }
 
 // ---------------------------------------------------------------- tileset
@@ -442,7 +442,7 @@ export async function artBrief(args: Args): Promise<void> {
  */
 export async function artTileset(args: Args): Promise<void> {
   const file = args._[1];
-  if (!file) throw new Error("Usage: kiln art tileset <tiles.png> --tile 16 [--name prefix] [--terrain blob|edges|none] [--pixel N]");
+  if (!file) throw new Error("Usage: blackiron art tileset <tiles.png> --tile 16 [--name prefix] [--terrain blob|edges|none] [--pixel N]");
   const src = resolve(process.cwd(), file);
   if (!existsSync(src)) throw new Error(`${file} does not exist`);
   const name = args.str("name", basename(file).replace(/\.[a-z]+$/i, "").replace(/[^a-z0-9_-]/gi, "-").toLowerCase());
@@ -534,7 +534,7 @@ export async function artTileset(args: Args): Promise<void> {
     }
   }
 
-  const json = { frames, meta: { app: "kiln", image: `${name}.png`, size: { w: sheet.width, h: sheet.height }, scale: "1", tiles: { size: tile, cols: outCols, rows: outRows, terrain, pitch } } };
+  const json = { frames, meta: { app: "blackiron", image: `${name}.png`, size: { w: sheet.width, h: sheet.height }, scale: "1", tiles: { size: tile, cols: outCols, rows: outRows, terrain, pitch } } };
   await mkdir(outDir, { recursive: true });
   await Bun.write(resolve(outDir, `${name}.png`), encodePNG(sheet.width, sheet.height, sheet.data));
   await Bun.write(resolve(outDir, `${name}.json`), JSON.stringify(json, null, 2));
@@ -557,5 +557,5 @@ export async function art(args: Args): Promise<void> {
   if (sub === "parts") return artParts(args);
   if (sub === "check") return artCheck(args);
   if (sub === "brief") return artBrief(args);
-  throw new Error(`Usage: kiln art import|parts|tileset|check|brief ...`);
+  throw new Error(`Usage: blackiron art import|parts|tileset|check|brief ...`);
 }

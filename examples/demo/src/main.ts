@@ -3,7 +3,7 @@
 // creates the App for the target (web page or native host) and calls `main`.
 
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
+import type { App } from "@blackiron-studio/engine/app";
 import { defineAudio } from "./audio.ts";
 import { TitleScene } from "./scenes/title.ts";
 

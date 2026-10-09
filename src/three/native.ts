@@ -8,7 +8,7 @@ import {
   mat4Multiply,
   mat4Orthographic,
 } from "./math.ts";
-/** Versioned retained-resource protocol consumed by Kiln's wgpu stage, independent of the 2D vertex ABI. */
+/** Versioned retained-resource protocol consumed by Blackiron's wgpu stage, independent of the 2D vertex ABI. */
 export class Native3DEncoder {
   private geometryVersions = new Map<Geometry3D, number>();
   private textureVersions = new Map<Texture3D, number>();

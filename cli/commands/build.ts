@@ -78,7 +78,7 @@ export interface NativeBuildOutput {
 }
 
 /**
- * Bundle for a native host: one classic script that defines `__kilnBoot`, plus the
+ * Bundle for a native host: one classic script that defines `__blackironBoot`, plus the
  * atlas prebaked to raw RGBA so the interpreter never paints at boot.
  */
 export async function buildNative(
@@ -163,7 +163,7 @@ export async function bundleFonts(
   if (fonts.length === 0) return names;
   const fontsDir = join(nativeDir, "fonts");
   await mkdir(fontsDir, { recursive: true });
-  const cache = join(project.root, ".kiln", "fonts");
+  const cache = join(project.root, ".blackiron", "fonts");
   await mkdir(cache, { recursive: true });
   for (const entry of fonts) {
     try {
@@ -204,7 +204,7 @@ export async function bundleFonts(
   return names;
 }
 
-/** Resolve a Google Fonts CSS URL to TrueType files, cached under .kiln/fonts. */
+/** Resolve a Google Fonts CSS URL to TrueType files, cached under .blackiron/fonts. */
 async function googleFontFiles(
   cssUrl: string,
   cache: string,
@@ -213,7 +213,7 @@ async function googleFontFiles(
   const local = cssUrl.startsWith("file:");
   const res = local
     ? null
-    : await fetch(cssUrl, { headers: { "User-Agent": "Kiln font bundler" } });
+    : await fetch(cssUrl, { headers: { "User-Agent": "Blackiron font bundler" } });
   if (res && !res.ok) throw new Error(`${res.status} fetching ${cssUrl}`);
   const css = res ? await res.text() : await Bun.file(new URL(cssUrl)).text();
   if (/@import\b/i.test(css))

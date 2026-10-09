@@ -19,7 +19,7 @@ async function discover(extra: string[]): Promise<ServeEntry[]> {
   const entries: ServeEntry[] = [];
   const used = new Set<string>();
   for (const dir of dirs) {
-    if (!existsSync(join(dir, "kiln.json"))) continue;
+    if (!existsSync(join(dir, "blackiron.json"))) continue;
     const project = await loadProject(dir);
     let prefix = `/${slug(dir.split("/").pop() ?? project.config.name)}`;
     while (used.has(prefix)) prefix += "-";
@@ -47,5 +47,5 @@ async function discover(extra: string[]): Promise<ServeEntry[]> {
 export async function gallery(args: Args): Promise<void> {
   const entries = await discover(args._);
   if (entries.length === 0) throw new Error("No projects found under examples/ or templates/");
-  await serve(entries, { port: args.num("port", 4200), open: args.bool("open"), title: "Kiln gallery" });
+  await serve(entries, { port: args.num("port", 4200), open: args.bool("open"), title: "Blackiron gallery" });
 }

@@ -1,6 +1,6 @@
 // The shell pieces the scenes share: settings and the save slot, created in main.ts.
 
-import type { SaveSlots, Settings } from "@kiln/engine/shell";
+import type { SaveSlots, Settings } from "@blackiron-studio/engine/shell";
 
 export interface Progress {
   coins: number;

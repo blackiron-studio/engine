@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kiln 0.4: the compiled kernel</title>
+<title>Blackiron 0.4: the compiled kernel</title>
 <style>
   :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
   @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fc28f; } }
@@ -27,12 +27,12 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">Kiln engine · proposal 0.4 · 2026-09-03 · implemented</div>
+  <div class="eyebrow">Blackiron engine · proposal 0.4 · 2026-09-03 · implemented</div>
   <h1>The compiled kernel</h1>
   <p>0.3 put the engine on iOS natively, but the whole engine still ran in the JavaScript interpreter. iOS does not allow a JIT for third-party apps, so tight per-frame loops there run several times slower than in a browser. 0.4 moves those loops into a small Rust library that is compiled to machine code on every native platform and to WebAssembly on the web, behind the same scene API. The script keeps the tree, the UI and the game rules; the kernel does the work that scales with sprite, tile and particle counts.</p>
 
   <h2>Shape</h2>
-  <p>Godot's split, applied to Kiln: a compiled core, scripted games, one thin host per platform.</p>
+  <p>Godot's split, applied to Blackiron: a compiled core, scripted games, one thin host per platform.</p>
   <pre>game code (TypeScript)            ─ scenes, rules, UI, input
 scene tree (TypeScript)           ─ nodes, transforms, draw order, culling of big things
     │  one command stream per frame: sprite, rect, glyph, batch, particles, pass
@@ -83,12 +83,12 @@ host renderer                     ─ Metal (iOS), WebGL2 (browser)</pre>
 
   <h2>Where it runs</h2>
   <ul>
-    <li><strong>iOS:</strong> <code>KilnKernel.xcframework</code> (static libraries for the simulator and devices) linked into every exported project. The JavaScript side sees kernel memory directly through no-copy typed arrays, and the Metal renderer reads vertices straight from the kernel.</li>
+    <li><strong>iOS:</strong> <code>BlackironKernel.xcframework</code> (static libraries for the simulator and devices) linked into every exported project. The JavaScript side sees kernel memory directly through no-copy typed arrays, and the Metal renderer reads vertices straight from the kernel.</li>
     <li><strong>Web:</strong> 40 KB of WebAssembly embedded in the bundle, instantiated at startup. <code>?kernel=ts</code> switches to the reference kernel for comparison.</li>
     <li><strong>Tests and headless:</strong> the TypeScript reference, so <code>bun test</code> needs no Rust toolchain. The generated <code>src/kernel/kernel.wasm.ts</code> is committed.</li>
   </ul>
   <pre>bun kernel/build.ts        # cargo: Wasm → src/kernel/kernel.wasm.ts, static libs → kernel/dist/
-kiln export ios / run ios  # copies the XCFramework into the project</pre>
+blackiron export ios / run ios  # copies the XCFramework into the project</pre>
 
   <h2>What changed for game code</h2>
   <p>Nothing that existing projects call. <code>TileMap</code> and <code>ParticleEmitter</code> use the kernel when the renderer has one and fall back to their 0.3 behaviour otherwise (Canvas 2D, the fake renderer). <code>TileMap.set</code> marks the batch dirty; editing <code>data</code> directly needs <code>invalidate()</code>. The FPS pill now shows total CPU time per frame, not only the draw phase.</p>

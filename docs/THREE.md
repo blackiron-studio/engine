@@ -1,9 +1,9 @@
-# Basic 3D in Kiln
+# Basic 3D in Blackiron
 
-`@kiln/engine/three` adds a mesh world to the existing scene lifecycle. Y is up; X/Z is the ground plane. The world renders before the usual 2D world and HUD, through the existing post-processing pipeline. No external game engine is involved.
+`@blackiron-studio/engine/three` adds a mesh world to the existing scene lifecycle. Y is up; X/Z is the ground plane. The world renders before the usual 2D world and HUD, through the existing post-processing pipeline. No external game engine is involved.
 
 ```ts
-import { Scene3D, Geometry3D, Material3D, Mesh3D } from "@kiln/engine/three";
+import { Scene3D, Geometry3D, Material3D, Mesh3D } from "@blackiron-studio/engine/three";
 
 class Courtyard extends Scene3D {
   override ready() {
@@ -93,8 +93,8 @@ Run `bun run check:3d` for actual GPU depth, shadows, instancing, texture orient
 
 ## Neon visual acceptance fixture
 
-`bun run check:neon` reconstructs the supplied Neon Bastion arena with Kiln APIs: shared cuboids, per-instance colours, flat rings, cover trims, gates and four articulated figures. Its Lambert response and orthographic basis match the reference's lighting and camera math. It is a renderer acceptance scene, not an additional flagship game or gameplay port; the source reference is never modified.
+`bun run check:neon` reconstructs the supplied Neon Bastion arena with Blackiron APIs: shared cuboids, per-instance colours, flat rings, cover trims, gates and four articulated figures. Its Lambert response and orthographic basis match the reference's lighting and camera math. It is a renderer acceptance scene, not an additional flagship game or gameplay port; the source reference is never modified.
 
-The command writes a fixed 1440×900 canvas capture and diagnostics to `.kiln/verification/neon/frame.png` and `result.json`. Diagnostics include WebGL errors, framing error against the reference projection, geometry/draw counts and CPU scene-collection/submission measurements. Those timings exclude GPU completion and display FPS. The fixture explicitly records differences, including omitted world-radial fog; passing does not claim identical images.
+The command writes a fixed 1440×900 canvas capture and diagnostics to `.blackiron/verification/neon/frame.png` and `result.json`. Diagnostics include WebGL errors, framing error against the reference projection, geometry/draw counts and CPU scene-collection/submission measurements. Those timings exclude GPU completion and display FPS. The fixture explicitly records differences, including omitted world-radial fog; passing does not claim identical images.
 
 Use `bun run check:neon --serve --port 4213` to inspect the generated scene at `http://127.0.0.1:4213/`; append `?animate=1` for the figure animation study. The bundle and `index.html` remain in the verification directory for another local server. Chrome runs with an isolated temporary profile and a bounded termination path.

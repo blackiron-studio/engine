@@ -7,7 +7,7 @@ import { decodePNG, encodePNG } from "../cli/png.ts";
 import { compareImages } from "../cli/commands/verify.ts";
 const engine = resolve(import.meta.dir, ".."),
   root = resolve(engine, "tests/fixtures/native3d"),
-  output = resolve(engine, ".kiln/verification/native-content");
+  output = resolve(engine, ".blackiron/verification/native-content");
 await mkdir(output, { recursive: true });
 const native = await buildNative(await loadProject(root));
 const build = Bun.spawn(
@@ -24,7 +24,7 @@ const build = Bun.spawn(
 if ((await build.exited) !== 0) throw new Error("Native build failed");
 const host = resolve(
   engine,
-  `host/target/release/kiln-host${process.platform === "win32" ? ".exe" : ""}`,
+  `host/target/release/blackiron-host${process.platform === "win32" ? ".exe" : ""}`,
 );
 const capture = Bun.spawn(
   [
@@ -51,9 +51,9 @@ const [stdout, stderr, code] = await Promise.all([
 ]);
 await Bun.write(join(output, "native.log"), stdout + stderr);
 if (code !== 0) throw new Error("Native content check failed: " + stderr);
-const temp = await mkdtemp(join(tmpdir(), "kiln-native-content-"));
-const entry = join(root, ".kiln/browser-check.ts");
-await mkdir(resolve(root, ".kiln"), { recursive: true });
+const temp = await mkdtemp(join(tmpdir(), "blackiron-native-content-"));
+const entry = join(root, ".blackiron/browser-check.ts");
+await mkdir(resolve(root, ".blackiron"), { recursive: true });
 await Bun.write(
   entry,
   `import main from '../main.ts';import {App} from '${resolve(engine, "src/app/app.ts")}';try{const app=await App.create({canvas:'canvas',config:{seed:1,viewport:{width:800,height:600},render:{scale:1,snap:'none'}}});await main(app);app.renderer.resize(800,600,1);for(let i=0;i<100;i++)app.frame(1/60);const gl=app.canvas.getContext('webgl2');if(gl.getError())throw Error('GL error');await fetch('/result',{method:'POST',body:JSON.stringify({png:app.canvas.toDataURL('image/png'),physics:app.scene.physics3D.stats})});}catch(error){await fetch('/result',{method:'POST',body:JSON.stringify({error:String(error.stack??error)})});}`,

@@ -1,13 +1,12 @@
 {
   "name": "@blackiron-studio/engine",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Blackiron Engine: TypeScript 2D, projected 2.5D and basic 3D game engine with web and native hosts.",
   "type": "module",
   "private": true,
   "license": "MIT",
   "bin": {
-    "blackiron": "./cli/blackiron.ts",
-    "kiln": "./cli/kiln.ts"
+    "blackiron": "./cli/blackiron.ts"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -32,7 +31,7 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "demo": "cd examples/demo && bun run dev",
-    "gallery": "bun cli/kiln.ts gallery",
+    "gallery": "bun cli/blackiron.ts gallery",
     "check:showcases": "bun scripts/check-showcases.ts",
     "check:3d": "bun scripts/check-webgl3d.ts",
     "check:neon": "bun scripts/check-neon-reference.ts",

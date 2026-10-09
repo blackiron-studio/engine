@@ -1,5 +1,5 @@
-//! The JavaScript side: a script engine running the game bundle, the `__kilnHost` object the
-//! engine's NativePlatform and NativeRenderer call, timers, and the `__kiln` bridge the host
+//! The JavaScript side: a script engine running the game bundle, the `__blackironHost` object the
+//! engine's NativePlatform and NativeRenderer call, timers, and the `__blackiron` bridge the host
 //! drives every frame. The kernel and the synthesiser are Rust objects owned here; the script
 //! reaches them through small copying wrappers registered as engine-neutral natives (see
 //! `script/`), so QuickJS and V8 are interchangeable.
@@ -9,10 +9,10 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-use kiln_kernel::audio::Audio;
-use kiln_kernel::nodes::NODE_WORDS;
-use kiln_kernel::physics::Physics;
-use kiln_kernel::Kernel;
+use blackiron_kernel::audio::Audio;
+use blackiron_kernel::nodes::NODE_WORDS;
+use blackiron_kernel::physics::Physics;
+use blackiron_kernel::Kernel;
 
 use crate::bundle::Bundle;
 use crate::script::{arg, Engine, EngineKind, Val};
@@ -79,12 +79,12 @@ const GLUE: &str = r#"
 (() => {
   const timers = new Map();
   let next = 1;
-  const now = () => globalThis.__kilnHost.now();
+  const now = () => globalThis.__blackironHost.now();
   globalThis.setTimeout = (cb, ms = 0, ...args) => { const id = next++; timers.set(id, { cb, due: now() + Math.max(0, +ms || 0), interval: 0, args }); return id; };
   globalThis.setInterval = (cb, ms = 0, ...args) => { const id = next++; const iv = Math.max(1, +ms || 0); timers.set(id, { cb, due: now() + iv, interval: iv, args }); return id; };
   globalThis.clearTimeout = (id) => { timers.delete(id); };
   globalThis.clearInterval = globalThis.clearTimeout;
-  globalThis.__kilnRunTimers = (t) => {
+  globalThis.__blackironRunTimers = (t) => {
     for (const [id, timer] of [...timers]) {
       if (timer.due > t) continue;
       if (timer.interval) timer.due = t + timer.interval; else timers.delete(id);
@@ -93,7 +93,7 @@ const GLUE: &str = r#"
   };
 })();
 (() => {
-  const K = globalThis.__kilnKernelNative, A = globalThis.__kilnAudioNative, H = globalThis.__kilnHost;
+  const K = globalThis.__blackironKernelNative, A = globalThis.__blackironAudioNative, H = globalThis.__blackironHost;
   const stream = new Float32Array(K.streamWords()), scratch = new Float32Array(4096), stats = new Uint32Array(8), batches = new Map(), batches3 = new Map(), tables = new Map();
   H.kernel = {
     kind: "native", maxQuads: K.maxQuads(), stream, scratch, vertices: new Float32Array(0), commands: new Uint32Array(0), stats,
@@ -133,7 +133,7 @@ const GLUE: &str = r#"
     const ascratch = new Float32Array(8192);
     H.audio = { scratch: ascratch, unlock: () => A.unlock(), time: () => A.time(), command: (n) => A.command(ascratch.subarray(0, n), n), loadSample: (id, bytes) => A.loadSample(id, bytes), loadStream: (id, bytes) => A.loadStream(id, bytes), closeStream: (id) => A.closeStream(id), peak: () => A.peak() };
   }
-  const P = globalThis.__kilnPhysicsNative;
+  const P = globalThis.__blackironPhysicsNative;
   H.createPhysics = (ppm) => {
     const id = P.create(ppm);
     const scratch = new Float32Array(4096);
@@ -145,7 +145,7 @@ const GLUE: &str = r#"
       destroy: () => P.destroy(id),
     };
   };
-  H.showKeyboard = (v) => globalThis.__kilnKeyboard(!!v);
+  H.showKeyboard = (v) => globalThis.__blackironKeyboard(!!v);
 })();
 "#;
 
@@ -197,33 +197,33 @@ impl Js {
 
         // host
         let st = state.clone();
-        reg(e, "__kilnHost", "now", Box::new(move |_| Val::Num(st.borrow().now())));
-        reg(e, "__kilnHost", "log", Box::new(|a| {
-            log::info!("[kiln:{}] {}", arg(a, 0).text(), arg(a, 1).text());
+        reg(e, "__blackironHost", "now", Box::new(move |_| Val::Num(st.borrow().now())));
+        reg(e, "__blackironHost", "log", Box::new(|a| {
+            log::info!("[blackiron:{}] {}", arg(a, 0).text(), arg(a, 1).text());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "storageGet", Box::new(move |a| st.borrow().storage.get(&arg(a, 0).text()).map(Val::Str).unwrap_or(Val::Null)));
+        reg(e, "__blackironHost", "storageGet", Box::new(move |a| st.borrow().storage.get(&arg(a, 0).text()).map(Val::Str).unwrap_or(Val::Null)));
         let st = state.clone();
-        reg(e, "__kilnHost", "storageSet", Box::new(move |a| {
+        reg(e, "__blackironHost", "storageSet", Box::new(move |a| {
             match st.borrow_mut().storage.set(&arg(a, 0).text(), arg(a, 1).text()) {
                 Ok(()) => Val::Bool(true),
                 Err(error) => { log::error!("storage write failed: {error}"); Val::Bool(false) }
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "storageRemove", Box::new(move |a| {
+        reg(e, "__blackironHost", "storageRemove", Box::new(move |a| {
             match st.borrow_mut().storage.remove(&arg(a, 0).text()) {
                 Ok(()) => Val::Bool(true),
                 Err(error) => { log::error!("storage removal failed: {error}"); Val::Bool(false) }
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "physics3D", Box::new(move |a| Val::Str(kiln_kernel::physics3d::call(&arg(a, 0).text()))));
-        reg(e, "__kilnHost", "loadBytes", Box::new(move |a| st.borrow().bundle.read(&arg(a, 0).text()).map(Val::Bytes).unwrap_or(Val::Null)));
+        reg(e, "__blackironHost", "physics3D", Box::new(move |a| Val::Str(blackiron_kernel::physics3d::call(&arg(a, 0).text()))));
+        reg(e, "__blackironHost", "loadBytes", Box::new(move |a| st.borrow().bundle.read(&arg(a, 0).text()).map(Val::Bytes).unwrap_or(Val::Null)));
         let st = state.clone();
-        reg(e, "__kilnHost", "loadText", Box::new(move |a| st.borrow().bundle.read_text(&arg(a, 0).text()).map(Val::Str).unwrap_or(Val::Null)));
-        reg(e, "__kilnHost", "decodeImage", Box::new(move |a| {
+        reg(e, "__blackironHost", "loadText", Box::new(move |a| st.borrow().bundle.read_text(&arg(a, 0).text()).map(Val::Str).unwrap_or(Val::Null)));
+        reg(e, "__blackironHost", "decodeImage", Box::new(move |a| {
             let decoded = match arg(a, 0) { Val::Bytes(bytes) => decode_image(bytes), _ => None };
             match decoded {
                 Some((w, h, rgba)) => Val::Obj(vec![("width".into(), Val::Num(w as f64)), ("height".into(), Val::Num(h as f64)), ("data".into(), Val::Bytes(rgba))]),
@@ -231,7 +231,7 @@ impl Js {
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "loadImage", Box::new(move |a| {
+        reg(e, "__blackironHost", "loadImage", Box::new(move |a| {
             let bytes = st.borrow().bundle.read(&arg(a, 0).text());
             match bytes.and_then(|b| decode_image(&b)) {
                 Some((w, h, rgba)) => Val::Obj(vec![("width".into(), Val::Num(w as f64)), ("height".into(), Val::Num(h as f64)), ("data".into(), Val::Bytes(rgba))]),
@@ -239,7 +239,7 @@ impl Js {
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "uploadTexture", Box::new(move |a| {
+        reg(e, "__blackironHost", "uploadTexture", Box::new(move |a| {
             let (slot, w, h) = (arg(a, 0).int().max(0) as usize, arg(a, 1).int().max(0) as u32, arg(a, 2).int().max(0) as u32);
             if let Val::Bytes(rgba) = arg(a, 3) {
                 st.borrow_mut().uploads.push(TextureUpload { slot, w, h, rgba: rgba.clone() });
@@ -247,23 +247,23 @@ impl Js {
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "rendererDiagnostics", Box::new(move |_| {
+        reg(e, "__blackironHost", "rendererDiagnostics", Box::new(move |_| {
             let (g, t, bytes) = st.borrow().mesh_resources;
             Val::Obj(vec![("geometries".into(), Val::Num(g as f64)), ("textures".into(), Val::Num(t as f64)), ("meshBytes".into(), Val::Num(bytes as f64))])
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "submit3D", Box::new(move |a| {
+        reg(e, "__blackironHost", "submit3D", Box::new(move |a| {
             let next=arg(a,0).text();let mut state=st.borrow_mut();
-            state.mesh_packet=Some(match state.mesh_packet.take(){Some(previous)=>match kiln_kernel::render::coalesce_mesh_packets(&previous,&next){Ok(packet)=>packet,Err(error)=>{log::error!("3D pending submission: {error}");next}},None=>next});
+            state.mesh_packet=Some(match state.mesh_packet.take(){Some(previous)=>match blackiron_kernel::render::coalesce_mesh_packets(&previous,&next){Ok(packet)=>packet,Err(error)=>{log::error!("3D pending submission: {error}");next}},None=>next});
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "submit", Box::new(move |a| {
+        reg(e, "__blackironHost", "submit", Box::new(move |a| {
             st.borrow_mut().frame = Some(FrameOut { post: arg(a, 0).f32s().to_vec(), vertex_count: arg(a, 1).int().max(0) as usize, command_count: arg(a, 2).int().max(0) as usize });
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "rasterizeGlyph", Box::new(move |a| {
+        reg(e, "__blackironHost", "rasterizeGlyph", Box::new(move |a| {
             let Some(chr) = arg(a, 4).text().chars().next() else { return Val::Null };
             let glyph = st.borrow_mut().text.rasterize(&arg(a, 0).text(), arg(a, 1).int().max(1) as f32, arg(a, 2).int(), arg(a, 3).text() == "italic", chr);
             match glyph {
@@ -286,41 +286,41 @@ impl Js {
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "haptic", Box::new(move |a| {
+        reg(e, "__blackironHost", "haptic", Box::new(move |a| {
             st.borrow_mut().haptics.push(arg(a, 0).text());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnHost", "announce", Box::new(move |a| {
+        reg(e, "__blackironHost", "announce", Box::new(move |a| {
             st.borrow_mut().announcements.push(arg(a, 0).text());
             Val::Undefined
         }));
         let st=state.clone();
-        reg(e,"__kilnHost","setPointerCapture",Box::new(move |a|{st.borrow_mut().pointer_capture=Some(arg(a,0).truthy());Val::Undefined}));
+        reg(e,"__blackironHost","setPointerCapture",Box::new(move |a|{st.borrow_mut().pointer_capture=Some(arg(a,0).truthy());Val::Undefined}));
         let st=state.clone();
-        reg(e,"__kilnHost","bootFailed",Box::new(move |a|{log::error!("boot failed: {}",arg(a,0).text());st.borrow_mut().boot_failed=true;Val::Undefined}));
-        e.set("__kilnHost", "screen", screen_value(&screen));
-        e.set("__kilnHost", "deterministic", Val::Bool(deterministic));
+        reg(e,"__blackironHost","bootFailed",Box::new(move |a|{log::error!("boot failed: {}",arg(a,0).text());st.borrow_mut().boot_failed=true;Val::Undefined}));
+        e.set("__blackironHost", "screen", screen_value(&screen));
+        e.set("__blackironHost", "deterministic", Val::Bool(deterministic));
 
         // kernel
-        reg(e, "__kilnKernelNative", "streamWords", Box::new(move |_| Val::Num(stream_words as f64)));
-        reg(e, "__kilnKernelNative", "maxQuads", Box::new(move |_| Val::Num(max_quads as f64)));
+        reg(e, "__blackironKernelNative", "streamWords", Box::new(move |_| Val::Num(stream_words as f64)));
+        reg(e, "__blackironKernelNative", "maxQuads", Box::new(move |_| Val::Num(max_quads as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setWhite", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setWhite", Box::new(move |a| {
             st.borrow_mut().kernel.set_white(arg(a, 0).num() as f32, arg(a, 1).num() as f32);
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "run", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "run", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let n = copy_into(s.kernel.stream_mut(), arg(a, 0).f32s(), arg(a, 1).int().max(0) as usize);
             s.kernel.run(n);
             Val::U32s(s.kernel.stats().to_vec())
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "createBatch", Box::new(move |a| Val::Num(st.borrow_mut().kernel.batch_create(arg(a, 0).int().max(1) as usize) as f64)));
+        reg(e, "__blackironKernelNative", "createBatch", Box::new(move |a| Val::Num(st.borrow_mut().kernel.batch_create(arg(a, 0).int().max(1) as usize) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setBatchData", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setBatchData", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let id = arg(a, 0).int();
             let count = arg(a, 2).int().max(0) as usize;
@@ -331,41 +331,41 @@ impl Js {
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "destroyBatch", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "destroyBatch", Box::new(move |a| {
             st.borrow_mut().kernel.batch_destroy(arg(a, 0).int());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "createEmitter", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "createEmitter", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let words = arg(a, 1).int().max(0) as usize;
             copy_into(s.kernel.scratch_mut(), arg(a, 0).f32s(), words);
             Val::Num(s.kernel.emitter_create(words) as f64)
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "burst", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "burst", Box::new(move |a| {
             st.borrow_mut().kernel.emitter_burst(arg(a, 0).int(), arg(a, 1).int().max(0) as usize, arg(a, 2).num(), arg(a, 3).num());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "emitterCount", Box::new(move |a| Val::Num(st.borrow().kernel.emitter_count(arg(a, 0).int()) as f64)));
+        reg(e, "__blackironKernelNative", "emitterCount", Box::new(move |a| Val::Num(st.borrow().kernel.emitter_count(arg(a, 0).int()) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "clearEmitter", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "clearEmitter", Box::new(move |a| {
             st.borrow_mut().kernel.emitter_clear(arg(a, 0).int());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "destroyEmitter", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "destroyEmitter", Box::new(move |a| {
             st.borrow_mut().kernel.emitter_destroy(arg(a, 0).int());
             Val::Undefined
         }));
         // node tables: the script keeps a mirror and sends dirty ranges; reads pull the table back
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "createNodes", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes_create(arg(a, 0).int().max(1) as usize) as f64)));
+        reg(e, "__blackironKernelNative", "createNodes", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes_create(arg(a, 0).int().max(1) as usize) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "nodesData", Box::new(move |a| Val::F32s(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.data.clone()).unwrap_or_default())));
+        reg(e, "__blackironKernelNative", "nodesData", Box::new(move |a| Val::F32s(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.data.clone()).unwrap_or_default())));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setNodesData", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setNodesData", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let (from, to) = (arg(a, 2).int().max(0) as usize * NODE_WORDS, arg(a, 3).int().max(0) as usize * NODE_WORDS);
             if let Some(t) = s.kernel.nodes(arg(a, 0).int()) {
@@ -378,34 +378,34 @@ impl Js {
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "allocNode", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.alloc()).unwrap_or(-1) as f64)));
+        reg(e, "__blackironKernelNative", "allocNode", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.alloc()).unwrap_or(-1) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "freeNode", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "freeNode", Box::new(move |a| {
             if let Some(t) = st.borrow_mut().kernel.nodes(arg(a, 0).int()) {
                 t.free(arg(a, 1).int());
             }
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "clearNodes", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "clearNodes", Box::new(move |a| {
             if let Some(t) = st.borrow_mut().kernel.nodes(arg(a, 0).int()) {
                 t.clear();
             }
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "nodeCount", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.live).unwrap_or(0) as f64)));
+        reg(e, "__blackironKernelNative", "nodeCount", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.live).unwrap_or(0) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "nodesHigh", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.high).unwrap_or(0) as f64)));
+        reg(e, "__blackironKernelNative", "nodesHigh", Box::new(move |a| Val::Num(st.borrow_mut().kernel.nodes(arg(a, 0).int()).map(|t| t.high).unwrap_or(0) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "stepNodes", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "stepNodes", Box::new(move |a| {
             if let Some(t) = st.borrow_mut().kernel.nodes(arg(a, 0).int()) {
                 t.step(arg(a, 1).num());
             }
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "configureNodes", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "configureNodes", Box::new(move |a| {
             let p = arg(a, 1).nums();
             let g = |i: usize| p.get(i).copied().unwrap_or(0.0);
             if let Some(t) = st.borrow_mut().kernel.nodes(arg(a, 0).int()) {
@@ -417,31 +417,31 @@ impl Js {
         }));
         // world-space batches and the shadow region
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "createBatch3", Box::new(move |a| Val::Num(st.borrow_mut().kernel.batch3_create(arg(a, 0).int().max(1) as usize) as f64)));
+        reg(e, "__blackironKernelNative", "createBatch3", Box::new(move |a| Val::Num(st.borrow_mut().kernel.batch3_create(arg(a, 0).int().max(1) as usize) as f64)));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setBatch3Data", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setBatch3Data", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let id = arg(a, 0).int();
             let count = arg(a, 2).int().max(0) as usize;
             if let Some(dst) = s.kernel.batch3_data(id) {
-                copy_into(dst, arg(a, 1).f32s(), count * kiln_kernel::BATCH3_STRIDE);
+                copy_into(dst, arg(a, 1).f32s(), count * blackiron_kernel::BATCH3_STRIDE);
             }
             s.kernel.batch3_set_count(id, count);
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "destroyBatch3", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "destroyBatch3", Box::new(move |a| {
             st.borrow_mut().kernel.batch3_destroy(arg(a, 0).int());
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setShadow", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setShadow", Box::new(move |a| {
             let v = |i: usize| arg(a, i).num() as f32;
             st.borrow_mut().kernel.set_shadow(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7));
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "setNodeFrames", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "setNodeFrames", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let words = arg(a, 2).int().max(0) as usize;
             copy_into(s.kernel.scratch_mut(), arg(a, 1).f32s(), words);
@@ -449,28 +449,28 @@ impl Js {
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "applyNodeTransforms", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "applyNodeTransforms", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let words = arg(a, 2).int().max(0) as usize;
             copy_into(s.kernel.scratch_mut(), arg(a, 1).f32s(), words);
             Val::Num(s.kernel.nodes_apply_transforms(arg(a, 0).int(), words) as f64)
         }));
         let st = state.clone();
-        reg(e, "__kilnKernelNative", "destroyNodes", Box::new(move |a| {
+        reg(e, "__blackironKernelNative", "destroyNodes", Box::new(move |a| {
             st.borrow_mut().kernel.nodes_destroy(arg(a, 0).int());
             Val::Undefined
         }));
 
         // audio
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "available", Box::new(move |_| Val::Bool(st.borrow().audio.is_some())));
-        reg(e, "__kilnAudioNative", "unlock", Box::new(|_| Val::Undefined));
+        reg(e, "__blackironAudioNative", "available", Box::new(move |_| Val::Bool(st.borrow().audio.is_some())));
+        reg(e, "__blackironAudioNative", "unlock", Box::new(|_| Val::Undefined));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "time", Box::new(move |_| Val::Num(st.borrow().audio.as_ref().and_then(|a| a.lock().ok().map(|a| a.time())).unwrap_or(0.0))));
+        reg(e, "__blackironAudioNative", "time", Box::new(move |_| Val::Num(st.borrow().audio.as_ref().and_then(|a| a.lock().ok().map(|a| a.time())).unwrap_or(0.0))));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "peak", Box::new(move |_| Val::Num(st.borrow().audio.as_ref().and_then(|a| a.lock().ok().map(|a| a.peak() as f64)).unwrap_or(0.0))));
+        reg(e, "__blackironAudioNative", "peak", Box::new(move |_| Val::Num(st.borrow().audio.as_ref().and_then(|a| a.lock().ok().map(|a| a.peak() as f64)).unwrap_or(0.0))));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "command", Box::new(move |a| {
+        reg(e, "__blackironAudioNative", "command", Box::new(move |a| {
             let s = st.borrow();
             if let Some(audio) = &s.audio {
                 if let Ok(mut audio) = audio.lock() {
@@ -481,7 +481,7 @@ impl Js {
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "loadSample", Box::new(move |a| {
+        reg(e, "__blackironAudioNative", "loadSample", Box::new(move |a| {
             let s = st.borrow();
             match &s.audio {
                 Some(audio) => Val::Bool(crate::audio::load_sample(audio, s.audio_rate, arg(a, 0).int(), arg(a, 1).bytes())),
@@ -489,7 +489,7 @@ impl Js {
             }
         }));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "loadStream", Box::new(move |a| {
+        reg(e, "__blackironAudioNative", "loadStream", Box::new(move |a| {
             let s = st.borrow();
             let Some(audio) = &s.audio else { return Val::Num(0.0) };
             let Ok(mut audio) = audio.lock() else { return Val::Num(0.0) };
@@ -501,7 +501,7 @@ impl Js {
             Val::Num(audio.stream_open(id) as f64)
         }));
         let st = state.clone();
-        reg(e, "__kilnAudioNative", "closeStream", Box::new(move |a| {
+        reg(e, "__blackironAudioNative", "closeStream", Box::new(move |a| {
             let s = st.borrow();
             if let Some(audio) = &s.audio {
                 if let Ok(mut audio) = audio.lock() {
@@ -513,7 +513,7 @@ impl Js {
 
         // physics: worlds by id; results come back as a copy of the first scratch words
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "create", Box::new(move |a| {
+        reg(e, "__blackironPhysicsNative", "create", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let world = Physics::new(arg(a, 0).num() as f32);
             let id = match s.physics.iter().position(|w| w.is_none()) {
@@ -529,7 +529,7 @@ impl Js {
             Val::Num(id as f64)
         }));
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "call", Box::new(move |a| {
+        reg(e, "__blackironPhysicsNative", "call", Box::new(move |a| {
             let mut s = st.borrow_mut();
             let Some(Some(world)) = s.physics.get_mut(arg(a, 0).int() as usize) else { return Val::Num(-1.0) };
             let words = arg(a, 3).int().max(0) as usize;
@@ -537,33 +537,33 @@ impl Js {
             Val::Num(world.call(arg(a, 1).int().max(0) as u32, words) as f64)
         }));
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "results", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
+        reg(e, "__blackironPhysicsNative", "results", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
             Some(Some(world)) => world.scratch()[..256].to_vec(),
             _ => Vec::new(),
         })));
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "transforms", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
+        reg(e, "__blackironPhysicsNative", "transforms", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
             Some(Some(world)) => world.transforms().to_vec(),
             _ => Vec::new(),
         })));
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "events", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
+        reg(e, "__blackironPhysicsNative", "events", Box::new(move |a| Val::F32s(match st.borrow().physics.get(arg(a, 0).int() as usize) {
             Some(Some(world)) => world.events().to_vec(),
             _ => Vec::new(),
         })));
         let st = state.clone();
-        reg(e, "__kilnPhysicsNative", "destroy", Box::new(move |a| {
+        reg(e, "__blackironPhysicsNative", "destroy", Box::new(move |a| {
             if let Some(slot) = st.borrow_mut().physics.get_mut(arg(a, 0).int() as usize) {
                 *slot = None;
             }
             Val::Undefined
         }));
         let st = state.clone();
-        reg(e, "", "__kilnKeyboard", Box::new(move |a| {
+        reg(e, "", "__blackironKeyboard", Box::new(move |a| {
             st.borrow_mut().keyboard = Some(arg(a, 0).truthy());
             Val::Undefined
         }));
-        e.eval(GLUE, "kiln-glue.js");
+        e.eval(GLUE, "blackiron-glue.js");
         Js { engine, state }
     }
 
@@ -573,7 +573,7 @@ impl Js {
 
     /// Run the game script and its boot function.
     pub fn boot(&mut self, source: &str) {
-        let script = format!("{source}\n;__kilnBoot().catch(e => __kilnHost.bootFailed(String(e) + ' ' + (e && e.stack || '')));");
+        let script = format!("{source}\n;__blackironBoot().catch(e => __blackironHost.bootFailed(String(e) + ' ' + (e && e.stack || '')));");
         self.engine.eval(&script, "game.js");
         self.engine.pump();
     }
@@ -584,41 +584,41 @@ impl Js {
 
     /// Advance timers, run one engine frame, then drain promise jobs.
     pub fn tick(&mut self, now_ms: f64) {
-        self.engine.call("", "__kilnRunTimers", &[Val::Num(now_ms)]);
-        self.engine.call("__kiln", "frame", &[Val::Num(now_ms)]);
+        self.engine.call("", "__blackironRunTimers", &[Val::Num(now_ms)]);
+        self.engine.call("__blackiron", "frame", &[Val::Num(now_ms)]);
         self.engine.pump();
     }
 
-    pub fn pointer_capture(&mut self, locked:bool) { self.engine.call("__kiln","pointerCapture",&[Val::Bool(locked)]); }
-    pub fn mouse_motion(&mut self,x:f64,y:f64) { self.engine.call("__kiln","mouseMotion",&[Val::Num(x),Val::Num(y)]); }
+    pub fn pointer_capture(&mut self, locked:bool) { self.engine.call("__blackiron","pointerCapture",&[Val::Bool(locked)]); }
+    pub fn mouse_motion(&mut self,x:f64,y:f64) { self.engine.call("__blackiron","mouseMotion",&[Val::Num(x),Val::Num(y)]); }
     pub fn pointer(&mut self, kind: &str, id: i64, x: f64, y: f64, ty: &str) {
-        self.engine.call("__kiln", "pointer", &[Val::Str(kind.into()), Val::Num(id as f64), Val::Num(x), Val::Num(y), Val::Str(ty.into())]);
+        self.engine.call("__blackiron", "pointer", &[Val::Str(kind.into()), Val::Num(id as f64), Val::Num(x), Val::Num(y), Val::Str(ty.into())]);
     }
 
     /// A pointer event in logical units, for scripted taps.
     pub fn pointer_logical(&mut self, kind: &str, id: i64, x: f64, y: f64) {
-        self.engine.call("__kiln", "pointerLogical", &[Val::Str(kind.into()), Val::Num(id as f64), Val::Num(x), Val::Num(y)]);
+        self.engine.call("__blackiron", "pointerLogical", &[Val::Str(kind.into()), Val::Num(id as f64), Val::Num(x), Val::Num(y)]);
     }
 
     pub fn key(&mut self, code: &str, down: bool) {
-        self.engine.call("__kiln", "key", &[Val::Str(code.into()), Val::Bool(down)]);
+        self.engine.call("__blackiron", "key", &[Val::Str(code.into()), Val::Bool(down)]);
     }
 
     pub fn resize(&mut self, screen: &Screen) {
-        self.engine.set("__kilnHost", "screen", screen_value(screen));
-        self.engine.call("__kiln", "resize", &[Val::Num(screen.width), Val::Num(screen.height), Val::Num(screen.scale), Val::Nums(screen.insets.to_vec())]);
+        self.engine.set("__blackironHost", "screen", screen_value(screen));
+        self.engine.call("__blackiron", "resize", &[Val::Num(screen.width), Val::Num(screen.height), Val::Num(screen.scale), Val::Nums(screen.insets.to_vec())]);
     }
 
     pub fn visibility(&mut self, visible: bool) {
-        self.engine.call("__kiln", "visibility", &[Val::Bool(visible)]);
+        self.engine.call("__blackiron", "visibility", &[Val::Bool(visible)]);
     }
 
     pub fn text(&mut self, text: &str) {
-        self.engine.call("__kiln", "text", &[Val::Str(text.into())]);
+        self.engine.call("__blackiron", "text", &[Val::Str(text.into())]);
     }
 
     pub fn wheel(&mut self, dy: f64) {
-        self.engine.call("__kiln", "wheel", &[Val::Num(dy)]);
+        self.engine.call("__blackiron", "wheel", &[Val::Num(dy)]);
     }
 }
 

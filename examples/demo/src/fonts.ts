@@ -1,7 +1,7 @@
 // The demo's type: a pixel display face for titles and a clean sans for the HUD. Both
-// load from the stylesheet in kiln.json; the fallbacks are the browser's sans-serif.
+// load from the stylesheet in blackiron.json; the fallbacks are the browser's sans-serif.
 
-import type { FontSpec } from "@kiln/engine/render";
+import type { FontSpec } from "@blackiron-studio/engine/render";
 
 export const DISPLAY: FontSpec = { family: "Pixelify Sans", size: 72, weight: 700 };
 export const DISPLAY_SMALL: FontSpec = { family: "Pixelify Sans", size: 40, weight: 700 };

@@ -1,10 +1,10 @@
-# Kiln engine capability assessment
+# Blackiron engine capability assessment
 
 9 September 2026 · local version 0.13.0 · historical pre-upgrade baseline
 
 **These scores predate the 0.14 foundation upgrade.** Native meshes, glTF, textures, skeletal animation, 3D physics, serialized scenes and persistent editing now exist. See [the current implementation and evidence](ENGINE-UPGRADE-0.16.md). This table is retained as a baseline; its percentages are not current measurements.
 
-Kiln is a useful specialized engine for small code-authored 2D and stylized 2.5D games, with an early basic 3D renderer. It is not yet a general-purpose peer of Godot or Unity. Continuing Kiln is compatible with the user's direction; the immediate goal should be reliable reusable systems and repeatable shipping, not feature-count parity.
+Blackiron is a useful specialized engine for small code-authored 2D and stylized 2.5D games, with an early basic 3D renderer. It is not yet a general-purpose peer of Godot or Unity. Continuing Blackiron is compatible with the user's direction; the immediate goal should be reliable reusable systems and repeatable shipping, not feature-count parity.
 
 ## Method and scope
 
@@ -80,7 +80,7 @@ Paths are relative to the engine root, <engine-root>.
 
 The latest recorded upgrade validation reports 339 tests / 17,155 assertions, successful TypeScript checking, real browser GPU checks, startup/pause/resume checks for the three games, and 14 passing desktop native image comparisons. Lumen is explicitly skipped in native checks because mesh 3D is web-only. These are prior pass results, not newly rerun tests for this assessment. See [Neon benchmark](NEON-BENCHMARK.md) and [upgrade validation](UPGRADE-VALIDATION.md).
 
-The Neon-style acceptance scene uses Kiln's own renderer: 319 visible meshes, 4,660 triangles and 11 main draws plus composition. Its short CPU submission sample was 0.70 ms median / 1.50 ms p95 on the recorded M1 Pro machine. This supports the ability to render that style. It does not establish a full shooter port, GPU frame time, long-session stability or speed parity with Godot/Unity. No identical-scene, identical-device benchmark against either engine was performed.
+The Neon-style acceptance scene uses Blackiron's own renderer: 319 visible meshes, 4,660 triangles and 11 main draws plus composition. Its short CPU submission sample was 0.70 ms median / 1.50 ms p95 on the recorded M1 Pro machine. This supports the ability to render that style. It does not establish a full shooter port, GPU frame time, long-session stability or speed parity with Godot/Unity. No identical-scene, identical-device benchmark against either engine was performed.
 
 CI configuration exists, including native jobs and an iOS build. Execution of that CI was not established. Bun/Rust are not pinned there and the browser GPU checks are not wired into that workflow. Physical mobile tests, long audio/device interruption testing, sustained memory/frame-time budgets and a shipping release history remain unverified. The local engine directory is not currently a Git repository.
 
@@ -101,4 +101,4 @@ CI configuration exists, including native jobs and an iOS build. Execution of th
 4. **Authoring and diagnosis:** persistent inspector/scene editing, GPU timings/frame inspection, memory/resource visibility and asset error reporting.
 5. **Ship and learn:** use Wisp Hollow, Highground and Lumen Salvage as acceptance games, preserving Highground's projected-island design. Ship a complete small game on the chosen targets and use actual production failures to set the next priorities.
 
-Matching a bounded visual style is achievable well before matching a general-purpose engine. Kiln should centralize reusable rendering, input, collision and content systems while games retain their own mechanics and art direction. A new engine feature earns confidence through repeatable integration and shipping evidence, not through its name appearing in an API.
+Matching a bounded visual style is achievable well before matching a general-purpose engine. Blackiron should centralize reusable rendering, input, collision and content systems while games retain their own mechanics and art direction. A new engine feature earns confidence through repeatable integration and shipping evidence, not through its name appearing in an API.

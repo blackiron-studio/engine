@@ -14,7 +14,7 @@ export async function stageExport<T>(
   const dir = exportDirectory(project, output),
     parent = dirname(dir);
   await mkdir(parent, { recursive: true });
-  const lock = join(parent, `.${basename(dir)}.kiln-export-lock`);
+  const lock = join(parent, `.${basename(dir)}.blackiron-export-lock`);
   try {
     await mkdir(lock);
   } catch (error) {
@@ -27,7 +27,7 @@ export async function stageExport<T>(
   let stage: string | undefined;
   let preserveRecovery = false;
   try {
-    stage = await mkdtemp(join(parent, `.${basename(dir)}.kiln-stage-`));
+    stage = await mkdtemp(join(parent, `.${basename(dir)}.blackiron-stage-`));
     const result = await build(stage);
     const backup = join(lock, "previous");
     if (!managed) {
@@ -94,7 +94,7 @@ export async function writeExportFile(
   const file = exportDirectory(project, path),
     parent = dirname(file);
   await mkdir(parent, { recursive: true });
-  const temp = await mkdtemp(join(parent, ".kiln-html-"));
+  const temp = await mkdtemp(join(parent, ".blackiron-html-"));
   try {
     const pending = join(temp, "output.html");
     await Bun.write(pending, contents);

@@ -1,7 +1,7 @@
 // The meadow: a tile map with autotiled dark patches, and y-sorted decorations.
 
-import { TileMapData } from "@kiln/engine/core";
-import { Node2D, Sprite, TileMap } from "@kiln/engine/scene";
+import { TileMapData } from "@blackiron-studio/engine/core";
+import { Node2D, Sprite, TileMap } from "@blackiron-studio/engine/scene";
 import { DARK_ID, FLOWERS_ID, type GameState, WORLD } from "../game.ts";
 
 export function buildMeadow(parent: Node2D, state: GameState): { map: TileMap; actors: Node2D } {

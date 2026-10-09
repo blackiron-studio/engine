@@ -1,5 +1,5 @@
-import { grid } from "@kiln/engine/core";
-import { Anchor, Bar, Button, type DrawContext, Label, Node2D, Panel, ParticleEmitter, Scene, Sprite, TileMap } from "@kiln/engine/scene";
+import { grid } from "@blackiron-studio/engine/core";
+import { Anchor, Bar, Button, type DrawContext, Label, Node2D, Panel, ParticleEmitter, Scene, Sprite, TileMap } from "@blackiron-studio/engine/scene";
 import { BUTTON, DISPLAY_SMALL, UI, UI_SMALL } from "../fonts.ts";
 import {
   type AttackResult,

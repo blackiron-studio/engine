@@ -15,16 +15,16 @@ Run `bun run dev` here or `bun run gallery` from the engine. This is the fifth c
 
 Walk toward the amber coupe and press E. Drive north to Northstar Records and press E near the amber marker. Picking up the archive starts a two-level pursuit: use speed and city blocks to break police sightlines for eight seconds. Then deliver to Pier 09. A successful delivery awards $2,400 and unlocks free roaming. Slow down before exiting vehicles; blocked doors cannot place the player inside a building.
 
-## Built with Kiln
+## Built with Blackiron
 
-Everything visible uses Kiln's scene tree, retained `Graphics2D`, camera, WebGL2 renderer, post-processing, text, UI and synthesized audio. No external game renderer or downloaded art is used. Static building geometry is retained and culled by the engine. Traffic, pedestrians, patrol counts and skid marks are bounded.
+Everything visible uses Blackiron's scene tree, retained `Graphics2D`, camera, WebGL2 renderer, post-processing, text, UI and synthesized audio. No external game renderer or downloaded art is used. Static building geometry is retained and culled by the engine. Traffic, pedestrians, patrol counts and skid marks are bounded.
 
-`@kiln/engine/physics` now exports:
+`@blackiron-studio/engine/physics` now exports:
 
 - **ArcadeVehicle2D:** configurable acceleration, braking/reverse, steering, lateral grip and handbrake handling. Call `step(dt, { throttle, steer, handbrake }, world)` before rendering its position and angle.
 - **ArcadeWorld2D:** static rectangle obstacles, substepped circle movement with wall sliding, safe-position queries and weighted separation of circular actors.
 
-These APIs do not depend on Lowline's roads, mission, art, input mappings or police rules. They are lightweight arcade dynamics; they do not implement rigid-body suspension or oriented vehicle collision meshes. `city.ts` authors this city's orthogonal road routes; `game.ts` owns the courier and pursuit rules; `presentation.ts` owns retained city/vehicle art; `main.ts` connects the simulation to Kiln.
+These APIs do not depend on Lowline's roads, mission, art, input mappings or police rules. They are lightweight arcade dynamics; they do not implement rigid-body suspension or oriented vehicle collision meshes. `city.ts` authors this city's orthogonal road routes; `game.ts` owns the courier and pursuit rules; `presentation.ts` owns retained city/vehicle art; `main.ts` connects the simulation to Blackiron.
 
 ## Validation and scope
 

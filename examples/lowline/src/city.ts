@@ -1,5 +1,5 @@
-import type { Rect } from "@kiln/engine/core";
-import { ArcadeWorld2D, ArcadeVehicle2D } from "@kiln/engine/physics";
+import type { Rect } from "@blackiron-studio/engine/core";
+import { ArcadeWorld2D, ArcadeVehicle2D } from "@blackiron-studio/engine/physics";
 export const SIZE = { w: 2540, h: 2200 };
 export const XS = [260, 740, 1220, 1700, 2180],
   YS = [260, 740, 1220, 1700];

@@ -1,13 +1,13 @@
-import { createSceneRegistry, parseSceneDocument } from "@kiln/engine/content";
-import gateDocument from "../assets/scenes/main.kiln.json";
-import type { App } from "@kiln/engine/app";
+import { createSceneRegistry, parseSceneDocument } from "@blackiron-studio/engine/content";
+import gateDocument from "../assets/scenes/main.blackiron.json";
+import type { App } from "@blackiron-studio/engine/app";
 import {
   Anchor,
   Button,
   Graphics2D,
   Label,
   TouchControls,
-} from "@kiln/engine/scene";
+} from "@blackiron-studio/engine/scene";
 import {
   Scene3D,
   Node3D,
@@ -18,7 +18,7 @@ import {
   Particles3D,
   CameraShake3D,
   Vec3,
-} from "@kiln/engine/three";
+} from "@blackiron-studio/engine/three";
 import {
   CORES,
   OBSTACLES,
@@ -377,7 +377,7 @@ export class SalvageScene extends Scene3D {
       }),
     );
     p.add(
-      new Label("KILN  /  THE 3D COLLECTION", 340, 26, {
+      new Label("BLACKIRON  /  THE 3D COLLECTION", 340, 26, {
         font: SMALL,
         align: "center",
         color: 0x9acabc,

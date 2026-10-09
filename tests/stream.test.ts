@@ -9,44 +9,44 @@ const WASM = await Bun.file(new URL("../src/kernel/audio.wasm", import.meta.url)
 
 interface AudioExports {
   memory: WebAssembly.Memory;
-  kiln_audio_new(rate: number, voices: number): number;
-  kiln_audio_scratch(a: number): number;
-  kiln_audio_scratch_words(a: number): number;
-  kiln_audio_command(a: number, words: number): number;
-  kiln_audio_stream_begin(a: number, id: number, len: number): number;
-  kiln_audio_stream_write(a: number, id: number, bytes: number): number;
-  kiln_audio_stream_open(a: number, id: number): number;
-  kiln_audio_stream_close(a: number, id: number): void;
-  kiln_audio_render(a: number, position: number, frames: number): void;
-  kiln_audio_out(a: number): number;
-  kiln_audio_active(a: number): number;
+  blackiron_audio_new(rate: number, voices: number): number;
+  blackiron_audio_scratch(a: number): number;
+  blackiron_audio_scratch_words(a: number): number;
+  blackiron_audio_command(a: number, words: number): number;
+  blackiron_audio_stream_begin(a: number, id: number, len: number): number;
+  blackiron_audio_stream_write(a: number, id: number, bytes: number): number;
+  blackiron_audio_stream_open(a: number, id: number): number;
+  blackiron_audio_stream_close(a: number, id: number): void;
+  blackiron_audio_render(a: number, position: number, frames: number): void;
+  blackiron_audio_out(a: number): number;
+  blackiron_audio_active(a: number): number;
 }
 
 async function kernel(): Promise<{ x: AudioExports; a: number }> {
   const { instance } = await WebAssembly.instantiate(WASM, {});
   const x = instance.exports as unknown as AudioExports;
-  return { x, a: x.kiln_audio_new(48000, 8) };
+  return { x, a: x.blackiron_audio_new(48000, 8) };
 }
 
 function openStream(k: { x: AudioExports; a: number }, id: number, bytes: Uint8Array): number {
   const { x, a } = k;
-  if (!x.kiln_audio_stream_begin(a, id, bytes.length)) return 0;
-  const cap = x.kiln_audio_scratch_words(a) * 4;
+  if (!x.blackiron_audio_stream_begin(a, id, bytes.length)) return 0;
+  const cap = x.blackiron_audio_scratch_words(a) * 4;
   for (let off = 0; off < bytes.length; off += cap) {
     const n = Math.min(cap, bytes.length - off);
-    new Uint8Array(x.memory.buffer, x.kiln_audio_scratch(a), cap).set(bytes.subarray(off, off + n));
-    x.kiln_audio_stream_write(a, id, n);
+    new Uint8Array(x.memory.buffer, x.blackiron_audio_scratch(a), cap).set(bytes.subarray(off, off + n));
+    x.blackiron_audio_stream_write(a, id, n);
   }
-  return x.kiln_audio_stream_open(a, id);
+  return x.blackiron_audio_stream_open(a, id);
 }
 
 function command(k: { x: AudioExports; a: number }, words: number[]): void {
-  new Float32Array(k.x.memory.buffer, k.x.kiln_audio_scratch(k.a), words.length).set(words);
-  k.x.kiln_audio_command(k.a, words.length);
+  new Float32Array(k.x.memory.buffer, k.x.blackiron_audio_scratch(k.a), words.length).set(words);
+  k.x.blackiron_audio_command(k.a, words.length);
 }
 
 function peak(k: { x: AudioExports; a: number }, frames: number): number {
-  const out = new Float32Array(k.x.memory.buffer, k.x.kiln_audio_out(k.a), frames * 2);
+  const out = new Float32Array(k.x.memory.buffer, k.x.blackiron_audio_out(k.a), frames * 2);
   let m = 0;
   for (let i = 0; i < out.length; i++) m = Math.max(m, Math.abs(out[i]));
   return m;
@@ -65,7 +65,7 @@ describe("Streaming music", () => {
       let quiet = 0;
       let loud = 0;
       for (let i = 0; i < 80; i++) {
-        k.x.kiln_audio_render(k.a, i * block, block);
+        k.x.blackiron_audio_render(k.a, i * block, block);
         const p = peak(k, block);
         if (p < 0.02) quiet++;
         loud = Math.max(loud, p);
@@ -73,10 +73,10 @@ describe("Streaming music", () => {
       // The fixture is a 0.75 sine; the music bus and constant-power pan bring it near 0.2.
       expect(loud).toBeGreaterThan(0.1);
       expect(quiet).toBe(0);
-      expect(k.x.kiln_audio_active(k.a)).toBe(1);
-      k.x.kiln_audio_stream_close(k.a, 3);
-      k.x.kiln_audio_render(k.a, 80 * block, block);
-      expect(k.x.kiln_audio_active(k.a)).toBe(0);
+      expect(k.x.blackiron_audio_active(k.a)).toBe(1);
+      k.x.blackiron_audio_stream_close(k.a, 3);
+      k.x.blackiron_audio_render(k.a, 80 * block, block);
+      expect(k.x.blackiron_audio_active(k.a)).toBe(0);
     });
   }
 
@@ -86,8 +86,8 @@ describe("Streaming music", () => {
     expect(openStream(k, 0, bytes)).toBe(44100);
     command(k, [AUDIO_CMD.STREAM, 0, 1, 0, 1, 1, 0, 0]);
     const block = 4800;
-    for (let i = 0; i < 25; i++) k.x.kiln_audio_render(k.a, i * block, block);
-    expect(k.x.kiln_audio_active(k.a)).toBe(0);
+    for (let i = 0; i < 25; i++) k.x.blackiron_audio_render(k.a, i * block, block);
+    expect(k.x.blackiron_audio_active(k.a)).toBe(0);
     expect(openStream(k, 1, new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]))).toBe(0);
   });
 });

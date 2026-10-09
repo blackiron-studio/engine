@@ -4,7 +4,7 @@ atlas/
 screenshots/
 *.log
 .DS_Store
-.kiln/
+.blackiron/
 target/
 kernel/dist/
 *.actual.png
@@ -18,3 +18,6 @@ kernel/dist/
 *.p12
 *.mobileprovision
 *.keystore
+
+# Historical generated caches retained during migration
+.kiln/

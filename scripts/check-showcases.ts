@@ -1,6 +1,6 @@
 /** Real-browser startup, input/pause/resume and GPU smoke checks for the three flagship games.
  * bun scripts/check-showcases.ts [optional project directory]
- * Uses an isolated Chrome profile; writes screenshots and evidence under .kiln/verification/showcases.
+ * Uses an isolated Chrome profile; writes screenshots and evidence under .blackiron/verification/showcases.
  */
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
@@ -16,13 +16,13 @@ if (!(await Bun.file(chrome).exists()))
   throw new Error("Set CHROME_PATH to a Chrome/Chromium executable");
 for (const target of targets) {
   const root = resolve(engine, target),
-    config = await Bun.file(join(root, "kiln.json")).json();
+    config = await Bun.file(join(root, "blackiron.json")).json();
   const slug = root.split("/").at(-1)!;
-  const output = resolve(engine, ".kiln/verification/showcases", slug);
+  const output = resolve(engine, ".blackiron/verification/showcases", slug);
   await mkdir(output, { recursive: true });
-  const temp = await mkdtemp(join(tmpdir(), "kiln-showcase-"));
-  const entry = join(root, ".kiln", "showcase-check.ts");
-  await mkdir(join(root, ".kiln"), { recursive: true });
+  const temp = await mkdtemp(join(tmpdir(), "blackiron-showcase-"));
+  const entry = join(root, ".blackiron", "showcase-check.ts");
+  await mkdir(join(root, ".blackiron"), { recursive: true });
   await writeFile(
     entry,
     `
@@ -31,7 +31,7 @@ import { App } from ${JSON.stringify(join(engine, "src/app/app.ts"))};
 const report = document.querySelector('pre');
 const check=(condition,message)=>{if(!condition)throw new Error(message);};
 try {
- const app=await App.create({canvas:'#kiln',config:{...${JSON.stringify(config)},seed:7,fps:false}});
+ const app=await App.create({canvas:'#blackiron',config:{...${JSON.stringify(config)},seed:7,fps:false}});
  await main(app); app.audio.setMuted(true);
  const frame=(n=1)=>{for(let i=0;i<n;i++)app.frame(1/60);};
  const press=(action)=>{app.input.press(action);frame();app.input.release(action);frame();};
@@ -103,7 +103,7 @@ try {
       }
       if (url.pathname === "/")
         return new Response(
-          '<!doctype html><html><body style="margin:0"><canvas id="kiln" style="width:1280px;height:720px"></canvas><pre></pre><script type="module" src="/smoke.js"></script></body></html>',
+          '<!doctype html><html><body style="margin:0"><canvas id="blackiron" style="width:1280px;height:720px"></canvas><pre></pre><script type="module" src="/smoke.js"></script></body></html>',
           { headers: { "content-type": "text/html" } },
         );
       const path =

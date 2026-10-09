@@ -24,10 +24,10 @@ if (!chrome)
   throw new Error(
     "Chrome/Chromium is required. Set CHROME_PATH or pass the executable path.",
   );
-const output = resolve(import.meta.dir, "../.kiln/verification/three");
+const output = resolve(import.meta.dir, "../.blackiron/verification/three");
 await mkdir(output, { recursive: true });
 await rm(join(output, "frame.png"), { force: true });
-const profile = await mkdtemp(join(tmpdir(), "kiln-webgl3d-"));
+const profile = await mkdtemp(join(tmpdir(), "blackiron-webgl3d-"));
 const bundle = await Bun.build({
   entrypoints: [resolve(import.meta.dir, "../tests/browser/three-smoke.ts")],
   target: "browser",

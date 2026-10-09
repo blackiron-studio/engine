@@ -1,5 +1,5 @@
 //! Where the game's files come from: a directory on desktop (the output of
-//! `kiln build --target native`), the APK's assets on Android.
+//! `blackiron build --target native`), the APK's assets on Android.
 
 use std::path::{Path, PathBuf};
 
@@ -16,7 +16,7 @@ impl Bundle {
             #[cfg(target_os = "android")]
             Bundle::Assets(am) => {
                 use std::io::Read;
-                let name = std::ffi::CString::new(format!("Kiln/{rel}")).ok()?;
+                let name = std::ffi::CString::new(format!("Blackiron/{rel}")).ok()?;
                 let mut asset = am.open(&name)?;
                 let mut out = Vec::new();
                 asset.read_to_end(&mut out).ok()?;
@@ -37,7 +37,7 @@ impl Bundle {
                 .unwrap_or_default(),
             #[cfg(target_os = "android")]
             Bundle::Assets(am) => {
-                let name = match std::ffi::CString::new(format!("Kiln/{rel}")) {
+                let name = match std::ffi::CString::new(format!("Blackiron/{rel}")) {
                     Ok(n) => n,
                     Err(_) => return Vec::new(),
                 };
@@ -54,7 +54,7 @@ impl Bundle {
     }
 
     pub fn name(&self) -> String {
-        self.manifest().get("name").and_then(|v| v.as_str()).unwrap_or("Kiln").to_string()
+        self.manifest().get("name").and_then(|v| v.as_str()).unwrap_or("Blackiron").to_string()
     }
 
     pub fn dir(&self) -> Option<&Path> {

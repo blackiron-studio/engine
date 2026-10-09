@@ -1,5 +1,5 @@
 // Rig manifests: a template (which bones, in what order) plus the sprites for its parts.
-// Templates ship here; `defineRig` loads a parts sheet cut by `kiln art parts` and registers
+// Templates ship here; `defineRig` loads a parts sheet cut by `blackiron art parts` and registers
 // the manifest so a scene can build a `Rig2D` from its name.
 
 import { type ImageItem, type ImageSpriteSpec, registerAssetLoader } from "./images.ts";

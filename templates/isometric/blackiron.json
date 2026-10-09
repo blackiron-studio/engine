@@ -10,8 +10,8 @@
   "background": "#1b666b",
   "fonts": ["https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap"],
   "post": { "bloom": 0.16, "bloomThreshold": 0.86, "vignette": 0.14 },
-  "ios": { "bundleId": "com.kiln.highground", "orientation": "landscape" },
-  "android": { "applicationId": "com.kiln.highground" },
+  "ios": { "bundleId": "com.blackiron.highground", "orientation": "landscape" },
+  "android": { "applicationId": "com.blackiron.highground" },
   "snapshots": [
     { "name": "title", "frame": 30 },
     { "name": "play", "frame": 75, "taps": ["640,380:5"] },

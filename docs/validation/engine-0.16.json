@@ -146,7 +146,7 @@
         "name": "native",
         "command": [
           "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
-          "cli/kiln.ts",
+          "cli/blackiron.ts",
           "verify",
           "--host",
           "desktop",
@@ -183,7 +183,7 @@
           204,
           255
         ],
-        "adapter": "[2026-09-13T09:52:26Z INFO  kiln_kernel::render] gpu: Apple M1 Pro (Metal, IntegratedGpu, hardware)"
+        "adapter": "[2026-09-13T09:52:26Z INFO  blackiron_kernel::render] gpu: Apple M1 Pro (Metal, IntegratedGpu, hardware)"
       },
       {
         "name": "world",
@@ -194,7 +194,7 @@
           51,
           255
         ],
-        "adapter": "[2026-09-13T09:52:29Z INFO  kiln_kernel::render] gpu: Apple M1 Pro (Metal, IntegratedGpu, hardware)"
+        "adapter": "[2026-09-13T09:52:29Z INFO  blackiron_kernel::render] gpu: Apple M1 Pro (Metal, IntegratedGpu, hardware)"
       }
     ]
   },
@@ -280,7 +280,7 @@
         "files": {
           "assets/game.js": "24807902a3f8ae96526d1cc6ce53f7183bdf96286c486f4ddfea9012d5ee57d5",
           "assets/game.js.map": "846ae9e0f425aae17861167fa84aea7c5f10cf26d8b54096c88cfaeda522d900",
-          "assets/scenes/main.kiln.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
+          "assets/scenes/main.blackiron.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
           "index.html": "4bb47ff69c2b217ee4d98bd4cc78aac7cd807bd93f75a0e4e594176873743e90",
           "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16",
           "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94"

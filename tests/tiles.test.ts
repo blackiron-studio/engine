@@ -107,7 +107,7 @@ describe("Paths and colliders", () => {
 
 describe("Tile sets", () => {
   test("an imported blob tileset registers its tiles and the autotile mode", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "kiln-tiles-"));
+    const dir = await mkdtemp(join(tmpdir(), "blackiron-tiles-"));
     const n = terrainTileCount("blob");
     const cols = 8;
     const rows = Math.ceil(n / cols);

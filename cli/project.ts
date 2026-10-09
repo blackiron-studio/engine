@@ -1,13 +1,13 @@
 import { EXPORT_TARGETS, type ExportTarget } from "./export-support.ts";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import type { KilnConfig } from "../src/app/app.ts";
+import type { BlackironConfig } from "../src/app/app.ts";
 import { defaultConfig } from "../src/app/app.ts";
 import type { Args } from "./args.ts";
 
 export interface Project {
   root: string;
-  config: KilnConfig & { entry: string; targets?: ExportTarget[] };
+  config: BlackironConfig & { entry: string; targets?: ExportTarget[] };
   entryPath: string;
   artPath: string | null;
 }
@@ -68,14 +68,18 @@ export function resolveExportProject(
   return { ...project, config };
 }
 
-/** Load `kiln.json` from the working directory. */
+/** Load `blackiron.json` from the working directory. */
 export async function loadProject(cwd = process.cwd()): Promise<Project> {
-  const file = resolve(cwd, "kiln.json");
+  if (existsSync(resolve(cwd, "blackiron-engine.lock.json")))
+    await (await import("./engine-lock.ts")).verifyEngineLock(cwd);
+  const file = resolve(cwd, "blackiron.json");
+  if (!existsSync(file) && existsSync(resolve(cwd, "kiln.json")))
+    throw new Error('Legacy kiln.json project. Run "blackiron migrate --apply" before using this engine.');
   if (!existsSync(file))
     throw new Error(
-      `No kiln.json in ${cwd}. Run "kiln new <dir>" to start a project.`,
+      `No blackiron.json in ${cwd}. Run "blackiron new <dir>" to start a project.`,
     );
-  const raw = (await Bun.file(file).json()) as Partial<KilnConfig> & {
+  const raw = (await Bun.file(file).json()) as Partial<BlackironConfig> & {
     targets?: ExportTarget[];
   };
   if (
@@ -104,7 +108,7 @@ export async function loadProject(cwd = process.cwd()): Promise<Project> {
 }
 
 /** The subset of config the runtime needs, injected into the page. */
-export function runtimeConfig(p: Project): Partial<KilnConfig> {
+export function runtimeConfig(p: Project): Partial<BlackironConfig> {
   const { entry: _entry, art: _art, ...rest } = p.config;
   return rest;
 }

@@ -1,4 +1,4 @@
-import { Vec3, type WeaponDefinition3D } from "@kiln/engine/three";
+import { Vec3, type WeaponDefinition3D } from "@blackiron-studio/engine/three";
 export const SPAWN = new Vec3(0, 0.04, 19);
 export const WEAPONS: readonly WeaponDefinition3D[] = [
   {

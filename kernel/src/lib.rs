@@ -1,4 +1,4 @@
-//! The Kiln kernel: the per-frame heavy loops of the engine, compiled.
+//! The Blackiron kernel: the per-frame heavy loops of the engine, compiled.
 //!
 //! The TypeScript side writes a command stream of f32 words (sprites, rects, glyphs,
 //! transforms, retained batches, particle steps) into `stream`, then calls `run`. The
@@ -61,10 +61,10 @@ pub const OP_MESH: u32 = 19;
 
 /// Protocol layout queried by hosts before exposing memory views.
 #[no_mangle]
-pub extern "C" fn kiln_floats_per_vertex() -> u32 { FLOATS_PER_VERT as u32 }
+pub extern "C" fn blackiron_floats_per_vertex() -> u32 { FLOATS_PER_VERT as u32 }
 
 #[no_mangle]
-pub extern "C" fn kiln_op_words(op: u32) -> u32 {
+pub extern "C" fn blackiron_op_words(op: u32) -> u32 {
     match op {
         OP_BEGIN => 4, OP_PASS => 3, OP_TRANSFORM => 7, OP_SPRITE => 19,
         OP_RECT => 8, OP_GLYPH => 12, OP_BATCH => 9, OP_PARTICLES => 8,
@@ -601,7 +601,7 @@ impl Kernel {
         while i < len {
             let raw_op = self.stream[i];
             let op = raw_op as u32;
-            let header = kiln_op_words(op) as usize;
+            let header = blackiron_op_words(op) as usize;
             if raw_op != op as f32 || header == 0 || i + header > len {
                 self.stats[STAT_DROPPED] += 1;
                 break;
@@ -1307,19 +1307,19 @@ fn js_round(x: f64) -> f64 {
 // --- C ABI ---------------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn kiln_version() -> u32 {
+pub extern "C" fn blackiron_version() -> u32 {
     VERSION
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_new(max_quads: u32, stream_words: u32) -> *mut Kernel {
+pub extern "C" fn blackiron_new(max_quads: u32, stream_words: u32) -> *mut Kernel {
     Box::into_raw(Box::new(Kernel::new(max_quads as usize, stream_words as usize)))
 }
 
 /// # Safety
-/// `k` must come from `kiln_new` and not be used afterwards.
+/// `k` must come from `blackiron_new` and not be used afterwards.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_free(k: *mut Kernel) {
+pub unsafe extern "C" fn blackiron_free(k: *mut Kernel) {
     if !k.is_null() {
         drop(Box::from_raw(k));
     }
@@ -1338,181 +1338,181 @@ macro_rules! with {
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_stream(k: *mut Kernel) -> *mut f32 {
+pub extern "C" fn blackiron_stream(k: *mut Kernel) -> *mut f32 {
     with!(k, |k: &mut Kernel| k.stream.as_mut_ptr(), std::ptr::null_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_stream_words(k: *mut Kernel) -> u32 {
+pub extern "C" fn blackiron_stream_words(k: *mut Kernel) -> u32 {
     with!(k, |k: &mut Kernel| k.stream.len() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_scratch(k: *mut Kernel) -> *mut f32 {
+pub extern "C" fn blackiron_scratch(k: *mut Kernel) -> *mut f32 {
     with!(k, |k: &mut Kernel| k.scratch.as_mut_ptr(), std::ptr::null_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_scratch_words(k: *mut Kernel) -> u32 {
+pub extern "C" fn blackiron_scratch_words(k: *mut Kernel) -> u32 {
     with!(k, |k: &mut Kernel| k.scratch.len() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_vertices(k: *mut Kernel) -> *const f32 {
+pub extern "C" fn blackiron_vertices(k: *mut Kernel) -> *const f32 {
     with!(k, |k: &mut Kernel| k.verts.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_vertex_cap(k: *mut Kernel) -> u32 {
+pub extern "C" fn blackiron_vertex_cap(k: *mut Kernel) -> u32 {
     with!(k, |k: &mut Kernel| (k.max_quads * 4) as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_commands(k: *mut Kernel) -> *const u32 {
+pub extern "C" fn blackiron_commands(k: *mut Kernel) -> *const u32 {
     with!(k, |k: &mut Kernel| k.cmds.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_command_cap(k: *mut Kernel) -> u32 {
+pub extern "C" fn blackiron_command_cap(k: *mut Kernel) -> u32 {
     with!(k, |k: &mut Kernel| k.cmds.len() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_stats(k: *mut Kernel) -> *const u32 {
+pub extern "C" fn blackiron_stats(k: *mut Kernel) -> *const u32 {
     with!(k, |k: &mut Kernel| k.stats.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_set_white(k: *mut Kernel, u: f32, v: f32) {
+pub extern "C" fn blackiron_set_white(k: *mut Kernel, u: f32, v: f32) {
     with!(k, |k: &mut Kernel| k.set_white(u, v), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_run(k: *mut Kernel, stream_len: u32) {
+pub extern "C" fn blackiron_run(k: *mut Kernel, stream_len: u32) {
     with!(k, |k: &mut Kernel| k.run(stream_len as usize), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_batch_create(k: *mut Kernel, capacity: u32) -> i32 {
+pub extern "C" fn blackiron_batch_create(k: *mut Kernel, capacity: u32) -> i32 {
     with!(k, |k: &mut Kernel| k.batch_create(capacity as usize), -1)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_batch_data(k: *mut Kernel, id: i32) -> *mut f32 {
+pub extern "C" fn blackiron_batch_data(k: *mut Kernel, id: i32) -> *mut f32 {
     with!(k, |k: &mut Kernel| k.batch_data(id).map(|d| d.as_mut_ptr()).unwrap_or(std::ptr::null_mut()), std::ptr::null_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_batch_set_count(k: *mut Kernel, id: i32, count: u32) {
+pub extern "C" fn blackiron_batch_set_count(k: *mut Kernel, id: i32, count: u32) {
     with!(k, |k: &mut Kernel| k.batch_set_count(id, count as usize), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_batch_destroy(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_batch_destroy(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| k.batch_destroy(id), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_emitter_create(k: *mut Kernel, config_words: u32) -> i32 {
+pub extern "C" fn blackiron_emitter_create(k: *mut Kernel, config_words: u32) -> i32 {
     with!(k, |k: &mut Kernel| k.emitter_create(config_words as usize), -1)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_emitter_burst(k: *mut Kernel, id: i32, n: u32, x: f32, y: f32) {
+pub extern "C" fn blackiron_emitter_burst(k: *mut Kernel, id: i32, n: u32, x: f32, y: f32) {
     with!(k, |k: &mut Kernel| k.emitter_burst(id, n as usize, x as f64, y as f64), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_emitter_count(k: *mut Kernel, id: i32) -> u32 {
+pub extern "C" fn blackiron_emitter_count(k: *mut Kernel, id: i32) -> u32 {
     with!(k, |k: &mut Kernel| k.emitter_count(id) as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_emitter_clear(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_emitter_clear(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| k.emitter_clear(id), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_emitter_destroy(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_emitter_destroy(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| k.emitter_destroy(id), ())
 }
 
 // --- World-space batches and shadows ------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn kiln_batch3_create(k: *mut Kernel, capacity: u32) -> i32 {
+pub extern "C" fn blackiron_batch3_create(k: *mut Kernel, capacity: u32) -> i32 {
     with!(k, |k: &mut Kernel| k.batch3_create(capacity as usize), -1)
 }
 #[no_mangle]
-pub extern "C" fn kiln_batch3_data(k: *mut Kernel, id: i32) -> *mut f32 {
+pub extern "C" fn blackiron_batch3_data(k: *mut Kernel, id: i32) -> *mut f32 {
     with!(k, |k: &mut Kernel| k.batch3_data(id).map(|d| d.as_mut_ptr()).unwrap_or(std::ptr::null_mut()), std::ptr::null_mut())
 }
 #[no_mangle]
-pub extern "C" fn kiln_batch3_set_count(k: *mut Kernel, id: i32, count: u32) {
+pub extern "C" fn blackiron_batch3_set_count(k: *mut Kernel, id: i32, count: u32) {
     with!(k, |k: &mut Kernel| k.batch3_set_count(id, count as usize), ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_batch3_destroy(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_batch3_destroy(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| k.batch3_destroy(id), ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_set_shadow(k: *mut Kernel, w: f32, h: f32, ox: f32, oy: f32, u0: f32, v0: f32, u1: f32, v1: f32) {
+pub extern "C" fn blackiron_set_shadow(k: *mut Kernel, w: f32, h: f32, ox: f32, oy: f32, u0: f32, v0: f32, u1: f32, v1: f32) {
     with!(k, |k: &mut Kernel| k.set_shadow(w, h, ox, oy, u0, v0, u1, v1), ())
 }
 
 // --- Node tables -----------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn kiln_nodes_create(k: *mut Kernel, capacity: u32) -> i32 {
+pub extern "C" fn blackiron_nodes_create(k: *mut Kernel, capacity: u32) -> i32 {
     with!(k, |k: &mut Kernel| k.nodes_create(capacity as usize), -1)
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_data(k: *mut Kernel, id: i32) -> *mut f32 {
+pub extern "C" fn blackiron_nodes_data(k: *mut Kernel, id: i32) -> *mut f32 {
     with!(k, |k: &mut Kernel| k.nodes(id).map(|t| t.data.as_mut_ptr()).unwrap_or(std::ptr::null_mut()), std::ptr::null_mut())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_capacity(k: *mut Kernel, id: i32) -> u32 {
+pub extern "C" fn blackiron_nodes_capacity(k: *mut Kernel, id: i32) -> u32 {
     with!(k, |k: &mut Kernel| k.nodes(id).map(|t| t.capacity as u32).unwrap_or(0), 0)
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_alloc(k: *mut Kernel, id: i32) -> i32 {
+pub extern "C" fn blackiron_nodes_alloc(k: *mut Kernel, id: i32) -> i32 {
     with!(k, |k: &mut Kernel| k.nodes(id).map(|t| t.alloc()).unwrap_or(-1), -1)
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_free(k: *mut Kernel, id: i32, index: i32) {
+pub extern "C" fn blackiron_nodes_free(k: *mut Kernel, id: i32, index: i32) {
     with!(k, |k: &mut Kernel| { if let Some(t) = k.nodes(id) { t.free(index) } }, ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_clear(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_nodes_clear(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| { if let Some(t) = k.nodes(id) { t.clear() } }, ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_count(k: *mut Kernel, id: i32) -> u32 {
+pub extern "C" fn blackiron_nodes_count(k: *mut Kernel, id: i32) -> u32 {
     with!(k, |k: &mut Kernel| k.nodes(id).map(|t| t.live as u32).unwrap_or(0), 0)
 }
 /// One past the highest slot in use; scripts iterating the table stop there.
 #[no_mangle]
-pub extern "C" fn kiln_nodes_high(k: *mut Kernel, id: i32) -> u32 {
+pub extern "C" fn blackiron_nodes_high(k: *mut Kernel, id: i32) -> u32 {
     with!(k, |k: &mut Kernel| k.nodes(id).map(|t| t.high as u32).unwrap_or(0), 0)
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_step(k: *mut Kernel, id: i32, dt: f32) {
+pub extern "C" fn blackiron_nodes_step(k: *mut Kernel, id: i32, dt: f32) {
     with!(k, |k: &mut Kernel| { if let Some(t) = k.nodes(id) { t.step(dt as f64) } }, ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_configure(k: *mut Kernel, id: i32, gx: f32, gy: f32, damping: f32, mode: u32, bx: f32, by: f32, bw: f32, bh: f32, gz: f32, floor: u32) {
+pub extern "C" fn blackiron_nodes_configure(k: *mut Kernel, id: i32, gx: f32, gy: f32, damping: f32, mode: u32, bx: f32, by: f32, bw: f32, bh: f32, gz: f32, floor: u32) {
     with!(k, |k: &mut Kernel| { if let Some(t) = k.nodes(id) { t.configure(gx as f64, gy as f64, damping as f64, mode, [bx as f64, by as f64, bw as f64, bh as f64]); t.gravity_z = gz as f64; t.floor = floor; } }, ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_set_frames(k: *mut Kernel, id: i32, words: u32) {
+pub extern "C" fn blackiron_nodes_set_frames(k: *mut Kernel, id: i32, words: u32) {
     with!(k, |k: &mut Kernel| k.nodes_set_frames(id, words as usize), ())
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_apply_transforms(k: *mut Kernel, id: i32, words: u32) -> u32 {
+pub extern "C" fn blackiron_nodes_apply_transforms(k: *mut Kernel, id: i32, words: u32) -> u32 {
     with!(k, |k: &mut Kernel| k.nodes_apply_transforms(id, words as usize), 0)
 }
 #[no_mangle]
-pub extern "C" fn kiln_nodes_destroy(k: *mut Kernel, id: i32) {
+pub extern "C" fn blackiron_nodes_destroy(k: *mut Kernel, id: i32) {
     with!(k, |k: &mut Kernel| k.nodes_destroy(id), ())
 }
 

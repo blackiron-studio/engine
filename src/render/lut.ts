@@ -75,6 +75,6 @@ export function resolveLut(lut: string | Uint8Array | null): Uint8Array | null {
   if (!lut) return null;
   if (lut instanceof Uint8Array) return lut.length === 768 ? lut : null;
   const preset = lutPreset(lut);
-  if (!preset) console.warn(`[kiln] unknown LUT "${lut}"`);
+  if (!preset) console.warn(`[blackiron] unknown LUT "${lut}"`);
   return preset;
 }

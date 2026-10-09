@@ -7,7 +7,7 @@ import { WebGL2Renderer } from "./webgl2.ts";
 export * from "./types.ts";
 export { WebGL2Renderer, Canvas2DRenderer, FakeRenderer };
 export { GlyphCache, estimateText, type Glyph } from "./glyphs.ts";
-export { NativeRenderer, CMD, PASS_ID, TEX, POST, PROTOCOL_VERSION, FLOATS_PER_VERT, type KilnHostApi, type GlyphBitmap } from "./native.ts";
+export { NativeRenderer, CMD, PASS_ID, TEX, POST, PROTOCOL_VERSION, FLOATS_PER_VERT, type BlackironHostApi, type GlyphBitmap } from "./native.ts";
 export { buildLut, lutPreset, resolveLut, type LutName } from "./lut.ts";
 
 export type RendererChoice = RendererKind | "auto";
@@ -30,7 +30,7 @@ export function createRenderer(
     return new WebGL2Renderer(canvas, width, height, opts, opts.kernel);
   } catch (err) {
     if (!fallback) throw err;
-    console.warn("[kiln] WebGL2 unavailable, using Canvas 2D:", (err as Error).message);
+    console.warn("[blackiron] WebGL2 unavailable, using Canvas 2D:", (err as Error).message);
     return new Canvas2DRenderer(canvas, width, height, opts);
   }
 }

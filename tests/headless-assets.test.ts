@@ -1,4 +1,4 @@
-// Headless runs read a project's assets from disk: a sheet imported with `kiln art import`
+// Headless runs read a project's assets from disk: a sheet imported with `blackiron art import`
 // loads in tests and tools the same way it does in the browser and on the native hosts.
 
 import { describe, expect, test } from "bun:test";
@@ -11,7 +11,7 @@ import { HeadlessPlatform } from "../src/platform/headless.ts";
 
 describe("Headless assets", () => {
   test("a sheet and its JSON load from the platform root", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "kiln-assets-"));
+    const dir = await mkdtemp(join(tmpdir(), "blackiron-assets-"));
     const p = new Painter(8, 4);
     p.rect(0, 0, 4, 4, "#ff0000");
     p.rect(4, 0, 4, 4, "#00ff00");

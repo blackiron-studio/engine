@@ -1,10 +1,10 @@
 {
-  "name": "kiln-lowline",
+  "name": "blackiron-lowline",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ../../cli/kiln.ts dev",
-    "build": "bun ../../cli/kiln.ts build",
+    "dev": "bun ../../cli/blackiron.ts dev",
+    "build": "bun ../../cli/blackiron.ts build",
     "test": "bun test"
   }
 }

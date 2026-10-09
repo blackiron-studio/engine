@@ -1,6 +1,6 @@
-# First-person games in Kiln 0.16
+# First-person games in Blackiron 0.16
 
-Signal Breach is Kiln's fourth flagship game and first FPS. The existing Wisp Hollow, Highground and Lumen Salvage remain intact. Signal Breach is a complete compact single-player mission: a procedural relay station, two weapons, three security waves / twelve drones, three relay objectives, stairs/ramp/platforms, health/ammo recovery, pause/settings, victory, defeat and restart.
+Signal Breach is Blackiron's fourth flagship game and first FPS. The existing Wisp Hollow, Highground and Lumen Salvage remain intact. Signal Breach is a complete compact single-player mission: a procedural relay station, two weapons, three security waves / twelve drones, three relay objectives, stairs/ramp/platforms, health/ammo recovery, pause/settings, victory, defeat and restart.
 
 The 0.16 upgrade runs the shared mission on native Rust Rapier and wgpu as well as WebGL2. macOS QuickJS/Metal is verified; Windows/Linux desktop exports are enabled but require their own validation. See [native/export evidence](ENGINE-UPGRADE-0.16.md).
 
@@ -27,7 +27,7 @@ The engine modules have no knowledge of relays, wave counts, enemy names or weap
 import {
   Scene3D, PhysicsWorld3D, CharacterController3D,
   FirstPersonLook, CombatWorld3D, Weapon3D, Vec3,
-} from "@kiln/engine/three";
+} from "@blackiron-studio/engine/three";
 
 const scene = new Scene3D(1280, 720);
 const physics = await scene.enablePhysics3D();
@@ -53,13 +53,13 @@ Browser capsule controllers register dependent cleanup with their physics world 
 
 ## Browser input and viewmodels
 
-`PointerLockInput` is DOM-specific, exported from `@kiln/engine/input`. It owns its listeners, relative mouse delta and held mouse-button codes (`Mouse0`, `Mouse1`, etc.). Request capture in a real user gesture; browsers can reject it. `onChange` and `onError` allow the game to pause or present a fallback. A consumed mouse delta is not replayed on later catch-up simulation steps. Capture transitions clear the ordinary canvas pointer, and locked mouse events bypass 2D UI routing. Disposing the input releases held buttons and capture.
+`PointerLockInput` is DOM-specific, exported from `@blackiron-studio/engine/input`. It owns its listeners, relative mouse delta and held mouse-button codes (`Mouse0`, `Mouse1`, etc.). Request capture in a real user gesture; browsers can reject it. `onChange` and `onError` allow the game to pause or present a fallback. A consumed mouse delta is not replayed on later catch-up simulation steps. Capture transitions clear the ordinary canvas pointer, and locked mouse events bypass 2D UI routing. Disposing the input releases held buttons and capture.
 
-For embedded browsers that cannot capture the mouse, opt into `setDragFallback(true)` after capture fails. Right-drag accumulates relative aiming deltas, while left and auxiliary buttons feed the action map. The fallback uses pointer events and button masks, so preventing compatibility mouse events and pressing multiple buttons together do not break firing. `release()` disables the fallback and releases held actions. Signal Breach enables it automatically and buffers brief fire presses until the next simulation update. Use `KILN_TEST_MOUSE_FALLBACK=1 bun run check:fps-input` to test this path with the capture API deliberately unavailable; this is recorded as simulated unavailability, not successful capture.
+For embedded browsers that cannot capture the mouse, opt into `setDragFallback(true)` after capture fails. Right-drag accumulates relative aiming deltas, while left and auxiliary buttons feed the action map. The fallback uses pointer events and button masks, so preventing compatibility mouse events and pressing multiple buttons together do not break firing. `release()` disables the fallback and releases held actions. Signal Breach enables it automatically and buffers brief fire presses until the next simulation update. Use `BLACKIRON_TEST_MOUSE_FALLBACK=1 bun run check:fps-input` to test this path with the capture API deliberately unavailable; this is recorded as simulated unavailability, not successful capture.
 
 Set `mesh.renderLayer = "viewmodel"` on first-person meshes. WebGL2 renders these after world geometry using a reserved near depth band, preserving self-occlusion without a mid-pass multisampled depth clear. They do not cast world shadows. World meshes continue to occlude each other normally. This is currently a **WebGL2 capability**; the native encoder rejects viewmodels explicitly. The general native 3D renderer remains available for games such as Lumen.
 
-`spatialAudio3D` returns camera-relative stereo pan and distance gain for Kiln's existing audio API. It does not claim HRTF, environmental occlusion or a full 3D audio renderer.
+`spatialAudio3D` returns camera-relative stereo pan and distance gain for Blackiron's existing audio API. It does not claim HRTF, environmental occlusion or a full 3D audio renderer.
 
 ## Validation commands
 
@@ -68,20 +68,20 @@ bun test
 bun run typecheck
 bun run check:fps             # real WebGL2; complete mission, failure and restart
 bun run check:fps-input       # isolated browser; capture, trusted inputs and paced GPU check
-KILN_HEADED=1 bun run check:fps-input  # visible test browser for capture on supported desktops
+BLACKIRON_HEADED=1 bun run check:fps-input  # visible test browser for capture on supported desktops
 bun run check:ci              # existing engine/native regressions plus FPS
 bun run check:reproducible    # all four flagship web builds twice
 ```
 
 The strict input runner passed mouse capture, relative mouse aiming, mouse firing, Escape/pause, recapture, held-button cleanup, settings and rebinding persistence across reload. It uses trusted Chrome DevTools input in its own isolated Chrome instance. Initial attempts failed with `WrongDocumentError`; starting on a blank page and explicitly navigating after attaching the test protocol resolved that startup issue. A visible-browser hands-on playthrough remains outstanding because the Mac was locked when computer-use validation was attempted.
 
-For hosts that reject capture with that root-document error, `KILN_ALLOW_UNAVAILABLE_POINTER_LOCK=1 bun run check:fps-input` explicitly records capture as **UNAVAILABLE** and tests the mouse-drag fallback instead. It does not turn unavailable capture into a passing capture test. The default command requires actual capture.
+For hosts that reject capture with that root-document error, `BLACKIRON_ALLOW_UNAVAILABLE_POINTER_LOCK=1 bun run check:fps-input` explicitly records capture as **UNAVAILABLE** and tests the mouse-drag fallback instead. It does not turn unavailable capture into a passing capture test. The default command requires actual capture.
 
 The historical 0.15 20-second, 1,200-frame paced gameplay sample passed on the Apple M1 Pro (Chrome WebGL2 through ANGLE Metal) at 1280×720: CPU p95 **2.8 ms**, frame interval p95 **16.8 ms**, GPU p95 **4.219 ms**, estimated GPU allocations **61,907,928 bytes**. Budgets were 8.3 ms CPU/GPU, 17.2 ms frame interval and 256 MiB estimated GPU memory. GPU p95 covers the final rolling 240 timer queries. This is a short single-device sample, not a long soak or cross-device certification. The complete local CI run passed all eleven jobs; 370 tests made 18,164 assertions, all four web builds reproduced, and native verification passed sixteen goldens with one expected web-only FPS skip. Hosted CI has not been run for this change.
 
 The mission test drives the real engine and game, including actual hitscan damage and relay activation, and checks all three waves, victory, defeat, restart disposal and the authored staircase. It includes a pixel test showing that a weapon behind a wall renders in the viewmodel layer, while the same mesh in the world layer is correctly occluded. Unit tests cover capsule floors/walls/ceilings/stairs/slopes, two weapon configurations, projectile tunnelling, navigation, pointer-state cleanup, modal settings and fifteen repeated game restarts. The pointer lifecycle unit test uses a mock document and does not replace browser capture validation.
 
-Results, screenshots and logs are in `.kiln/verification/breach`, `.kiln/verification/breach-input` and `.kiln/verification/ci`. A compact evidence record is stored in `docs/validation/fps-0.15.json` after verification.
+Results, screenshots and logs are in `.blackiron/verification/breach`, `.blackiron/verification/breach-input` and `.blackiron/verification/ci`. A compact evidence record is stored in `docs/validation/fps-0.15.json` after verification.
 
 ## Limits
 

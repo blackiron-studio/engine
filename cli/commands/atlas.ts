@@ -8,12 +8,12 @@ import { encodePNG } from "../png.ts";
 import { loadProject } from "../project.ts";
 
 /**
- * Bake the project's sprites without a browser. Requires `"art"` in kiln.json to name a
+ * Bake the project's sprites without a browser. Requires `"art"` in blackiron.json to name a
  * module that only defines sprites (importing the game entry would try to start it).
  */
 export async function atlas(args: Args): Promise<void> {
   const project = await loadProject();
-  if (!project.artPath) throw new Error(`kiln.json needs an "art" module path for "kiln atlas"`);
+  if (!project.artPath) throw new Error(`blackiron.json needs an "art" module path for "blackiron atlas"`);
   await import(project.artPath);
   const t0 = performance.now();
   const images = await resolveAssets(new HeadlessPlatform({ root: project.root }));

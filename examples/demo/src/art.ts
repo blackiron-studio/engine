@@ -1,7 +1,7 @@
 // Every sprite in Wisp Hollow is painted in code at boot, at 32 px density. This module
-// only defines art, so `kiln atlas` can import it headlessly to export PNGs.
+// only defines art, so `blackiron atlas` can import it headlessly to export PNGs.
 
-import { defineAnimation, defineAutotile, defineRig, defineSprite, defineSpriteSet, defineVariants, materials, ramp, type Painter, type Ramp } from "@kiln/engine/art";
+import { defineAnimation, defineAutotile, defineRig, defineSprite, defineSpriteSet, defineVariants, materials, ramp, type Painter, type Ramp } from "@blackiron-studio/engine/art";
 
 const GRASS = ramp("#386258", 0.9);
 const GRASS_DARK = ramp("#31544f", 0.9);
@@ -212,7 +212,7 @@ defineAnimation("hero.idle", [HERO_IDLE], 1);
 defineAnimation("hero.walk", HERO_WALK, 9);
 
 // The same role from a generated sheet: sixteen poses of a knight an image model drew, run
-// through `kiln art import` into assets/knight.png. Press K in the game to swap heroes and
+// through `blackiron art import` into assets/knight.png. Press K in the game to swap heroes and
 // judge imported art against the painted one on the same ground, under the same light.
 // The sprite set carries facings ("knight.idle" and "knight.walk" pick a side), a mirrored
 // attack and a held hurt pose; the rig is the same knight as seven parts on the humanoid

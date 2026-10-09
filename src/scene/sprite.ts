@@ -127,7 +127,7 @@ export class AnimatedSprite extends Sprite {
     }
     const def = getAnimation(name);
     if (!def) {
-      console.warn(`[kiln] animation "${name}" is not defined`);
+      console.warn(`[blackiron] animation "${name}" is not defined`);
       return;
     }
     if (this.animation === def && !restart) {

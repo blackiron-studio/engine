@@ -1,11 +1,11 @@
-import type { App } from "@kiln/engine/app";
+import type { App } from "@blackiron-studio/engine/app";
 import {
   Scene,
   Node2D,
   Graphics2D,
   type DrawContext,
-} from "@kiln/engine/scene";
-import { Rng } from "@kiln/engine/core";
+} from "@blackiron-studio/engine/scene";
+import { Rng } from "@blackiron-studio/engine/core";
 import { CityRun } from "./game.ts";
 import {
   SIZE,
@@ -320,7 +320,7 @@ class LowlineHUD extends Node2D {
       ctx.rect(0, 0, 1280, 720, C.ink, 0.18);
       ctx.rect(36, 35, 464, 650, C.ink, 0.96);
       ctx.rect(36, 35, 4, 650, C.gold);
-      text(ctx, "KILN ORIGINAL / OPEN CITY 01", 70, 69, 12, C.gold);
+      text(ctx, "BLACKIRON ORIGINAL / OPEN CITY 01", 70, 69, 12, C.gold);
       text(ctx, "LOW", 62, 112, 110, C.paper, "left", 800);
       text(ctx, "LINE", 62, 217, 110, C.paper, "left", 800);
       text(ctx, "ONE CITY. ONE LAST DISPATCH.", 70, 356, 14, C.mint);

@@ -1,9 +1,9 @@
 # UI layout checks
 
-Kiln's UI components can be themed and laid out with `Anchor`, `Row`, `Column`, `Grid` and `Scene.fitUI()`. A passing logic test does not prove that a menu fits a phone or that two hit targets do not cover each other. Add a geometry check for each important screen state and for the portrait and wide sizes the game supports.
+Blackiron's UI components can be themed and laid out with `Anchor`, `Row`, `Column`, `Grid` and `Scene.fitUI()`. A passing logic test does not prove that a menu fits a phone or that two hit targets do not cover each other. Add a geometry check for each important screen state and for the portrait and wide sizes the game supports.
 
 ```ts
-import { auditUILayout, createTestApp, stepFrames } from "@kiln/engine/testkit";
+import { auditUILayout, createTestApp, stepFrames } from "@blackiron-studio/engine/testkit";
 
 const app = await createTestApp({ scene: titleScene });
 stepFrames(app); // lets responsive layout and scroll positions settle

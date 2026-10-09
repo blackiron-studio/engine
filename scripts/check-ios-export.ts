@@ -6,10 +6,10 @@ import { strict as assert } from "node:assert";
 
 if (process.platform !== "darwin") throw Error("iOS export acceptance requires macOS and Xcode");
 const engine = resolve(import.meta.dir, "..");
-const evidence = join(engine, ".kiln/verification/ios-export-contract");
+const evidence = join(engine, ".blackiron/verification/ios-export-contract");
 await mkdir(evidence, { recursive: true });
-const source = await mkdtemp(join(tmpdir(), "kiln-ios-source-"));
-const relocated = await mkdtemp(join(tmpdir(), "kiln-ios-relocated-"));
+const source = await mkdtemp(join(tmpdir(), "blackiron-ios-source-"));
+const relocated = await mkdtemp(join(tmpdir(), "blackiron-ios-relocated-"));
 let log = "";
 async function run(command: string[], cwd: string): Promise<string> {
   console.log(`  checking ${command[0]} ${command[1] ?? ""}`);
@@ -24,20 +24,20 @@ async function run(command: string[], cwd: string): Promise<string> {
 }
 try {
   const config = JSON.stringify({ name: "Export contract", version: "0.1.0", buildNumber: 1, entry: "main.ts", targets: ["ios"] });
-  await Bun.write(join(source, "kiln.json"), config);
+  await Bun.write(join(source, "blackiron.json"), config);
   await Bun.write(join(source, "main.ts"), "export default function main() {}\n");
-  await run([process.execPath, join(engine, "cli/kiln.ts"), "export", "ios",
+  await run([process.execPath, join(engine, "cli/blackiron.ts"), "export", "ios",
     "--out", "generated/ios", "--version", "1.2.3", "--build-number", "7",
     "--bundle-id", "com.example.exportcontract", "--signing", "external"], source);
-  assert.equal(await Bun.file(join(source, "kiln.json")).text(), config);
+  assert.equal(await Bun.file(join(source, "blackiron.json")).text(), config);
   const exported = join(source, "generated/ios");
-  const manifest = await Bun.file(join(exported, "kiln-export.json")).json();
+  const manifest = await Bun.file(join(exported, "blackiron-export.json")).json();
   assert.equal(manifest.version, "1.2.3");
   assert.equal(manifest.buildNumber, 7);
   assert.equal(manifest.bundleId, "com.example.exportcontract");
   assert.equal(manifest.signing, "external");
   assert.equal(manifest.projectPath, "ExportContract.xcodeproj");
-  const native = await Bun.file(join(exported, "Kiln/manifest.json")).json();
+  const native = await Bun.file(join(exported, "Blackiron/manifest.json")).json();
   assert.equal(native.config.version, "1.2.3");
   assert.equal(native.config.buildNumber, 7);
   await cp(exported, join(relocated, "export"), { recursive: true });
@@ -65,7 +65,7 @@ try {
     assert.equal(plist.CFBundleShortVersionString, "9.8.7");
     assert.equal(plist.CFBundleVersion, "42");
     assert.equal(plist.CFBundleIdentifier, "com.example.relocated");
-    assert.equal(await Bun.file(join(app, "Kiln/game.js")).exists(), true);
+    assert.equal(await Bun.file(join(app, "Blackiron/game.js")).exists(), true);
   }
   const report = {
     status: "PASS", export: manifest,

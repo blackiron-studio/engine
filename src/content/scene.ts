@@ -23,7 +23,7 @@ export interface SceneNodeData {
   overrides?: Record<string, Record<string, JsonValue>>;
 }
 export interface SceneDocument {
-  format: "kiln.scene";
+  format: "blackiron.scene";
   version: 1;
   root: SceneNodeData;
   prefabs?: Record<string, SceneNodeData>;
@@ -61,8 +61,8 @@ export function parseSceneDocument(value: unknown): SceneDocument {
   if (typeof value === "string") value = JSON.parse(value);
   safe(value);
   const d = value as SceneDocument;
-  if (!d || d.format !== "kiln.scene" || d.version !== 1 || !d.root)
-    throw new Error("Expected kiln.scene version 1");
+  if (!d || d.format !== "blackiron.scene" || d.version !== 1 || !d.root)
+    throw new Error("Expected blackiron.scene version 1");
   let count = 0;
   const validate = (n: SceneNodeData, ids: Set<string>) => {
     if (

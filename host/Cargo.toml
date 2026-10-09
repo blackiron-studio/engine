@@ -1,19 +1,19 @@
 [package]
-name = "kiln-host"
+name = "blackiron-host"
 version = "0.6.0"
 edition = "2021"
-description = "Kiln's generic native host: a window, the kernel's wgpu renderer, QuickJS, audio and input for Windows, Linux, macOS and Android."
+description = "Blackiron's generic native host: a window, the kernel's wgpu renderer, QuickJS, audio and input for Windows, Linux, macOS and Android."
 license = "MIT"
 repository = "https://github.com/blackiron-studio/engine"
 publish = false
 
 [lib]
-name = "kiln_host"
+name = "blackiron_host"
 crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
 
 [[bin]]
-name = "kiln-host"
+name = "blackiron-host"
 path = "src/main.rs"
 
 [features]
@@ -23,7 +23,7 @@ v8 = ["dep:v8"]
 
 [dependencies]
 v8 = { version = "152", optional = true }
-kiln_kernel = { path = "../kernel", features = ["codecs", "physics", "physics3d", "render"] }
+blackiron_kernel = { path = "../kernel", features = ["codecs", "physics", "physics3d", "render"] }
 winit = { version = "0.30", features = ["android-game-activity"] }
 bytemuck = { version = "1", features = ["derive"] }
 rquickjs = { version = "0.9", features = ["array-buffer"] }
@@ -41,7 +41,7 @@ jpeg-decoder = { version = "=0.3.2", default-features = false }
 [target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
 font-kit = "0.14"
 
-# gilrs has no Android backend; controllers there come through KilnActivity (see android.rs).
+# gilrs has no Android backend; controllers there come through BlackironActivity (see android.rs).
 [target.'cfg(not(target_os = "android"))'.dependencies]
 gilrs = "0.11"
 

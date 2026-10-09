@@ -18,8 +18,8 @@ describe("math", () => {
 
 describe("Rng", () => {
   test("same seed, same sequence; state round-trips", () => {
-    const a = new Rng("kiln");
-    const b = new Rng("kiln");
+    const a = new Rng("blackiron");
+    const b = new Rng("blackiron");
     const seq = Array.from({ length: 5 }, () => a.next());
     expect(Array.from({ length: 5 }, () => b.next())).toEqual(seq);
     const saved = a.state;
@@ -53,8 +53,8 @@ describe("Rng", () => {
   });
 
   test("hashString is stable", () => {
-    expect(hashString("kiln")).toBe(hashString("kiln"));
-    expect(hashString("kiln")).not.toBe(hashString("kilo"));
+    expect(hashString("blackiron")).toBe(hashString("blackiron"));
+    expect(hashString("blackiron")).not.toBe(hashString("kilo"));
   });
 });
 

@@ -1,25 +1,25 @@
 // Native platform: delegates to the host object a native shell installs on the global
 // before the game script runs. The host drives frames; this platform only relays them.
 
-import type { KilnHostApi } from "../render/native.ts";
+import type { BlackironHostApi } from "../render/native.ts";
 import type { StoreBackend } from "../save/store.ts";
 import type { DecodedImage, HapticKind, Platform } from "./types.ts";
 
-export function hostApi(): KilnHostApi {
-  const host = (globalThis as { __kilnHost?: KilnHostApi }).__kilnHost;
-  if (!host) throw new Error("No native host: globalThis.__kilnHost is missing");
+export function hostApi(): BlackironHostApi {
+  const host = (globalThis as { __blackironHost?: BlackironHostApi }).__blackironHost;
+  if (!host) throw new Error("No native host: globalThis.__blackironHost is missing");
   return host;
 }
 
 export class NativePlatform implements Platform {
   readonly kind = "native" as const;
-  readonly host: KilnHostApi;
+  readonly host: BlackironHostApi;
   readonly deterministic: boolean;
   private pending: ((t: number) => void) | null = null;
   private isVisible = true;
   private readonly visibilityListeners = new Set<(v: boolean) => void>();
 
-  constructor(host: KilnHostApi = hostApi()) {
+  constructor(host: BlackironHostApi = hostApi()) {
     this.host = host;
     this.deterministic = host.deterministic ?? false;
   }

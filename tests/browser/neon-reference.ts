@@ -1,6 +1,6 @@
 /** Renderer acceptance fixture derived from the user-supplied Neon Bastion reference.
  * This is a static/animated visual scene, not a gameplay port or another example game.
- * All scene drawing uses Kiln meshes, materials, hierarchy and the public renderer API.
+ * All scene drawing uses Blackiron meshes, materials, hierarchy and the public renderer API.
  */
 import { bakeAtlas } from "../../src/art/atlas.ts";
 import { WebGL2Renderer } from "../../src/render/webgl2.ts";
@@ -370,7 +370,7 @@ try {
     status: pass ? "PASS" : "FAIL",
     reference: "Neon Bastion — read-only procedural scene benchmark",
     implementation:
-      "Kiln Scene3D / orthographic Camera3D / Lambert materials / per-instance tint",
+      "Blackiron Scene3D / orthographic Camera3D / Lambert materials / per-instance tint",
     glErrors,
     framing: view,
     stats: {
@@ -401,7 +401,7 @@ try {
     referenceDifferences: [
       "Four articulated actors, rather than the reference title scene's player plus four enemies.",
       "Reference world-radial fog is omitted; no color-matching claim or screenshot identity threshold is used.",
-      "Kiln renders full cuboids and 4× MSAA; the reference omits hidden bottom faces.",
+      "Blackiron renders full cuboids and 4× MSAA; the reference omits hidden bottom faces.",
     ],
     centerPixel: Array.from(opaqueGeometryPixels),
   };
@@ -410,7 +410,7 @@ try {
   document.querySelector("textarea")!.textContent = renderer.snapshot() ?? "";
   document.getElementById("summary")!.textContent =
     `${result.stats.meshes} meshes · ${result.stats.drawCalls} main draws · ${result.construction.articulatedActors} articulated actors · orthographic geometry`;
-  (window as unknown as { kilnNeonReference: unknown }).kilnNeonReference = {
+  (window as unknown as { blackironNeonReference: unknown }).blackironNeonReference = {
     result,
     scene,
     renderer,

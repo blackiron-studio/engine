@@ -47,7 +47,7 @@ export class PhysicsBody2D extends Node2D {
   override ready(): void {
     const world = this.scene?.physics ?? null;
     if (!world) {
-      console.warn(`[kiln] ${this.name || "PhysicsBody2D"} needs physics; set "physics" in kiln.json or call app.enablePhysics()`);
+      console.warn(`[blackiron] ${this.name || "PhysicsBody2D"} needs physics; set "physics" in blackiron.json or call app.enablePhysics()`);
       return;
     }
     this.attach(world);

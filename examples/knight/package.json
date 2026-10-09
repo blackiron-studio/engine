@@ -1,13 +1,13 @@
 {
-  "name": "kiln-knight",
+  "name": "blackiron-knight",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ../../cli/kiln.ts dev",
-    "import": "bun ../../cli/kiln.ts art import assets/knight-source.png --name knight --merge 30 --anim \"idle=down:0;up:1;left:2;right:3\" --anim \"walk=down:4,5;up:1;left:2,6;right:3,7\" --anim \"attack=right:8,9\" --mirror attack --event attack:9=hit --anim hurt=13 --hold hurt=0.4 --anim victory=14 --anim pickup=15 --anim guard=11 --fps 7 --hitbox 9=40,50,30,20",
-    "build": "bun ../../cli/kiln.ts build --report",
-    "verify": "bun ../../cli/kiln.ts verify --host desktop",
-    "parts": "bun ../../cli/kiln.ts art parts assets/knight.png --frame 3 --name knight-rig --template humanoid --cut head=20,11,33,31 --cut torso=26,38,19,28 --cut arm.far=15,40,13,28 --cut arm.near=39,44,9,16 --cut weapon=38,56,23,13 --cut leg.far=25,62,12,16 --cut leg.near=37,62,12,16 --anchor arm.far=0.6,0.05 --anchor weapon=0.08,0.35"
+    "dev": "bun ../../cli/blackiron.ts dev",
+    "import": "bun ../../cli/blackiron.ts art import assets/knight-source.png --name knight --merge 30 --anim \"idle=down:0;up:1;left:2;right:3\" --anim \"walk=down:4,5;up:1;left:2,6;right:3,7\" --anim \"attack=right:8,9\" --mirror attack --event attack:9=hit --anim hurt=13 --hold hurt=0.4 --anim victory=14 --anim pickup=15 --anim guard=11 --fps 7 --hitbox 9=40,50,30,20",
+    "build": "bun ../../cli/blackiron.ts build --report",
+    "verify": "bun ../../cli/blackiron.ts verify --host desktop",
+    "parts": "bun ../../cli/blackiron.ts art parts assets/knight.png --frame 3 --name knight-rig --template humanoid --cut head=20,11,33,31 --cut torso=26,38,19,28 --cut arm.far=15,40,13,28 --cut arm.near=39,44,9,16 --cut weapon=38,56,23,13 --cut leg.far=25,62,12,16 --cut leg.near=37,62,12,16 --anchor arm.far=0.6,0.05 --anchor weapon=0.08,0.35"
   }
 }

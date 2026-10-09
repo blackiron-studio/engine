@@ -134,7 +134,7 @@
         "name": "native",
         "command": [
           "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
-          "cli/kiln.ts",
+          "cli/blackiron.ts",
           "verify",
           "--host",
           "desktop",
@@ -215,7 +215,7 @@
         "files": {
           "assets/game.js": "8fef7b8e3adbcea3589f770adac400645441083af48a97117cf9f0748bfcc821",
           "assets/game.js.map": "080b1b9ed06e9a2b102b0e51cc69114b2b46be0961f804a99012e99fb1409038",
-          "assets/scenes/main.kiln.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
+          "assets/scenes/main.blackiron.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
           "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
           "index.html": "7f1edba3fad3d4528146a5ba7f378cdea351a7ed050a0122b6ba6234bb22fd24",
           "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kiln 0.9: isometric and 2.5D worlds</title>
+<title>Blackiron 0.9: isometric and 2.5D worlds</title>
 <style>
   :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
   @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fc28f; } }
@@ -31,9 +31,9 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">Kiln engine · proposal 0.9 · 2026-09-03 · milestones 1 to 3 implemented in 0.9.0</div>
+  <div class="eyebrow">Blackiron engine · proposal 0.9 · 2026-09-03 · milestones 1 to 3 implemented in 0.9.0</div>
   <h1>Isometric and 2.5D worlds</h1>
-  <p>Kiln draws a flat plane. Many of the games worth making are not flat: isometric tactics and builders, action RPGs seen from three quarters above, top-down games where the hero jumps over a fence. All of them are still sprite games. What they need is a third axis for height, a projection that decides where a point at a height lands on screen, and draw ordering that follows that projection. This proposal adds those three things to the kernel and the scene tree without adding meshes, perspective or a free camera. It is the step 1 of 3D from the roadmap discussion: cheap, covers a lot of games, and leaves every existing tool working.</p>
+  <p>Blackiron draws a flat plane. Many of the games worth making are not flat: isometric tactics and builders, action RPGs seen from three quarters above, top-down games where the hero jumps over a fence. All of them are still sprite games. What they need is a third axis for height, a projection that decides where a point at a height lands on screen, and draw ordering that follows that projection. This proposal adds those three things to the kernel and the scene tree without adding meshes, perspective or a free camera. It is the step 1 of 3D from the roadmap discussion: cheap, covers a lot of games, and leaves every existing tool working.</p>
 
   <h2>What it covers and what it does not</h2>
   <table>
@@ -96,7 +96,7 @@
   <p><code>Light2D</code> takes an optional z. The light pass projects the light's position like any node, so a torch on a wall lights the wall's top and the floor below it plausibly. The bloom and composite chain is untouched.</p>
 
   <h3>Generated art</h3>
-  <p>Everything Kiln draws is painted by code, so the isometric art helpers matter as much as the runtime. The painter gains <code>isoDiamond</code>, <code>isoBlock(top, left, right)</code> with the three shaded faces, cliff-edge autotiles with grass overhang, and <code>defineIsoSprite</code> with a footprint in cells so origins land on the diamond's centre. Billboard sprites (characters, props) are drawn front-on as they are today; the projection only moves them.</p>
+  <p>Everything Blackiron draws is painted by code, so the isometric art helpers matter as much as the runtime. The painter gains <code>isoDiamond</code>, <code>isoBlock(top, left, right)</code> with the three shaded faces, cliff-edge autotiles with grass overhang, and <code>defineIsoSprite</code> with a footprint in cells so origins land on the diamond's centre. Billboard sprites (characters, props) are drawn front-on as they are today; the projection only moves them.</p>
 
   <h2>Reference games</h2>
   <p>Two games define the target. Walking through what each needs shows where the proposal already fits and where it grows three small pieces.</p>
@@ -133,7 +133,7 @@
     <tr><td>Vertices</td><td>Eleven floats instead of ten: the projected depth rides along, unused by the 2D renderers until a depth-tested pass exists.</td></tr>
     <tr><td>Node tables</td><td>Words 26 to 28: <code>Z</code>, <code>VZ</code>, <code>DEPTH_BIAS</code>; a shadow flag; table z gravity and floor mode.</td></tr>
     <tr><td>Retained batches</td><td>A world-space batch (14 floats per instance: position with height, size, region, tint, alpha) the kernel projects; the screen-space batch stays for flat tile maps.</td></tr>
-    <tr><td>Picking</td><td><code>kiln_pick(x, y)</code> returns the id of the topmost quad from the last sorted pass (ids come from a per-quad tag the script sets).</td></tr>
+    <tr><td>Picking</td><td><code>blackiron_pick(x, y)</code> returns the id of the topmost quad from the last sorted pass (ids come from a per-quad tag the script sets).</td></tr>
     <tr><td>Reference kernel</td><td>Every piece mirrored in <code>src/kernel/ts.ts</code>; the parity test grows a projected frame.</td></tr>
     <tr><td>Size</td><td>Roughly 6 KB more WebAssembly; no new dependencies.</td></tr>
   </table>

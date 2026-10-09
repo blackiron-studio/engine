@@ -9,8 +9,8 @@ import {
   type Scene3D,
   type PhysicsBackend3D,
   NavigationGrid3D,
-} from "@kiln/engine/three";
-import { Rng } from "@kiln/engine/core";
+} from "@blackiron-studio/engine/three";
+import { Rng } from "@blackiron-studio/engine/core";
 import { RELAYS, SOLIDS } from "./level.ts";
 export const P = {
   chalk: 0xcbd0bd,

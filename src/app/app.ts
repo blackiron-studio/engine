@@ -1,6 +1,6 @@
 import { nativePointerCapture, nativePointerMotion } from "../input/native-pointer-lock.ts";
 // The App owns the platform, canvas, renderer, atlas, input, audio, the fixed-step loop
-// and the scene stack. `App.create` reads `kiln.json` values injected by the CLI.
+// and the scene stack. `App.create` reads `blackiron.json` values injected by the CLI.
 // It runs in three modes: web (a canvas in a document), native (a host object drives
 // frames and input), and headless (tests and tools).
 
@@ -121,7 +121,7 @@ export interface IosConfig {
   signing?: "external" | "automatic" | "unsigned";
 }
 
-/** One scripted screenshot for `kiln verify`: frames to run, taps to make, and the file name. */
+/** One scripted screenshot for `blackiron verify`: frames to run, taps to make, and the file name. */
 export interface SnapshotSpec {
   name: string;
   /** Frame to capture (60 per second of synthetic time). */
@@ -130,15 +130,15 @@ export interface SnapshotSpec {
   taps?: string[];
 }
 
-export interface KilnConfig {
+export interface BlackironConfig {
   /** Application release version and increasing store build number. */
   version?: string;
   buildNumber?: number;
   name: string;
   entry?: string;
-  /** Screenshot scenarios compared against golden images by `kiln verify`. */
+  /** Screenshot scenarios compared against golden images by `blackiron verify`. */
   snapshots?: SnapshotSpec[];
-  /** Module that only defines sprites; used by `kiln atlas` and native builds. */
+  /** Module that only defines sprites; used by `blackiron atlas` and native builds. */
   art?: string;
   viewport: ViewportConfig;
   render: RenderConfig;
@@ -154,7 +154,7 @@ export interface KilnConfig {
   /** Legacy alias for `render.scale` as a number. */
   renderScale?: number;
   background: string | number;
-  /** Default post settings for every scene; `tint` may be a hex string in kiln.json. */
+  /** Default post settings for every scene; `tint` may be a hex string in blackiron.json. */
   post: Partial<Omit<PostSettings, "tint">> & { tint?: number | string };
   fixedStep: number;
   pixelSnap: boolean;
@@ -169,7 +169,7 @@ export interface KilnConfig {
   android?: AndroidConfig;
 }
 
-export const defaultConfig = (): KilnConfig => ({
+export const defaultConfig = (): BlackironConfig => ({
   name: "game",
   viewport: { width: 1280, height: 720, scale: "fit" },
   render: { scale: "native", snap: "world" },
@@ -184,19 +184,19 @@ export const defaultConfig = (): KilnConfig => ({
 
 declare global {
   // eslint-disable-next-line no-var
-  var KILN_CONFIG: Partial<KilnConfig> | undefined;
+  var BLACKIRON_CONFIG: Partial<BlackironConfig> | undefined;
 }
 
 /**
  * `?renderer=canvas2d&debug=1&scale=2&snap=none` on the page URL overrides the config, for
  * testing backends. The same keys work in the hash for hosts that drop query strings.
  */
-function queryOverrides(): Partial<KilnConfig> {
+function queryOverrides(): Partial<BlackironConfig> {
   const loc = (globalThis as { location?: Location }).location;
   if (!loc || typeof loc.search !== "string") return {};
   const q = new URLSearchParams(loc.search);
   for (const [k, v] of new URLSearchParams((loc.hash ?? "").replace(/^#/, ""))) q.set(k, v);
-  const out: Partial<KilnConfig> = {};
+  const out: Partial<BlackironConfig> = {};
   const r = q.get("renderer");
   if (r === "webgl2" || r === "canvas2d" || r === "auto") out.renderer = r;
   const k = q.get("kernel");
@@ -216,11 +216,11 @@ function queryOverrides(): Partial<KilnConfig> {
 }
 
 /** Merge defaults, the build-time config, URL overrides and explicit overrides. */
-export function resolveConfig(overrides: Partial<KilnConfig> = {}): KilnConfig {
-  const injected = (globalThis as { KILN_CONFIG?: Partial<KilnConfig> }).KILN_CONFIG ?? {};
+export function resolveConfig(overrides: Partial<BlackironConfig> = {}): BlackironConfig {
+  const injected = (globalThis as { BLACKIRON_CONFIG?: Partial<BlackironConfig> }).BLACKIRON_CONFIG ?? {};
   const query = queryOverrides();
   const base = defaultConfig();
-  const merged: KilnConfig = {
+  const merged: BlackironConfig = {
     ...base,
     ...injected,
     ...query,
@@ -238,7 +238,7 @@ export type AppMode = "web" | "native" | "headless";
 export interface AppOptions {
   /** Canvas element or selector. Created and appended to `document.body` when omitted. */
   canvas?: HTMLCanvasElement | string;
-  config?: Partial<KilnConfig>;
+  config?: Partial<BlackironConfig>;
   /** No DOM, no loop, a recording renderer. For tests and tools. */
   headless?: boolean;
   mode?: AppMode;
@@ -338,7 +338,7 @@ export class SceneStack {
   }
 }
 
-/** What a native host calls into. Installed as `globalThis.__kiln` by `bindHost`. */
+/** What a native host calls into. Installed as `globalThis.__blackiron` by `bindHost`. */
 export interface HostBridge {
   pointerCapture(locked:boolean):void;
   mouseMotion(x:number,y:number):void;
@@ -360,7 +360,7 @@ const FRAME_HISTORY = 120;
 
 export class App {
   readonly platform: Platform;
-  readonly config: KilnConfig;
+  readonly config: BlackironConfig;
   readonly mode: AppMode;
   readonly canvas: HTMLCanvasElement | null;
   readonly renderer: Renderer;
@@ -422,7 +422,7 @@ export class App {
   /** Where the logical viewport sits inside the host view, in points. */
   private view = { x: 0, y: 0, w: 0, h: 0 };
 
-  private constructor(platform: Platform, config: KilnConfig, canvas: HTMLCanvasElement | null, renderer: Renderer, atlas: Atlas, mode: AppMode) {
+  private constructor(platform: Platform, config: BlackironConfig, canvas: HTMLCanvasElement | null, renderer: Renderer, atlas: Atlas, mode: AppMode) {
     this.audio = new AudioEngine(
       mode === "web" && audioContextCtor()
         ? new WorkletBackend()
@@ -477,7 +477,7 @@ export class App {
       const app = new App(platform, config, null, renderer, atlas, "native");
       const s = native.host.screen;
       app.hostResize(s.width, s.height, s.scale, s.insets);
-      (globalThis as { kiln?: App }).kiln = app;
+      (globalThis as { blackiron?: App }).blackiron = app;
       if (config.physics) await app.enablePhysics();
       return app;
     }
@@ -496,8 +496,8 @@ export class App {
     const app = new App(platform, config, canvas, renderer, atlas, "web");
     app.attachDom();
     app.layout();
-    // A console handle: `kiln.scene`, `kiln.debug = true`, `kiln.renderer.stats`.
-    (globalThis as { kiln?: App }).kiln = app;
+    // A console handle: `blackiron.scene`, `blackiron.debug = true`, `blackiron.renderer.stats`.
+    (globalThis as { blackiron?: App }).blackiron = app;
     if (config.physics) await app.enablePhysics();
     return app;
   }
@@ -836,7 +836,7 @@ export class App {
     else this.pointer.handleUp(lx, ly, id);
   }
 
-  /** Install `globalThis.__kiln` for a native host and return it. */
+  /** Install `globalThis.__blackiron` for a native host and return it. */
   bindHost(): HostBridge {
     const platform = this.platform as NativePlatform;
     const bridge: HostBridge = {
@@ -864,7 +864,7 @@ export class App {
       },
       capture: () => this.renderer.snapshot?.() ?? null,
     };
-    (globalThis as { __kiln?: HostBridge }).__kiln = bridge;
+    (globalThis as { __blackiron?: HostBridge }).__blackiron = bridge;
     return bridge;
   }
 
@@ -978,7 +978,7 @@ export class App {
   }
 
   /**
-   * Capture the last frame as a PNG data URL. In `kiln dev` it is also posted to the
+   * Capture the last frame as a PNG data URL. In `blackiron dev` it is also posted to the
    * server, which writes it to `screenshots/`. Bound to F8.
    */
   async capture(name = `shot-${Date.now()}`): Promise<string | null> {
@@ -988,9 +988,9 @@ export class App {
     if (this.mode !== "web") return url;
     try {
       const res = await fetch(`dev/screenshot?name=${encodeURIComponent(name)}`, { method: "POST", body: url });
-      if (res.ok) console.info(`[kiln] saved screenshots/${name}.png`);
+      if (res.ok) console.info(`[blackiron] saved screenshots/${name}.png`);
     } catch {
-      /* not running under kiln dev */
+      /* not running under blackiron dev */
     }
     return url;
   }

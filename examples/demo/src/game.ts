@@ -1,7 +1,7 @@
 // Wisp Hollow rules. Pure and deterministic: no DOM, no engine nodes, just state and a
 // seeded rng, so the whole game can be tested headlessly and would port unchanged.
 
-import { Rng, clamp } from "@kiln/engine/core";
+import { Rng, clamp } from "@blackiron-studio/engine/core";
 
 export const WORLD = { cols: 80, rows: 45, tile: 32 } as const;
 export const WORLD_W = WORLD.cols * WORLD.tile;

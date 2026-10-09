@@ -1,6 +1,6 @@
 // All sprites, painted in code at 32 px density. Keep game logic out of this file.
 
-import { type Painter, defineAnimation, defineAutotile, defineSprite, defineVariants, materials, ramp } from "@kiln/engine/art";
+import { type Painter, defineAnimation, defineAutotile, defineSprite, defineVariants, materials, ramp } from "@blackiron-studio/engine/art";
 
 const DIRT = ramp("#6b4b34", 1);
 const GRASS = ramp("#5aa650", 1);
