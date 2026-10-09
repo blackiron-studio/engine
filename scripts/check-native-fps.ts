@@ -4,7 +4,7 @@ import { loadProject } from "../cli/project.ts";
 import { buildNative } from "../cli/commands/build.ts";
 import { decodePNG } from "../cli/png.ts";
 const engine = resolve(import.meta.dir, ".."),
-  out = join(engine, ".kiln/verification/native-fps");
+  out = join(engine, ".blackiron/verification/native-fps");
 await mkdir(out, { recursive: true });
 const bundle = await buildNative(
   await loadProject(join(engine, "tests/fixtures/nativefps")),
@@ -30,7 +30,7 @@ for (const [name, frame] of [
     [
       join(
         engine,
-        `host/target/release/kiln-host${process.platform === "win32" ? ".exe" : ""}`,
+        `host/target/release/blackiron-host${process.platform === "win32" ? ".exe" : ""}`,
       ),
       bundle.dir,
       "--js",

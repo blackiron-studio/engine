@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Kiln 0.2</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Blackiron 0.2</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500&display=swap">
 <style>
   :root {
@@ -128,8 +128,8 @@
 <header class="masthead">
   <div class="motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap">
-    <div class="eyebrow">Engine proposal · follows Kiln 0.1</div>
-    <h1>Kiln <span class="ver">v0.2</span></h1>
+    <div class="eyebrow">Engine proposal · follows Blackiron 0.1</div>
+    <h1>Blackiron <span class="ver">v0.2</span></h1>
     <p class="thesis">
       High-definition presentation. The same pixel-art engine rendered at the display's native
       resolution, with four times the art density, real light, sharp text, and imported art,
@@ -285,7 +285,7 @@
             <tr><td class="mono">scene</td><td><code>LightLayer</code> and <code>Light2D</code>, <code>TileMap</code> with autotiling and <code>moveBody</code>, <code>ParallaxLayer</code>, <code>Label.font</code>, layout containers and anchors, 9-slice panels, overlay scenes in the stack.</td></tr>
             <tr><td class="mono">input</td><td>Gamepad through the Gamepad API and touch controls: a virtual stick and buttons mapped to the same actions.</td></tr>
             <tr><td class="mono">audio</td><td>Sample playback for WAV, OGG and MP3 next to the synth, with a shared mixer.</td></tr>
-            <tr><td class="mono">app / cli</td><td>A <code>render</code> block in <code>kiln.json</code>, <code>?scale=</code> for testing, <code>kiln shot</code> for native-resolution captures, a perf graph in the overlay.</td></tr>
+            <tr><td class="mono">app / cli</td><td>A <code>render</code> block in <code>blackiron.json</code>, <code>?scale=</code> for testing, <code>blackiron shot</code> for native-resolution captures, a perf graph in the overlay.</td></tr>
             <tr><td class="mono">templates</td><td>All four re-authored at 32 px on 1280×720 with HD text. The platformer drops its hand-rolled collision glue for <code>TileMap</code>.</td></tr>
           </tbody>
         </table>
@@ -297,7 +297,7 @@
     <h2>API sketch</h2>
     <div class="body">
       <p>Enough to check the shape. Everything here is additive; 0.1 projects keep running unchanged.</p>
-<pre><code><span class="c">// kiln.json</span>
+<pre><code><span class="c">// blackiron.json</span>
 {
   <span class="s">"viewport"</span>: { <span class="s">"width"</span>: 1280, <span class="s">"height"</span>: 720, <span class="s">"scale"</span>: <span class="s">"fit"</span> },
   <span class="s">"render"</span>:   { <span class="s">"scale"</span>: <span class="s">"native"</span>, <span class="s">"snap"</span>: <span class="s">"world"</span> },
@@ -344,7 +344,7 @@ p.foliage(32, 30, 27, 22, leaf, { clumps: 6, light: [-0.4, -0.8] });</code></pre
             <tr><td class="mono">M3</td><td>Lighting</td><td><code>LightLayer</code>, <code>Light2D</code> point and cone, flicker, emissive sprites that bloom without lighting</td><td>The lantern lights the ground; wisps glow; the night is dark beyond them</td><td><span class="pill m">M · 3–5 d</span></td></tr>
             <tr><td class="mono">M4</td><td>Imported art and samples</td><td>PNG and Aseprite sheets into the atlas, <code>Sprite.smooth</code>, audio samples with a mixer</td><td>A starter mixes a hand-drawn hero with painted tiles and plays a sample</td><td><span class="pill m">M · 3–4 d</span></td></tr>
             <tr><td class="mono">M5</td><td>Tiles, layers, input</td><td><code>TileMap</code> with autotiling, animated tiles and collision, <code>ParallaxLayer</code>, overlay scenes, gamepad and touch controls</td><td>Platformer and top-down starters rebuilt on <code>TileMap</code>; playable with a pad and on a touch screen</td><td><span class="pill m">M · 4–6 d</span></td></tr>
-            <tr><td class="mono">M6</td><td>Grade, tooling, release</td><td>LUT grading, grain, scanlines, <code>kiln shot</code>, perf graph, starters re-authored at 32 px, docs, tag <code>v0.2.0</code></td><td>Budgets below pass on a MacBook and an iPhone; gallery shows every project in HD</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M6</td><td>Grade, tooling, release</td><td>LUT grading, grain, scanlines, <code>blackiron shot</code>, perf graph, starters re-authored at 32 px, docs, tag <code>v0.2.0</code></td><td>Budgets below pass on a MacBook and an iPhone; gallery shows every project in HD</td><td><span class="pill m">M · 3–5 d</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -376,9 +376,9 @@ p.foliage(32, 30, 27, 22, leaf, { clumps: 6, light: [-0.4, -0.8] });</code></pre
             <tr><td>Frame time, demo at 2560×1440, lights and bloom on, M-series MacBook</td><td class="num">≤ 6 ms</td><td>Perf graph, 60-second capture</td></tr>
             <tr><td>Frame time, demo at iPhone native resolution in Safari</td><td class="num">≤ 16 ms</td><td>Perf graph, 60-second capture</td></tr>
             <tr><td>Draw calls per frame with lights, text and particles</td><td class="num">≤ 40</td><td>Overlay</td></tr>
-            <tr><td>Engine runtime, gzipped</td><td class="num">≤ 90 KB</td><td><code>kiln build --report</code></td></tr>
+            <tr><td>Engine runtime, gzipped</td><td class="num">≤ 90 KB</td><td><code>blackiron build --report</code></td></tr>
             <tr><td>Boot to title with the 32 px demo atlas painted</td><td class="num">≤ 700 ms</td><td><code>performance.mark</code> around the bake</td></tr>
-            <tr><td>Atlas size for the demo</td><td class="num">≤ 2048²</td><td><code>kiln atlas</code></td></tr>
+            <tr><td>Atlas size for the demo</td><td class="num">≤ 2048²</td><td><code>blackiron atlas</code></td></tr>
           </tbody>
         </table>
       </div>
@@ -468,8 +468,8 @@ p.foliage(32, 30, 27, 22, leaf, { clumps: 6, light: [-0.4, -0.8] });</code></pre
 
 <footer>
   <div class="wrap">
-    <span>Kiln 0.2 · engine proposal · draft of 3 September 2026</span>
-    <span>Art on this page painted with the 0.1 painter and exported by <code>kiln atlas</code></span>
+    <span>Blackiron 0.2 · engine proposal · draft of 3 September 2026</span>
+    <span>Art on this page painted with the 0.1 painter and exported by <code>blackiron atlas</code></span>
   </div>
 </footer>
 </body></html>

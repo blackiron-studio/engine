@@ -1,7 +1,7 @@
 // The meadow itself: tiles, decorations, atmosphere and the light layer. Shared by the
 // title backdrop and the play scene so both look the same.
 
-import { TileMapData } from "@kiln/engine/core";
+import { TileMapData } from "@blackiron-studio/engine/core";
 import {
   CloudShadows,
   Graphics2D,
@@ -11,7 +11,7 @@ import {
   Node2D,
   Sprite,
   TileMap,
-} from "@kiln/engine/scene";
+} from "@blackiron-studio/engine/scene";
 import { groveTree, moonShrine } from "../scenery.ts";
 import {
   DARK_ID,

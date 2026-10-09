@@ -20,10 +20,10 @@ const TARGETS: Record<DesktopPlatform, { triple: string; exe: string }> = {
   macos: {
     triple:
       process.arch === "arm64" ? "aarch64-apple-darwin" : "x86_64-apple-darwin",
-    exe: "kiln-host",
+    exe: "blackiron-host",
   },
-  windows: { triple: "x86_64-pc-windows-msvc", exe: "kiln-host.exe" },
-  linux: { triple: "x86_64-unknown-linux-gnu", exe: "kiln-host" },
+  windows: { triple: "x86_64-pc-windows-msvc", exe: "blackiron-host.exe" },
+  linux: { triple: "x86_64-unknown-linux-gnu", exe: "blackiron-host" },
 };
 
 export function currentPlatform(): DesktopPlatform {
@@ -52,7 +52,7 @@ export function sh(
 /**
  * Build the host executable for a platform with cargo; cross builds need that target's
  * toolchain. Desktops get V8 (a prebuilt library downloaded on the first build) unless
- * KILN_NO_V8 is set; QuickJS is always compiled in as the fallback.
+ * BLACKIRON_NO_V8 is set; QuickJS is always compiled in as the fallback.
  */
 export function buildHost(platform: DesktopPlatform): string {
   const t = TARGETS[platform];
@@ -63,9 +63,9 @@ export function buildHost(platform: DesktopPlatform): string {
     "--locked",
     "--release",
     "--bin",
-    "kiln-host",
+    "blackiron-host",
   ];
-  if (!process.env.KILN_NO_V8) args.push("--features", "v8");
+  if (!process.env.BLACKIRON_NO_V8) args.push("--features", "v8");
   if (cross) args.push("--target", t.triple);
   console.log(
     `  building the host for ${platform}${cross ? ` (${t.triple})` : ""}`,
@@ -117,12 +117,12 @@ async function buildDesktopExport(
     await mkdir(join(contents, "MacOS"), { recursive: true });
     await mkdir(join(contents, "Resources"), { recursive: true });
     await cp(exe, join(contents, "MacOS", name));
-    await cp(native.dir, join(contents, "Resources", "Kiln"), {
+    await cp(native.dir, join(contents, "Resources", "Blackiron"), {
       recursive: true,
     });
     const bundleId =
       project.config.ios?.bundleId ??
-      `com.kiln.${slug(project.config.name).replace(/-/g, "")}`;
+      `com.blackiron.${slug(project.config.name).replace(/-/g, "")}`;
     const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -169,9 +169,9 @@ async function buildDesktopExport(
   }
   const exeName = platform === "windows" ? `${name}.exe` : name;
   await cp(exe, join(dir, exeName));
-  await cp(native.dir, join(dir, "Kiln"), { recursive: true });
+  await cp(native.dir, join(dir, "Blackiron"), { recursive: true });
   await rm(native.dir, { recursive: true, force: true });
-  const { rgba } = await renderIcon(project, join(dir, "Kiln"), 256);
+  const { rgba } = await renderIcon(project, join(dir, "Blackiron"), 256);
   await Bun.write(join(dir, "icon.png"), encodePNG(256, 256, rgba));
   return { dir, launch: join(dir, exeName) };
 }

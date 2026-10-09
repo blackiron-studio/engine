@@ -3,7 +3,7 @@
 `Graphics2D` retains tessellated triangles and draws them through the existing renderer. Build shapes once, then animate the node's transform. It supports simple concave polygons in either winding, ellipses, rounded rectangles and round-capped polylines. Geometry is culled in screen space and uses the atlas white texel; no image assets are needed.
 
 ```ts
-import { Graphics2D } from "@kiln/engine/scene";
+import { Graphics2D } from "@blackiron-studio/engine/scene";
 const badge = scene.world.add(new Graphics2D(100, 120));
 badge.roundedRect(-32, -20, 64, 40, 10, 0x284e60);
 badge.ellipse(0, 0, 12, 12, { color: 0xf3c775, alpha: 0.9 });

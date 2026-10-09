@@ -1,5 +1,5 @@
-import { Graphics2D, Node2D, type DrawContext } from "@kiln/engine/scene";
-import { Rng } from "@kiln/engine/core";
+import { Graphics2D, Node2D, type DrawContext } from "@blackiron-studio/engine/scene";
+import { Rng } from "@blackiron-studio/engine/core";
 import type { GameState } from "./game.ts";
 
 /** No texture assets: reusable retained silhouettes, shaded with nested colour shapes. */

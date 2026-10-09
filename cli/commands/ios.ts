@@ -1,6 +1,6 @@
 import { stageExport } from "../export-transaction.ts";
 import { exportDirectory, requireTarget } from "../export-support.ts";
-// `kiln export ios` writes an Xcode project around the native host; `kiln run ios` builds
+// `blackiron export ios` writes an Xcode project around the native host; `blackiron run ios` builds
 // it for the simulator and launches it.
 
 import { existsSync } from "node:fs";
@@ -26,19 +26,17 @@ const HOST_DIR = resolve(import.meta.dir, "..", "..", "native", "ios");
 const KERNEL_DIR = resolve(HOST_DIR, "..", "..", "kernel");
 
 /** The compiled kernel for Apple targets, built with `bun kernel/build.ts` when missing. */
-async function kernelFramework(): Promise<string> {
-  const out = join(KERNEL_DIR, "dist", "KilnKernel.xcframework");
+async function kernelFramework(out: string): Promise<void> {
   // Cargo checks source and dependency freshness on every export.
   console.log("  building the kernel for iOS (cargo)");
   const p = Bun.spawnSync(
-    [process.execPath, join(KERNEL_DIR, "build.ts"), "--ios-only"],
+    [process.execPath, join(KERNEL_DIR, "build.ts"), "--ios-only", "--ios-out", out],
     { cwd: KERNEL_DIR, stdout: "inherit", stderr: "inherit" },
   );
   if (p.exitCode !== 0 || !existsSync(out))
     throw new Error(
       "kernel build failed; install Rust (rustup) with the aarch64-apple-ios and aarch64-apple-ios-sim targets, then run: bun kernel/build.ts",
     );
-  return out;
 }
 
 /** App icon from a sprite over the background colour, plus a launch-screen colour. */
@@ -123,7 +121,7 @@ export function resolveIosExportProject(
   const resolved = resolveExportProject(project, opts);
   const ios = { ...resolved.config.ios };
   ios.bundleId = opts.bundleId ?? ios.bundleId ??
-    `com.kiln.${slug(resolved.config.name).replace(/-/g, "")}`;
+    `com.blackiron.${slug(resolved.config.name).replace(/-/g, "")}`;
   ios.team = opts.teamId ?? ios.team;
   ios.signing = opts.signing ?? ios.signing ?? (ios.team ? "automatic" : "external");
   if (
@@ -182,20 +180,17 @@ async function buildIosExport(
   const ios = project.config.ios ?? {};
   const target = pascal(project.config.name) || "Game";
   const bundleId =
-    ios.bundleId ?? `com.kiln.${slug(project.config.name).replace(/-/g, "")}`;
+    ios.bundleId ?? `com.blackiron.${slug(project.config.name).replace(/-/g, "")}`;
   const dir = exportDirectory(project, opts.out ?? `dist/ios/${target}`);
   await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
 
-  const native = await buildNative(project, { out: join(dir, "Kiln") });
+  const native = await buildNative(project, { out: join(dir, "Blackiron") });
   await cp(join(HOST_DIR, "Sources"), join(dir, "Sources"), {
     recursive: true,
   });
-  await cp(
-    await kernelFramework(),
-    join(dir, "Kernel", "KilnKernel.xcframework"),
-    { recursive: true },
-  );
+  // Each staged export owns its framework; simultaneous games cannot replace it.
+  await kernelFramework(join(dir, "Kernel", "BlackironKernel.xcframework"));
   await writeAssets(project, dir, native.dir);
 
   const yml = iosProjectYAML(project);
@@ -259,7 +254,7 @@ export function iosProjectYAML(input: Project): string {
           ];
   return `name: ${target}
 options:
-  bundleIdPrefix: ${bundleId.split(".").slice(0, -1).join(".") || "com.kiln"}
+  bundleIdPrefix: ${bundleId.split(".").slice(0, -1).join(".") || "com.blackiron"}
   deploymentTarget:
     iOS: "${ios.minVersion ?? "16.0"}"
   createIntermediateGroups: true
@@ -270,11 +265,11 @@ targets:
     sources:
       - path: Sources
       - path: Assets.xcassets
-      - path: Kiln
+      - path: Blackiron
         type: folder
         buildPhase: resources
     dependencies:
-      - framework: Kernel/KilnKernel.xcframework
+      - framework: Kernel/BlackironKernel.xcframework
         embed: false
       - sdk: Metal.framework
       - sdk: QuartzCore.framework
@@ -316,7 +311,7 @@ export async function exportIosCommand(args: Args): Promise<void> {
   const project = await loadProject();
   const out = await exportIos(project, iosExportOptionsFromArgs(args));
   console.log(
-    `\n  open ${out.projectPath.replace(project.root + "/", "")}   # or: kiln run ios\n`,
+    `\n  open ${out.projectPath.replace(project.root + "/", "")}   # or: blackiron run ios\n`,
   );
 }
 
@@ -343,7 +338,7 @@ export async function buildIosApp(
     `  building ${exp.target} for ${device} (this takes a minute the first time)`,
   );
   // Build products live outside the export folder, so re-exporting keeps the build incremental.
-  const derived = join(project.root, ".kiln", "ios-build");
+  const derived = join(project.root, ".blackiron", "ios-build");
   const build = sh(
     [
       "xcodebuild",

@@ -1,4 +1,4 @@
-// Kiln: a 2D, web-first game engine.
+// Blackiron: a 2D, web-first game engine.
 //
 //   platform  the host seam: time, frames, assets, storage, visibility
 //   core      math, rng, tweens, events, tile grids, grid and hex helpers

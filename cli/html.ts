@@ -1,8 +1,8 @@
-import type { KilnConfig } from "../src/app/app.ts";
+import type { BlackironConfig } from "../src/app/app.ts";
 
 export interface PageOptions {
   title: string;
-  config: Partial<KilnConfig>;
+  config: Partial<BlackironConfig>;
   /** External bundle path, or omit when `inlineScript` is given. */
   scriptSrc?: string;
   inlineScript?: string;
@@ -35,14 +35,14 @@ export function pageHtml(o: PageOptions): string {
 <title>${escapeHtml(o.title)}</title>
 <style>
   html, body { margin: 0; height: 100%; background: ${bg}; overflow: hidden; }
-  .kiln-stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .blackiron-stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; outline: none; }
 </style>
 ${o.inlineStyles ? `<style>${o.inlineStyles.replace(/<\/style/gi, "<\\/style")}</style>` : ""}
 </head>
 <body>
-<div class="kiln-stage"><canvas id="kiln" aria-label="${escapeHtml(o.title)}" role="application"></canvas></div>
-<script>window.KILN_CONFIG = ${cfg};</script>
+<div class="blackiron-stage"><canvas id="blackiron" aria-label="${escapeHtml(o.title)}" role="application"></canvas></div>
+<script>window.BLACKIRON_CONFIG = ${cfg};</script>
 ${script}${o.dev ? `<script>${DEV_CLIENT}</script>` : ""}
 </body>
 </html>

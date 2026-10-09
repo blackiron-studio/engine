@@ -1,7 +1,7 @@
 // Rules for the platformer starter: level parsing, player physics, pickups and hazards.
 // Pure state plus a tick function, so it runs in `bun test` without a browser.
 
-import { TileMapData, approach, cellsUnder, clamp, groundedAabb, moveAabb } from "@kiln/engine/core";
+import { TileMapData, approach, cellsUnder, clamp, groundedAabb, moveAabb } from "@blackiron-studio/engine/core";
 
 export const TILE = 32;
 

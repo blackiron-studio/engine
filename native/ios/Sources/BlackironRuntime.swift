@@ -1,17 +1,17 @@
-import KilnKernel
+import BlackironKernel
 import CoreText
 import JavaScriptCore
 import QuartzCore
 import UIKit
 
 /// Host log lines go to the unified log, so they show in Console.app and `log show`.
-func kilnLog(_ message: String) {
+func blackironLog(_ message: String) {
     NSLog("%@", message)
 }
 
 /// What the engine's `NativePlatform` and `NativeRenderer` call. Method names map to the
 /// JavaScript names because every parameter is unlabelled.
-@objc protocol KilnHostExports: JSExport {
+@objc protocol BlackironHostExports: JSExport {
     func now() -> Double
     func log(_ level: String, _ message: String)
     func storageGet(_ key: String) -> JSValue
@@ -26,21 +26,21 @@ func kilnLog(_ message: String) {
     func physics3D(_ command: String) -> String
     func rendererDiagnostics() -> JSValue
     func submit(_ post: JSValue, _ vertexCount: Int, _ commandCount: Int)
-    var kernel: KilnKernelBridge { get }
-    var audio: KilnAudio { get }
+    var kernel: BlackironKernelBridge { get }
+    var audio: BlackironAudio { get }
     func haptic(_ kind: String)
     func announce(_ text: String)
-    func createPhysics(_ pixelsPerMeter: Double) -> KilnPhysicsBridge
+    func createPhysics(_ pixelsPerMeter: Double) -> BlackironPhysicsBridge
     func showKeyboard(_ visible: Bool)
     var deterministic: Bool { get set }
     func rasterizeGlyph(_ family: String, _ size: Int, _ weight: Int, _ style: String, _ ch: String) -> JSValue
     var screen: [String: Any] { get set }
 }
 
-/// The host object installed as `globalThis.__kilnHost`.
-@objc final class KilnHost: NSObject, KilnHostExports {
+/// The host object installed as `globalThis.__blackironHost`.
+@objc final class BlackironHost: NSObject, BlackironHostExports {
     private let context: JSContext
-    private let renderer: KilnRenderer
+    private let renderer: BlackironRenderer
     private let start = CACurrentMediaTime()
     /// A synthetic clock in milliseconds (screenshot runs); nil means real time.
     var clock: Double?
@@ -49,30 +49,30 @@ func kilnLog(_ message: String) {
     /// True under the synthetic clock of a screenshot run, so unseeded games stay reproducible.
     var deterministic = false
     /// Frame data captured by the last `submit`, rendered after the script returns.
-    var frame: KilnRenderer.Frame?
+    var frame: BlackironRenderer.Frame?
     /// The compiled kernel the engine's renderer streams into.
-    let kernel: KilnKernelBridge
+    let kernel: BlackironKernelBridge
     /// The kernel synthesiser on the device's audio output.
-    let audio: KilnAudio
+    let audio: BlackironAudio
     private lazy var impactLight = UIImpactFeedbackGenerator(style: .light)
     private lazy var impactMedium = UIImpactFeedbackGenerator(style: .medium)
     private lazy var impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
     private lazy var notify = UINotificationFeedbackGenerator()
     private lazy var selection = UISelectionFeedbackGenerator()
 
-    init(context: JSContext, renderer: KilnRenderer) {
+    init(context: JSContext, renderer: BlackironRenderer) {
         self.context = context
         self.renderer = renderer
-        kernel = KilnKernelBridge(context: context)
-        audio = KilnAudio(context: context)
-        KilnHost.registerBundledFonts()
+        kernel = BlackironKernelBridge(context: context)
+        audio = BlackironAudio(context: context)
+        BlackironHost.registerBundledFonts()
     }
 
     /// The view that owns the on-screen keyboard; set by the runtime.
     weak var keyboardView: UIView?
 
-    func createPhysics(_ pixelsPerMeter: Double) -> KilnPhysicsBridge {
-        KilnPhysicsBridge(context: context, pixelsPerMeter: pixelsPerMeter)
+    func createPhysics(_ pixelsPerMeter: Double) -> BlackironPhysicsBridge {
+        BlackironPhysicsBridge(context: context, pixelsPerMeter: pixelsPerMeter)
     }
 
     func showKeyboard(_ visible: Bool) {
@@ -100,19 +100,19 @@ func kilnLog(_ message: String) {
 
     func now() -> Double { clock ?? (CACurrentMediaTime() - start) * 1000 }
 
-    func log(_ level: String, _ message: String) { kilnLog("[kiln:\(level)] \(message)") }
+    func log(_ level: String, _ message: String) { blackironLog("[blackiron:\(level)] \(message)") }
 
     func storageGet(_ key: String) -> JSValue {
-        if let s = defaults.string(forKey: "kiln." + key) { return JSValue(object: s, in: context) }
+        if let s = defaults.string(forKey: "blackiron." + key) { return JSValue(object: s, in: context) }
         return JSValue(nullIn: context)
     }
 
-    func storageSet(_ key: String, _ value: String) { defaults.set(value, forKey: "kiln." + key) }
-    func storageRemove(_ key: String) { defaults.removeObject(forKey: "kiln." + key) }
+    func storageSet(_ key: String, _ value: String) { defaults.set(value, forKey: "blackiron." + key) }
+    func storageRemove(_ key: String) { defaults.removeObject(forKey: "blackiron." + key) }
 
     private func resourceURL(_ path: String) -> URL? {
         guard let base = Bundle.main.resourceURL else { return nil }
-        let direct = base.appendingPathComponent("Kiln").appendingPathComponent(path)
+        let direct = base.appendingPathComponent("Blackiron").appendingPathComponent(path)
         if FileManager.default.fileExists(atPath: direct.path) { return direct }
         let flat = base.appendingPathComponent(path)
         return FileManager.default.fileExists(atPath: flat.path) ? flat : nil
@@ -120,7 +120,7 @@ func kilnLog(_ message: String) {
 
     func loadBytes(_ path: String) -> JSValue {
         guard let url = resourceURL(path), let data = try? Data(contentsOf: url) else { return JSValue(nullIn: context) }
-        return KilnHost.uint8Array(data, in: context)
+        return BlackironHost.uint8Array(data, in: context)
     }
 
     func loadText(_ path: String) -> JSValue {
@@ -134,7 +134,7 @@ func kilnLog(_ message: String) {
     }
 
     func decodeImage(_ bytes: JSValue) -> JSValue {
-        guard let (ptr, count) = KilnHost.typedArrayBytes(bytes, in: context) else { return JSValue(nullIn: context) }
+        guard let (ptr, count) = BlackironHost.typedArrayBytes(bytes, in: context) else { return JSValue(nullIn: context) }
         guard count > 0 && count <= 64 * 1024 * 1024 else { return JSValue(nullIn: context) }
         return decodedImage(Data(bytes: ptr, count: count))
     }
@@ -161,12 +161,12 @@ func kilnLog(_ message: String) {
         let out = JSValue(newObjectIn: context)!
         out.setObject(w, forKeyedSubscript: "width" as NSString)
         out.setObject(h, forKeyedSubscript: "height" as NSString)
-        out.setObject(KilnHost.uint8Array(Data(bytes), in: context), forKeyedSubscript: "data" as NSString)
+        out.setObject(BlackironHost.uint8Array(Data(bytes), in: context), forKeyedSubscript: "data" as NSString)
         return out
     }
 
     func uploadTexture(_ slot: Int, _ width: Int, _ height: Int, _ rgba: JSValue) {
-        guard let (ptr, len) = KilnHost.typedArrayBytes(rgba, in: context), len >= width * height * 4 else { return }
+        guard let (ptr, len) = BlackironHost.typedArrayBytes(rgba, in: context), len >= width * height * 4 else { return }
         renderer.uploadTexture(slot: slot, width: width, height: height, bytes: ptr)
     }
 
@@ -177,7 +177,7 @@ func kilnLog(_ message: String) {
     func physics3D(_ command: String) -> String {
         let bytes = Array(command.utf8)
         return bytes.withUnsafeBufferPointer {
-            guard let result = kiln_physics3d_json($0.baseAddress, UInt32($0.count)) else { return "{\"error\":\"Native physics command rejected\"}" }
+            guard let result = blackiron_physics3d_json($0.baseAddress, UInt32($0.count)) else { return "{\"error\":\"Native physics command rejected\"}" }
             return String(cString: result)
         }
     }
@@ -187,8 +187,8 @@ func kilnLog(_ message: String) {
     }
 
     func submit(_ post: JSValue, _ vertexCount: Int, _ commandCount: Int) {
-        guard let (pptr, plen) = KilnHost.typedArrayBytes(post, in: context) else { return }
-        frame = KilnRenderer.Frame(
+        guard let (pptr, plen) = BlackironHost.typedArrayBytes(post, in: context) else { return }
+        frame = BlackironRenderer.Frame(
             vertices: kernel.vertexPointer,
             vertexCount: max(0, vertexCount),
             commands: kernel.commandPointer,
@@ -198,7 +198,7 @@ func kilnLog(_ message: String) {
     }
 
     func rasterizeGlyph(_ family: String, _ size: Int, _ weight: Int, _ style: String, _ ch: String) -> JSValue {
-        let font = KilnHost.font(family: family, size: CGFloat(size), weight: weight, italic: style == "italic")
+        let font = BlackironHost.font(family: family, size: CGFloat(size), weight: weight, italic: style == "italic")
         let attributed = NSAttributedString(string: ch, attributes: [.font: font, .foregroundColor: UIColor.white])
         let line = CTLineCreateWithAttributedString(attributed)
         var ascent: CGFloat = 0
@@ -228,17 +228,17 @@ func kilnLog(_ message: String) {
         out.setObject(Double(advance), forKeyedSubscript: "advance" as NSString)
         out.setObject(Double(font.ascender), forKeyedSubscript: "ascent" as NSString)
         out.setObject(Double(-font.descender), forKeyedSubscript: "descent" as NSString)
-        out.setObject(KilnHost.uint8Array(Data(bytes), in: context), forKeyedSubscript: "data" as NSString)
+        out.setObject(BlackironHost.uint8Array(Data(bytes), in: context), forKeyedSubscript: "data" as NSString)
         return out
     }
 
     // MARK: - Helpers
 
-    /// Fonts shipped under Kiln/fonts by `kiln export ios`, registered once at boot.
+    /// Fonts shipped under Blackiron/fonts by `blackiron export ios`, registered once at boot.
     private static var bundledFonts: [(family: String, weight: Double, italic: Bool, descriptor: CTFontDescriptor)] = []
 
     static func registerBundledFonts() {
-        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Kiln/fonts"),
+        guard let dir = Bundle.main.resourceURL?.appendingPathComponent("Blackiron/fonts"),
               let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
         for url in files where ["ttf", "otf"].contains(url.pathExtension.lowercased()) {
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
@@ -254,7 +254,7 @@ func kilnLog(_ message: String) {
                 bundledFonts.append((family, weight, italic, d))
             }
         }
-        if !bundledFonts.isEmpty { kilnLog("[kiln] fonts: \(Set(bundledFonts.map { $0.family }).sorted().joined(separator: ", "))") }
+        if !bundledFonts.isEmpty { blackironLog("[blackiron] fonts: \(Set(bundledFonts.map { $0.family }).sorted().joined(separator: ", "))") }
     }
 
     /// CSS weights onto CoreText's -1...1 weight trait.
@@ -307,19 +307,19 @@ func kilnLog(_ message: String) {
 }
 
 /// Owns the JavaScript context, boots the game, and drives frames from a display link.
-final class KilnRuntime: NSObject {
+final class BlackironRuntime: NSObject {
     let context = JSContext()!
-    let renderer: KilnRenderer
-    let host: KilnHost
-    private weak var view: KilnView?
+    let renderer: BlackironRenderer
+    let host: BlackironHost
+    private weak var view: BlackironView?
     private var bridge: JSValue?
-    private var gamepad: KilnGamepad?
+    private var gamepad: BlackironGamepad?
     private var displayLink: CADisplayLink?
     private var lastSize = CGSize.zero
     private var lastInsets = UIEdgeInsets.zero
     private var scale: CGFloat = 1
     private var booted = false
-    /// Snapshot requests from the environment (see `kiln verify`): frame to capture and file.
+    /// Snapshot requests from the environment (see `blackiron verify`): frame to capture and file.
     private let snapshotFrame: Int?
     private let snapshotPath: String?
     private let fixedDt: Double?
@@ -327,19 +327,19 @@ final class KilnRuntime: NSObject {
     private let taps: [(Double, Double, Int)]
     private var frames = 0
 
-    init(view: KilnView) {
+    init(view: BlackironView) {
         self.view = view
-        guard let r = KilnRenderer(layer: view.metalLayer, drawableSize: view.drawableSize) else {
-            fatalError("Kiln: no GPU adapter for the Metal layer")
+        guard let r = BlackironRenderer(layer: view.metalLayer, drawableSize: view.drawableSize) else {
+            fatalError("Blackiron: no GPU adapter for the Metal layer")
         }
         renderer = r
-        host = KilnHost(context: context, renderer: renderer)
+        host = BlackironHost(context: context, renderer: renderer)
         let env = ProcessInfo.processInfo.environment
-        snapshotFrame = env["KILN_SNAPSHOT_FRAME"].flatMap { Int($0) }
-        snapshotPath = env["KILN_SNAPSHOT"]
-        fixedDt = env["KILN_FIXED_DT"].flatMap { Double($0) }
+        snapshotFrame = env["BLACKIRON_SNAPSHOT_FRAME"].flatMap { Int($0) }
+        snapshotPath = env["BLACKIRON_SNAPSHOT"]
+        fixedDt = env["BLACKIRON_FIXED_DT"].flatMap { Double($0) }
         host.deterministic = fixedDt != nil
-        taps = (env["KILN_TAPS"] ?? "").split(separator: ";").compactMap { spec in
+        taps = (env["BLACKIRON_TAPS"] ?? "").split(separator: ";").compactMap { spec in
             let parts = spec.split(separator: ":")
             guard parts.count == 2, let frame = Int(parts[1]) else { return nil }
             let xy = parts[0].split(separator: ",")
@@ -350,23 +350,23 @@ final class KilnRuntime: NSObject {
         // Safari's Web Inspector can attach to this context (Develop menu, the simulator or device).
         if #available(iOS 16.4, *) {
             context.isInspectable = true
-            context.name = "Kiln"
+            context.name = "Blackiron"
         }
         host.keyboardView = view
         context.exceptionHandler = { _, exception in
-            kilnLog("[kiln:js] \(exception?.toString() ?? "unknown error") \(exception?.objectForKeyedSubscript("stack")?.toString() ?? "")")
+            blackironLog("[blackiron:js] \(exception?.toString() ?? "unknown error") \(exception?.objectForKeyedSubscript("stack")?.toString() ?? "")")
         }
         // A minimal console for the engine's own logging.
         let console = JSValue(newObjectIn: context)!
         for level in ["log", "info", "warn", "error", "debug"] {
             let fn: @convention(block) () -> Void = {
                 let args = JSContext.currentArguments()?.map { ($0 as AnyObject).toString() ?? "" } ?? []
-                kilnLog("[js:\(level)] \(args.joined(separator: " "))")
+                blackironLog("[js:\(level)] \(args.joined(separator: " "))")
             }
             console.setObject(fn, forKeyedSubscript: level as NSString)
         }
         context.setObject(console, forKeyedSubscript: "console" as NSString)
-        context.setObject(host, forKeyedSubscript: "__kilnHost" as NSString)
+        context.setObject(host, forKeyedSubscript: "__blackironHost" as NSString)
         let timers: @convention(block) (JSValue, Double) -> Int = { fn, ms in
             DispatchQueue.main.asyncAfter(deadline: .now() + ms / 1000) { fn.call(withArguments: []) }
             return 0
@@ -383,23 +383,23 @@ final class KilnRuntime: NSObject {
         context.setObject(clear, forKeyedSubscript: "clearInterval" as NSString)
     }
 
-    /// Load the game script and start it. The engine installs `__kiln` when ready.
+    /// Load the game script and start it. The engine installs `__blackiron` when ready.
     func boot() {
-        guard let url = Bundle.main.resourceURL?.appendingPathComponent("Kiln/game.js"),
+        guard let url = Bundle.main.resourceURL?.appendingPathComponent("Blackiron/game.js"),
               let source = try? String(contentsOf: url, encoding: .utf8) else {
-            kilnLog("[kiln] Kiln/game.js is missing from the bundle")
+            blackironLog("[blackiron] Blackiron/game.js is missing from the bundle")
             return
         }
         pushScreen()
         context.evaluateScript(source, withSourceURL: url)
-        context.evaluateScript("__kilnBoot().catch(e => console.error('boot failed', e && e.stack || e))")
+        context.evaluateScript("__blackironBoot().catch(e => console.error('boot failed', e && e.stack || e))")
         booted = true
         connectBridge()
-        gamepad = KilnGamepad(runtime: self)
+        gamepad = BlackironGamepad(runtime: self)
     }
 
     private func connectBridge() {
-        guard bridge == nil, let b = context.objectForKeyedSubscript("__kiln"), !b.isUndefined else { return }
+        guard bridge == nil, let b = context.objectForKeyedSubscript("__blackiron"), !b.isUndefined else { return }
         bridge = b
         if let v = view { viewChanged(size: v.bounds.size, scale: v.contentScaleFactor, insets: lastInsets) }
     }
@@ -460,9 +460,9 @@ final class KilnRuntime: NSObject {
         renderer.render(frame, capture: capture)
         frames += 1
         if capture, let path = snapshotPath, let shot = renderer.takeCapture() {
-            KilnRuntime.writePNG(shot.rgba, width: shot.width, height: shot.height, to: path)
-            kilnLog("[kiln] snapshot written to \(path)")
-            if ProcessInfo.processInfo.environment["KILN_SNAPSHOT_EXIT"] == "1" { exit(0) }
+            BlackironRuntime.writePNG(shot.rgba, width: shot.width, height: shot.height, to: path)
+            blackironLog("[blackiron] snapshot written to \(path)")
+            if ProcessInfo.processInfo.environment["BLACKIRON_SNAPSHOT_EXIT"] == "1" { exit(0) }
         }
     }
 

@@ -1,6 +1,6 @@
-# Kiln 0.14 foundation upgrade
+# Blackiron 0.14 foundation upgrade
 
-9 September 2026. This upgrade keeps Kiln and its three flagship games: Wisp Hollow (2D), Highground (projected 2.5D), and Lumen Salvage (3D). Highground keeps its island projection. The native-content and Neon scenes are renderer acceptance fixtures, not replacement games.
+9 September 2026. This upgrade keeps Blackiron and its three flagship games: Wisp Hollow (2D), Highground (projected 2.5D), and Lumen Salvage (3D). Highground keeps its island projection. The native-content and Neon scenes are renderer acceptance fixtures, not replacement games.
 
 ## Delivered systems
 
@@ -17,13 +17,13 @@
 | Authoring | Local scene tree and JSON property/document editor, add/delete, undo/redo, atomic disk save/load, revision conflict detection, 3D orbit preview | Code-first editor, no drag gizmos, asset browser, visual shader authoring or complete 2D art-registry preview |
 | Diagnostics | Nonblocking WebGL GPU queries; render/mesh counters; geometry/texture counts and estimated GPU bytes on web/native; resource-cache bytes/references | GPU bytes are estimates, not driver/process residency; no heap snapshot viewer, native GPU timestamps or allocation call stacks |
 
-Lumen's courtyard gate now comes from `examples/lumen/assets/scenes/main.kiln.json`. Its silhouette, materials and layout are preserved. The existing game uses the same runtime mesh renderer as imported content.
+Lumen's courtyard gate now comes from `examples/lumen/assets/scenes/main.blackiron.json`. Its silhouette, materials and layout are preserved. The existing game uses the same runtime mesh renderer as imported content.
 
 ## Using resources and glTF
 
 ```ts
-import { ResourceCache } from "@kiln/engine/content";
-import { loadGltf, Scene3D } from "@kiln/engine/three";
+import { ResourceCache } from "@blackiron-studio/engine/content";
+import { loadGltf, Scene3D } from "@blackiron-studio/engine/three";
 
 // Keep the cache outside individual scenes if they share these assets.
 const models = new ResourceCache({
@@ -48,11 +48,11 @@ Supported glTF: JSON and GLB, embedded/external buffers and PNG/JPEG images, int
 ## Scene documents and prefabs
 
 ```ts
-import { createSceneRegistry } from "@kiln/engine/content";
-import type { Node3D } from "@kiln/engine/three";
+import { createSceneRegistry } from "@blackiron-studio/engine/content";
+import type { Node3D } from "@blackiron-studio/engine/three";
 
 const instance = createSceneRegistry().instantiate({
-  format: "kiln.scene", version: 1,
+  format: "blackiron.scene", version: 1,
   prefabs: {
     crate: { id: "mesh", type: "Mesh3D", props: { color: 0xcaa779 } },
   },
@@ -67,7 +67,7 @@ scene.world3D.add(instance.root as Node3D);
 
 Prefab contents have scoped IDs such as `a/mesh`. Codecs create nodes and register cleanup with their resource scope. A codec's optional `apply` resolves links after every node exists. Unknown types, unresolved references, cycles, unsafe object keys and oversized expansion fail. Geometry/material pooling happens within a scene instance, rather than forcing each mesh to allocate another identical primitive.
 
-Run `bun run gallery --port 4287`, then open `/lumen/dev/editor`. The editor reads/writes `assets/scenes/<name>.kiln.json` within the project and saves atomically. It detects stale revisions and rejects cross-origin writes. The development server binds loopback. Lumen's imported JSON is picked up on the next bundle/reload; the editor preview updates immediately. The editor is intended for trusted local project content.
+Run `bun run gallery --port 4287`, then open `/lumen/dev/editor`. The editor reads/writes `assets/scenes/<name>.blackiron.json` within the project and saves atomically. It detects stale revisions and rejects cross-origin writes. The development server binds loopback. Lumen's imported JSON is picked up on the next bundle/reload; the editor preview updates immediately. The editor is intended for trusted local project content.
 
 ## Physics integration
 
@@ -96,7 +96,7 @@ Set `renderer.profiling = true` to enable asynchronous WebGL timer queries. `ren
 bun install --frozen-lockfile
 bun run check:ci
 bun run check:reliability                     # 30 real minutes
-KILN_SOAK_SECONDS=240 bun run check:reliability # short regression, not a full soak
+BLACKIRON_SOAK_SECONDS=240 bun run check:reliability # short regression, not a full soak
 bun kernel/build.ts                          # Wasm and iOS XCFramework
 ```
 
@@ -104,7 +104,7 @@ The soak records the tested bundle SHA-256 and hardware. The profiler reports a 
 
 ## Executed validation
 
-Final local CI: **10/10 jobs passed** on 9 September 2026, using Bun 1.3.13 and Rust 1.98.1. [Committed evidence](validation/foundation-0.14.json) records commands, timings and result details. Raw logs and captures remain under `.kiln/verification/`.
+Final local CI: **10/10 jobs passed** on 9 September 2026, using Bun 1.3.13 and Rust 1.98.1. [Committed evidence](validation/foundation-0.14.json) records commands, timings and result details. Raw logs and captures remain under `.blackiron/verification/`.
 
 | Check | Result |
 |---|---|

@@ -119,7 +119,7 @@ async function buildAndroidExport(
   const applicationId =
     project.config.android?.applicationId ??
     project.config.ios?.bundleId ??
-    `com.kiln.${slug(project.config.name).replace(/-/g, "")}`;
+    `com.blackiron.${slug(project.config.name).replace(/-/g, "")}`;
   const orientation =
     project.config.android?.orientation ??
     project.config.ios?.orientation ??
@@ -131,7 +131,7 @@ async function buildAndroidExport(
   const main = join(dir, "app", "src", "main");
   await mkdir(join(main, "res", "mipmap-xxxhdpi"), { recursive: true });
   const native = await buildNative(project, {
-    out: join(main, "assets", "Kiln"),
+    out: join(main, "assets", "Blackiron"),
   });
 
   console.log("  building the host for arm64-v8a (cargo ndk)");
@@ -193,13 +193,13 @@ async function buildAndroidExport(
   <uses-feature android:glEsVersion="0x00030000" android:required="true" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <application android:label="${xmlText(project.config.name)}" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:hasCode="true">
-    <activity android:name="com.kiln.host.KilnActivity"
+    <activity android:name="com.blackiron.host.BlackironActivity"
         android:exported="true"
         android:launchMode="singleTask"
         android:screenOrientation="${screen}"
         android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density"
-        android:theme="@style/KilnTheme">
-      <meta-data android:name="android.app.lib_name" android:value="kiln_host" />
+        android:theme="@style/BlackironTheme">
+      <meta-data android:name="android.app.lib_name" android:value="blackiron_host" />
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
@@ -214,7 +214,7 @@ async function buildAndroidExport(
     join(main, "res", "values", "styles.xml"),
     `<?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <style name="KilnTheme" parent="Theme.AppCompat.NoActionBar">
+  <style name="BlackironTheme" parent="Theme.AppCompat.NoActionBar">
     <item name="android:windowFullscreen">true</item>
     <item name="android:windowBackground">@android:color/black</item>
     <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
@@ -265,7 +265,7 @@ dependencies {
 `,
   );
   // Only the host library belongs in the APK; the kernel is linked into it.
-  await rm(join(main, "jniLibs", "arm64-v8a", "libkiln_kernel.so"), {
+  await rm(join(main, "jniLibs", "arm64-v8a", "libblackiron_kernel.so"), {
     force: true,
   });
   console.log("  generating the Gradle wrapper");
@@ -279,16 +279,16 @@ dependencies {
 
 /**
  * The activity and the input bridge. GameActivity forwards touches and keys to native code
- * but not controller motion, so KilnActivity catches controller events first and hands them
- * to the host through KilnInput's native methods (host/src/android.rs); the host calls back
- * into KilnInput.haptic for vibration.
+ * but not controller motion, so BlackironActivity catches controller events first and hands them
+ * to the host through BlackironInput's native methods (host/src/android.rs); the host calls back
+ * into BlackironInput.haptic for vibration.
  */
 async function writeJavaSources(main: string): Promise<void> {
-  const pkg = join(main, "java", "com", "kiln", "host");
+  const pkg = join(main, "java", "com", "blackiron", "host");
   await mkdir(pkg, { recursive: true });
   await Bun.write(
-    join(pkg, "KilnActivity.java"),
-    `package com.kiln.host;
+    join(pkg, "BlackironActivity.java"),
+    `package com.blackiron.host;
 
 import android.hardware.input.InputManager;
 import android.os.Bundle;
@@ -298,7 +298,7 @@ import android.view.MotionEvent;
 import com.google.androidgamesdk.GameActivity;
 
 /** GameActivity plus the game-controller events it does not forward to native code. */
-public class KilnActivity extends GameActivity implements InputManager.InputDeviceListener {
+public class BlackironActivity extends GameActivity implements InputManager.InputDeviceListener {
   private static boolean fromController(int source) {
     return (source & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD
         || (source & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
@@ -314,7 +314,7 @@ public class KilnActivity extends GameActivity implements InputManager.InputDevi
   @Override
   public boolean onGenericMotionEvent(MotionEvent event) {
     if (fromController(event.getSource()) && event.getAction() == MotionEvent.ACTION_MOVE) {
-      KilnInput.motion(event);
+      BlackironInput.motion(event);
       return true;
     }
     return super.onGenericMotionEvent(event);
@@ -323,12 +323,12 @@ public class KilnActivity extends GameActivity implements InputManager.InputDevi
   @Override
   public boolean dispatchKeyEvent(KeyEvent event) {
     int code = event.getKeyCode();
-    boolean pad = KeyEvent.isGamepadButton(code) || (fromController(event.getSource()) && KilnInput.isDpad(code));
+    boolean pad = KeyEvent.isGamepadButton(code) || (fromController(event.getSource()) && BlackironInput.isDpad(code));
     if (pad) {
       if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
-        KilnInput.nativeButton(event.getDeviceId(), code, true);
+        BlackironInput.nativeButton(event.getDeviceId(), code, true);
       } else if (event.getAction() == KeyEvent.ACTION_UP) {
-        KilnInput.nativeButton(event.getDeviceId(), code, false);
+        BlackironInput.nativeButton(event.getDeviceId(), code, false);
       }
       return true;
     }
@@ -337,13 +337,13 @@ public class KilnActivity extends GameActivity implements InputManager.InputDevi
 
   @Override public void onInputDeviceAdded(int deviceId) {}
   @Override public void onInputDeviceChanged(int deviceId) {}
-  @Override public void onInputDeviceRemoved(int deviceId) { KilnInput.nativeRemoved(deviceId); }
+  @Override public void onInputDeviceRemoved(int deviceId) { BlackironInput.nativeRemoved(deviceId); }
 }
 `,
   );
   await Bun.write(
-    join(pkg, "KilnInput.java"),
-    `package com.kiln.host;
+    join(pkg, "BlackironInput.java"),
+    `package com.blackiron.host;
 
 import android.content.Context;
 import android.os.Build;
@@ -353,8 +353,8 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 
 /** Bridge between the Android input system and the Rust host (host/src/android.rs). */
-public final class KilnInput {
-  private KilnInput() {}
+public final class BlackironInput {
+  private BlackironInput() {}
 
   private static final int[] AXES = {
     MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ,
@@ -381,7 +381,7 @@ public final class KilnInput {
     if (am == null || !am.isEnabled()) return;
     android.view.accessibility.AccessibilityEvent event = android.view.accessibility.AccessibilityEvent.obtain(android.view.accessibility.AccessibilityEvent.TYPE_ANNOUNCEMENT);
     event.getText().add(text);
-    event.setClassName(KilnInput.class.getName());
+    event.setClassName(BlackironInput.class.getName());
     event.setPackageName(context.getPackageName());
     am.sendAccessibilityEvent(event);
   }
@@ -479,7 +479,7 @@ export function launchAndroidApp(
     "am",
     "start",
     "-n",
-    `${built.applicationId}/com.kiln.host.KilnActivity`,
+    `${built.applicationId}/com.blackiron.host.BlackironActivity`,
   ];
   for (const [k, v] of Object.entries(extras))
     cmd.push("--es", k, `'${v.replace(/'/g, "")}'`);

@@ -16,5 +16,5 @@ Native and GPU validation is a separate manually triggered workflow. See
 `.github/workflows/native.yml` for the platform-specific prerequisites and
 `docs/ENGINE-UPGRADE-0.16.md` for the verified feature scope.
 
-Keep `kiln.json`, legacy CLI commands and source aliases compatible with existing
-projects. Contributions are provided under the repository's MIT license.
+Use the canonical Blackiron CLI, project format, source imports and native ABI.
+Legacy names belong only in migration support and historical documentation. Contributions are provided under the repository's MIT license.

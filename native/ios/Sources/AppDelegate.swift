@@ -19,16 +19,16 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = KilnViewController()
+        window.rootViewController = BlackironViewController()
         window.makeKeyAndVisible()
         self.window = window
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        (window?.rootViewController as? KilnViewController)?.runtime?.setVisible(true)
+        (window?.rootViewController as? BlackironViewController)?.runtime?.setVisible(true)
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        (window?.rootViewController as? KilnViewController)?.runtime?.setVisible(false)
+        (window?.rootViewController as? BlackironViewController)?.runtime?.setVisible(false)
     }
 }

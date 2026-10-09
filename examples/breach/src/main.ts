@@ -1,6 +1,6 @@
-import type { App } from "@kiln/engine/app";
-import { Node, type DrawContext } from "@kiln/engine/scene";
-import { NativePointerLockInput, PointerLockInput } from "@kiln/engine/input";
+import type { App } from "@blackiron-studio/engine/app";
+import { Node, type DrawContext } from "@blackiron-studio/engine/scene";
+import { NativePointerLockInput, PointerLockInput } from "@blackiron-studio/engine/input";
 import {
   Scene3D,
   createPhysics3D,
@@ -17,7 +17,7 @@ import {
   spatialAudio3D,
   type DamageEvent3D,
   type NavigationGrid3D,
-} from "@kiln/engine/three";
+} from "@blackiron-studio/engine/three";
 import { BreachArt, P } from "./presentation.ts";
 import {
   BreachRun,
@@ -150,7 +150,7 @@ export class BreachScene extends Scene3D {
     this.app.audio.setMuted(this.settings.muted);
     if (this.app.platform.kind === "native") {
       const host = (
-        this.app.platform as import("@kiln/engine/platform").NativePlatform
+        this.app.platform as import("@blackiron-studio/engine/platform").NativePlatform
       ).host;
       const lock = this.resources.own(
         new NativePointerLockInput(host, this.app.input),
@@ -226,7 +226,7 @@ export class BreachScene extends Scene3D {
     try {
       this.app.platform
         .storage()
-        .set("kiln.signal-breach.settings", JSON.stringify(this.settings));
+        .set("blackiron.signal-breach.settings", JSON.stringify(this.settings));
     } catch {
       this.message = "Settings could not be saved on this device.";
     }
@@ -895,7 +895,7 @@ class BreachHud extends Node {
       button("ENTER THE STATION   →", 66, 493, 322);
       text("CONTROL SETTINGS", 68, 573, 12, P.cyan);
       text("ENTER TO BEGIN", 390, 573, 11, P.chalk, "right");
-      text("A KILN ORIGINAL", 68, 625, 11, P.steel);
+      text("A BLACKIRON ORIGINAL", 68, 625, 11, P.steel);
       text("FPS  /  01", 453, 625, 11, P.steel, "right");
       text("SECURITY OVERRIDE REQUIRED", 1227, 53, 11, P.black, "right");
       text("07", 1232, 569, 92, P.black, "right", 800);
@@ -1213,7 +1213,7 @@ class BreachHud extends Node {
 export default async function main(app: App): Promise<void> {
   const settings: Settings = { ...DEFAULT_SETTINGS, bindings: {} };
   try {
-    const raw = app.platform.storage().get("kiln.signal-breach.settings");
+    const raw = app.platform.storage().get("blackiron.signal-breach.settings");
     if (raw) {
       const stored = JSON.parse(raw);
       if (Number.isFinite(stored.sensitivity))

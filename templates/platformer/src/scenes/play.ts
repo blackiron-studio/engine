@@ -1,5 +1,5 @@
-import { TileMapData } from "@kiln/engine/core";
-import { Anchor, AnimatedSprite, Label, Node2D, ParticleEmitter, Scene, Sprite, TileMap, TouchControls } from "@kiln/engine/scene";
+import { TileMapData } from "@blackiron-studio/engine/core";
+import { Anchor, AnimatedSprite, Label, Node2D, ParticleEmitter, Scene, Sprite, TileMap, TouchControls } from "@blackiron-studio/engine/scene";
 import { UI } from "../fonts.ts";
 import { type GameEvent, type GameState, LEVEL, T, TILE, coinKey, createGame, tick } from "../game.ts";
 import { saves } from "../store.ts";

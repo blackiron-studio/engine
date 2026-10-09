@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, test } from "bun:test";
 import { App, type HostBridge } from "../src/app/app.ts";
 import { Atlas, atlasManifest, bakeAtlas, defineSprite, resetSpriteRegistry } from "../src/art/index.ts";
 import { NativePlatform } from "../src/platform/native.ts";
-import { CMD, type KilnHostApi, NativeRenderer, PASS_ID, POST, TEX } from "../src/render/native.ts";
+import { CMD, type BlackironHostApi, NativeRenderer, PASS_ID, POST, TEX } from "../src/render/native.ts";
 import { createStore } from "../src/save/store.ts";
 import { Label, LightLayer, Light2D, Scene, Sprite, TextInput } from "../src/scene/index.ts";
 
@@ -15,7 +15,7 @@ interface Submit {
   post: number[];
 }
 
-class FakeHost implements KilnHostApi {
+class FakeHost implements BlackironHostApi {
   t = 0;
   uploads: { slot: number; width: number; height: number; bytes: number }[] = [];
   submits: Submit[] = [];
@@ -153,7 +153,7 @@ describe("NativeRenderer protocol", () => {
     let downAt: [number, number] | null = null;
     scene.onPointerDown = (x, y) => (downAt = [x, y]);
     const app = await nativeApp(host, scene);
-    const bridge = (globalThis as { __kiln?: { pointer: Function; frame: Function } }).__kiln as { pointer: Function; frame: Function };
+    const bridge = (globalThis as { __blackiron?: { pointer: Function; frame: Function } }).__blackiron as { pointer: Function; frame: Function };
     app.start();
     bridge.pointer("down", 1, 844 / 2, 390 / 2, "touch");
     bridge.frame(host.now());
@@ -186,7 +186,7 @@ describe("NativeRenderer protocol", () => {
   });
 
   test("native storage rejection reaches Store.save and preserves existing progress", () => {
-    const host: KilnHostApi = new FakeHost();
+    const host: BlackironHostApi = new FakeHost();
     const backend = new NativePlatform(host).storage();
     const store = createStore({ key: "progress", version: 1, initial: () => ({ runs: 0 }), backend });
     expect(store.save({ runs: 1 })).toBe(true); // Legacy void-returning hosts remain supported.
@@ -227,7 +227,7 @@ describe("Text input through the host bridge", () => {
     const submitted: string[] = [];
     const input = scene.ui.add(new TextInput(20, 20, 200, 30, { placeholder: "name", onSubmit: (v) => submitted.push(v) }));
     app.frame(1 / 60);
-    const bridge = (globalThis as { __kiln?: HostBridge }).__kiln as HostBridge;
+    const bridge = (globalThis as { __blackiron?: HostBridge }).__blackiron as HostBridge;
     expect(bridge).toBeDefined();
 
     tap(bridge, app, 60, 35);
@@ -275,7 +275,7 @@ describe("Text input through the host bridge", () => {
     const app = await nativeApp(host, scene);
     const input = scene.ui.add(new TextInput(20, 20, 200, 30));
     app.frame(1 / 60);
-    const bridge = (globalThis as { __kiln?: HostBridge }).__kiln as HostBridge;
+    const bridge = (globalThis as { __blackiron?: HostBridge }).__blackiron as HostBridge;
     bridge.text("lost");
     app.frame(1 / 60);
     expect(input.value).toBe("");

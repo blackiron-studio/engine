@@ -15,7 +15,7 @@ export function audioContextCtor(): AudioCtor | null {
 
 /** Source of the worklet processor. It runs in the AudioWorkletGlobalScope, so no imports. */
 const PROCESSOR = `
-class KilnAudioProcessor extends AudioWorkletProcessor {
+class BlackironAudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.a = 0;
@@ -26,50 +26,50 @@ class KilnAudioProcessor extends AudioWorkletProcessor {
     if (d && d.wasm) {
       const { instance } = await WebAssembly.instantiate(d.wasm, {});
       this.x = instance.exports;
-      this.a = this.x.kiln_audio_new(sampleRate, 64);
+      this.a = this.x.blackiron_audio_new(sampleRate, 64);
       for (const c of this.pending) this.command(c);
       this.pending = [];
       this.port.postMessage("ready");
     } else if (d && d.sample !== undefined) {
       if (!this.a) return;
       const pcm = d.pcm;
-      if (!this.x.kiln_audio_sample_begin(this.a, d.sample, pcm.length)) return;
-      const cap = this.x.kiln_audio_scratch_words(this.a);
+      if (!this.x.blackiron_audio_sample_begin(this.a, d.sample, pcm.length)) return;
+      const cap = this.x.blackiron_audio_scratch_words(this.a);
       for (let off = 0; off < pcm.length; off += cap) {
         const n = Math.min(cap, pcm.length - off);
         this.scratch().set(pcm.subarray(off, off + n));
-        this.x.kiln_audio_sample_write(this.a, d.sample, off, n);
+        this.x.blackiron_audio_sample_write(this.a, d.sample, off, n);
       }
     } else if (d && d.stream !== undefined) {
       // An encoded file for the kernel's streaming decoder; the reply carries its rate, or 0.
       let rate = 0;
-      if (this.a && this.x.kiln_audio_stream_begin) {
+      if (this.a && this.x.blackiron_audio_stream_begin) {
         const bytes = new Uint8Array(d.bytes);
-        if (this.x.kiln_audio_stream_begin(this.a, d.stream, bytes.length)) {
-          const cap = this.x.kiln_audio_scratch_words(this.a) * 4;
+        if (this.x.blackiron_audio_stream_begin(this.a, d.stream, bytes.length)) {
+          const cap = this.x.blackiron_audio_scratch_words(this.a) * 4;
           for (let off = 0; off < bytes.length; off += cap) {
             const n = Math.min(cap, bytes.length - off);
-            new Uint8Array(this.x.memory.buffer, this.x.kiln_audio_scratch(this.a), cap).set(bytes.subarray(off, off + n));
-            this.x.kiln_audio_stream_write(this.a, d.stream, n);
+            new Uint8Array(this.x.memory.buffer, this.x.blackiron_audio_scratch(this.a), cap).set(bytes.subarray(off, off + n));
+            this.x.blackiron_audio_stream_write(this.a, d.stream, n);
           }
-          rate = this.x.kiln_audio_stream_open(this.a, d.stream);
+          rate = this.x.blackiron_audio_stream_open(this.a, d.stream);
         }
       }
       this.port.postMessage({ stream: d.stream, rate });
     } else if (d && d.close !== undefined) {
-      if (this.a && this.x.kiln_audio_stream_close) this.x.kiln_audio_stream_close(this.a, d.close);
+      if (this.a && this.x.blackiron_audio_stream_close) this.x.blackiron_audio_stream_close(this.a, d.close);
     } else if (d instanceof Float32Array) {
       if (this.a) this.command(d); else this.pending.push(d);
     }
   }
-  scratch() { return new Float32Array(this.x.memory.buffer, this.x.kiln_audio_scratch(this.a), this.x.kiln_audio_scratch_words(this.a)); }
-  command(words) { this.scratch().set(words); this.x.kiln_audio_command(this.a, words.length); }
+  scratch() { return new Float32Array(this.x.memory.buffer, this.x.blackiron_audio_scratch(this.a), this.x.blackiron_audio_scratch_words(this.a)); }
+  command(words) { this.scratch().set(words); this.x.blackiron_audio_command(this.a, words.length); }
   process(inputs, outputs) {
     const out = outputs[0];
     if (!this.a || !out || out.length === 0) return true;
     const n = out[0].length;
-    this.x.kiln_audio_render(this.a, currentFrame, n);
-    const buf = new Float32Array(this.x.memory.buffer, this.x.kiln_audio_out(this.a), n * 2);
+    this.x.blackiron_audio_render(this.a, currentFrame, n);
+    const buf = new Float32Array(this.x.memory.buffer, this.x.blackiron_audio_out(this.a), n * 2);
     if (out.length >= 2) {
       const l = out[0], r = out[1];
       for (let i = 0; i < n; i++) { l[i] = buf[i * 2]; r[i] = buf[i * 2 + 1]; }
@@ -81,7 +81,7 @@ class KilnAudioProcessor extends AudioWorkletProcessor {
     return true;
   }
 }
-registerProcessor("kiln-audio", KilnAudioProcessor);
+registerProcessor("blackiron-audio", BlackironAudioProcessor);
 `;
 
 /** Where the codec build of the kernel is served; next to the game, like physics.wasm. */
@@ -107,7 +107,7 @@ export class WorkletBackend implements AudioBackend {
     if (!Ctor) return;
     if (!this.ctx) this.ctx = new Ctor();
     if (this.ctx.state === "suspended") void this.ctx.resume();
-    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[kiln] audio worklet failed:", (err as Error).message));
+    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[blackiron] audio worklet failed:", (err as Error).message));
   }
 
   private async install(): Promise<void> {
@@ -119,7 +119,7 @@ export class WorkletBackend implements AudioBackend {
     } finally {
       URL.revokeObjectURL(url);
     }
-    const node = new AudioWorkletNode(ctx, "kiln-audio", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
+    const node = new AudioWorkletNode(ctx, "blackiron-audio", { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [2] });
     node.port.onmessage = (e) => {
       const d = e.data;
       if (d === "ready") {
@@ -169,7 +169,7 @@ export class WorkletBackend implements AudioBackend {
     const Ctor = audioContextCtor();
     if (!Ctor) return false;
     if (!this.ctx) this.ctx = new Ctor();
-    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[kiln] audio worklet failed:", (err as Error).message));
+    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[blackiron] audio worklet failed:", (err as Error).message));
     const node = await this.whenReady();
     if (!node || !this.codecs) return false;
     const rate = await new Promise<number>((resolve) => {
@@ -198,7 +198,7 @@ export class WorkletBackend implements AudioBackend {
     const Ctor = audioContextCtor();
     if (!Ctor) return false;
     if (!this.ctx) this.ctx = new Ctor();
-    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[kiln] audio worklet failed:", (err as Error).message));
+    if (!this.setup) this.setup = this.install().catch((err) => console.warn("[blackiron] audio worklet failed:", (err as Error).message));
     try {
       const buffer = await this.ctx.decodeAudioData(bytes.slice(0));
       const pcm = new Float32Array(buffer.length);
@@ -221,7 +221,7 @@ export class WorkletBackend implements AudioBackend {
       }
       return true;
     } catch (err) {
-      console.warn(`[kiln] could not decode sample ${id}:`, (err as Error).message);
+      console.warn(`[blackiron] could not decode sample ${id}:`, (err as Error).message);
       return false;
     }
   }

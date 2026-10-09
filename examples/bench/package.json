@@ -1,11 +1,11 @@
 {
-  "name": "kiln-bench",
+  "name": "blackiron-bench",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ../../cli/kiln.ts dev",
-    "build": "bun ../../cli/kiln.ts build --report",
-    "ios": "bun ../../cli/kiln.ts run ios"
+    "dev": "bun ../../cli/blackiron.ts dev",
+    "build": "bun ../../cli/blackiron.ts build --report",
+    "ios": "bun ../../cli/blackiron.ts run ios"
   }
 }

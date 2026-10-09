@@ -4,13 +4,13 @@
 
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { KilnConfig } from "../src/app/app.ts";
+import type { BlackironConfig } from "../src/app/app.ts";
 import type { Project } from "./project.ts";
 
 const ENGINE = resolve(import.meta.dir, "..", "src", "index.ts");
 
-export async function writeEntry(project: Project, target: "web" | "native", config: Partial<KilnConfig>): Promise<string> {
-  const dir = resolve(project.root, ".kiln");
+export async function writeEntry(project: Project, target: "web" | "native", config: Partial<BlackironConfig>): Promise<string> {
+  const dir = resolve(project.root, ".blackiron");
   await mkdir(dir, { recursive: true });
   const file = resolve(dir, `entry.${target}.ts`);
   const entry = JSON.stringify(project.entryPath);
@@ -21,15 +21,15 @@ export async function writeEntry(project: Project, target: "web" | "native", con
       ? `import * as game from ${entry};
 import { App } from ${engine};
 if (typeof game.default === "function") {
-  const app = await App.create({ canvas: "#kiln" });
+  const app = await App.create({ canvas: "#blackiron" });
   await game.default(app);
   app.start();
 }
 `
       : `import * as game from ${entry};
 import { App, Atlas, NativePlatform } from ${engine};
-globalThis.KILN_CONFIG = ${cfg};
-globalThis.__kilnBoot = async () => {
+globalThis.BLACKIRON_CONFIG = ${cfg};
+globalThis.__blackironBoot = async () => {
   const platform = new NativePlatform();
   let atlas;
   try {
@@ -38,13 +38,13 @@ globalThis.__kilnBoot = async () => {
     const normals = manifest.normals ? new Uint8ClampedArray(await platform.loadBytes("atlas_n.bin")) : null;
     atlas = Atlas.fromManifest(manifest, new Uint8ClampedArray(bytes), normals);
   } catch (err) {
-    console.warn("[kiln] no prebaked atlas, painting at boot:", String(err));
+    console.warn("[blackiron] no prebaked atlas, painting at boot:", String(err));
   }
   const app = await App.create({ platform, atlas });
   app.bindHost();
   if (typeof game.default === "function") await game.default(app);
   app.start();
-  globalThis.__kilnReady = true;
+  globalThis.__blackironReady = true;
   return app;
 };
 `;

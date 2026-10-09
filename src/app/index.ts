@@ -1,1 +1,1 @@
-export { layoutFor, viewportBaseFor, type ViewportBase, App, SceneStack, resolveConfig, defaultConfig, type AppOptions, type AppMode, type KilnConfig, type ViewportConfig, type RenderConfig, type IosConfig, type PushOptions, type HostBridge } from "./app.ts";
+export { layoutFor, viewportBaseFor, type ViewportBase, App, SceneStack, resolveConfig, defaultConfig, type AppOptions, type AppMode, type BlackironConfig, type ViewportConfig, type RenderConfig, type IosConfig, type PushOptions, type HostBridge } from "./app.ts";

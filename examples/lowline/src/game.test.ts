@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { CityRun } from "./game.ts";
 import { PICKUP, DROP, world, makeCar } from "./city.ts";
 import main, { LowlineScene } from "./main.ts";
-import { createTestApp, stepFrames } from "@kiln/engine/testkit";
+import { createTestApp, stepFrames } from "@blackiron-studio/engine/testkit";
 test("courier mission advances by proximity and actual vehicle interaction", () => {
   const r = new CityRun();
   r.start();

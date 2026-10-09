@@ -306,7 +306,7 @@ export class AudioEngine {
     }
     const spec = this.sfx.get(name);
     if (!spec) {
-      console.warn(`[kiln] sfx "${name}" is not defined`);
+      console.warn(`[blackiron] sfx "${name}" is not defined`);
       return;
     }
     const repeat = Math.max(1, spec.repeat ?? 1);
@@ -398,7 +398,7 @@ export class AudioEngine {
     const hadMusic = this.mood !== null || this.musicSample !== null;
     this.moodName = name;
     this.mood = name ? (this.moods.get(name) ?? null) : null;
-    if (name && !this.mood) console.warn(`[kiln] mood "${name}" is not defined`);
+    if (name && !this.mood) console.warn(`[blackiron] mood "${name}" is not defined`);
     this.moodRng = new Rng(this.mood?.seed ?? 5);
     this.stepIndex = 0;
     if (hadMusic && this.backend) {

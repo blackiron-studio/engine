@@ -1,0 +1,26 @@
+{
+  "version": "0.17.0",
+  "date": "2026-10-09",
+  "status": "PASS",
+  "engineTests": 423,
+  "privateConsumerTests": 103,
+  "rustHostTests": 11,
+  "typecheck": true,
+  "reproducibleWebExamples": 5,
+  "browser": {
+    "flagshipExamples": 3,
+    "moonhordeManualSlash": true,
+    "moonhordeAudioPeak": 0.2566533088684082,
+    "fpsInput": true
+  },
+  "native": {
+    "macos": "QuickJS persistence acceptance and V8 host build; three consumer exports",
+    "ios": "relocated simulator build and unsigned device archive; three consumer exports; concurrent framework exports",
+    "android": "arm64-v8a JNI library and Moonhorde debug APK"
+  },
+  "limitations": [
+    "No signed store upload or production deployment",
+    "Physical iOS/Android device playtesting is still outstanding",
+    "Windows/Linux native compilation was not rerun locally"
+  ]
+}

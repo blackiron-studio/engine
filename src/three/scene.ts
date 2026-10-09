@@ -81,7 +81,7 @@ export interface RenderStats3D {
   shadowDrawCalls: number;
 }
 /**
- * One integrated 3D world with Kiln's regular 2D HUD, input, saves, lifecycle, and post effects.
+ * One integrated 3D world with Blackiron's regular 2D HUD, input, saves, lifecycle, and post effects.
  * The renderer draws 3D before this scene's 2D world and overlay. Native/Canvas backends must
  * explicitly advertise support; unsupported backends report an error instead of a blank game.
  */

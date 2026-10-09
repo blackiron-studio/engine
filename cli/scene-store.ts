@@ -29,7 +29,7 @@ export async function sceneStore(
   await mkdir(dir, { recursive: true });
   if (!(await realpath(dir)).startsWith(canonical + sep))
     return new Response("Invalid scene directory", { status: 403 });
-  const file = resolve(dir, name + ".kiln.json");
+  const file = resolve(dir, name + ".blackiron.json");
   const previous = locks.get(file) ?? Promise.resolve();
   let unlock!: () => void;
   const current = new Promise<void>((r) => (unlock = r));
@@ -49,7 +49,7 @@ export async function sceneStore(
         : Response.json({
             revision,
             document: {
-              format: "kiln.scene",
+              format: "blackiron.scene",
               version: 1,
               root: { id: "root", type: "Node3D", children: [] },
             },

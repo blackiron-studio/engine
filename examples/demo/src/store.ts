@@ -1,4 +1,4 @@
-import { createStore } from "@kiln/engine/save";
+import { createStore } from "@blackiron-studio/engine/save";
 
 export interface SaveData {
   best: number;

@@ -86,7 +86,7 @@ function restart() {
       errors.push(String(e));
   });
   instance = registry.instantiate({
-    format: "kiln.scene",
+    format: "blackiron.scene",
     version: 1,
     root: {
       id: "detail",

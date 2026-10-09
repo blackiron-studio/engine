@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir, cpus, totalmem, platform, release } from "node:os";
 import { resolve, join } from "node:path";
 const engine = resolve(import.meta.dir, ".."),
-  seconds = Number(process.env.KILN_SOAK_SECONDS ?? 1800);
+  seconds = Number(process.env.BLACKIRON_SOAK_SECONDS ?? 1800);
 if (!Number.isFinite(seconds) || seconds < 1)
   throw new Error("Invalid soak duration");
 const candidates = [
@@ -18,8 +18,8 @@ for (const p of candidates)
     break;
   }
 if (!chrome) throw new Error("Chrome required");
-const temp = await mkdtemp(join(tmpdir(), "kiln-soak-")),
-  output = resolve(engine, ".kiln/verification/reliability");
+const temp = await mkdtemp(join(tmpdir(), "blackiron-soak-")),
+  output = resolve(engine, ".blackiron/verification/reliability");
 await mkdir(output, { recursive: true });
 const build = await Bun.build({
   entrypoints: [resolve(engine, "tests/browser/reliability-soak.ts")],

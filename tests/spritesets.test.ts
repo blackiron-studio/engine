@@ -1,5 +1,5 @@
 // Sprite sets: one animation name, frames picked by facing, mirrored sides, frame events,
-// held poses and hitboxes; and the manifest loader that builds them from `kiln art import`.
+// held poses and hitboxes; and the manifest loader that builds them from `blackiron art import`.
 
 import { beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -91,7 +91,7 @@ describe("Sprite sets", () => {
   });
 
   test("the loader reads a manifest with facings, mirror, events, hold and hitboxes", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "kiln-set-"));
+    const dir = await mkdtemp(join(tmpdir(), "blackiron-set-"));
     const p = new Painter(16, 4);
     for (let i = 0; i < 4; i++) p.rect(i * 4, 0, 4, 4, ["#f00", "#0f0", "#00f", "#ff0"][i]);
     await writeFile(join(dir, "k.png"), encodePNG(16, 4, p.data));

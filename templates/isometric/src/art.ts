@@ -2,7 +2,7 @@
 // stand up as billboards, coins, sparks, a blob shadow and the cell marker. Every sprite is
 // painted here; tiles use the painter's isometric helpers.
 
-import { defineSprite, ramp } from "@kiln/engine/art";
+import { defineSprite, ramp } from "@blackiron-studio/engine/art";
 
 export const TILE = { w: 64, h: 32, rise: 16 };
 

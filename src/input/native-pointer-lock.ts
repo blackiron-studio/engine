@@ -1,5 +1,5 @@
 import type { ActionMap } from "./actions.ts";
-import type { KilnHostApi } from "../render/native.ts";
+import type { BlackironHostApi } from "../render/native.ts";
 const receivers = new WeakMap<ActionMap, NativePointerLockInput>();
 /** Desktop relative mouse capture. The host acknowledges actual OS capture before locked becomes true. */
 export class NativePointerLockInput {
@@ -13,7 +13,7 @@ export class NativePointerLockInput {
   private wanted = false;
   private pending: ((locked: boolean) => void) | null = null;
   constructor(
-    private host: Pick<KilnHostApi, "setPointerCapture">,
+    private host: Pick<BlackironHostApi, "setPointerCapture">,
     private actions: ActionMap,
   ) {
     if (receivers.has(actions))

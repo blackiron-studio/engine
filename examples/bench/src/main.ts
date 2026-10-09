@@ -1,7 +1,7 @@
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
-import { Rng, TileMapData } from "@kiln/engine/core";
-import { Anchor, Label, Light2D, LightLayer, Node2D, ParticleEmitter, Scene, Sprite, SpritePool, TileMap } from "@kiln/engine/scene";
+import type { App } from "@blackiron-studio/engine/app";
+import { Rng, TileMapData } from "@blackiron-studio/engine/core";
+import { Anchor, Label, Light2D, LightLayer, Node2D, ParticleEmitter, Scene, Sprite, SpritePool, TileMap } from "@blackiron-studio/engine/scene";
 
 interface Params {
   sprites: number;
@@ -15,9 +15,9 @@ interface Params {
 const TILE = 32;
 const FONT = { family: "system-ui", size: 18, weight: 600 as const };
 
-/** Parameters from `bench` in kiln.json, overridden by the URL on the web. */
+/** Parameters from `bench` in blackiron.json, overridden by the URL on the web. */
 function params(): Params {
-  const cfg = (globalThis as { KILN_CONFIG?: { bench?: Partial<Params> } }).KILN_CONFIG?.bench ?? {};
+  const cfg = (globalThis as { BLACKIRON_CONFIG?: { bench?: Partial<Params> } }).BLACKIRON_CONFIG?.bench ?? {};
   const p: Params = { sprites: 2000, particles: 1000, cols: 120, rows: 80, pool: true, ...cfg };
   const loc = (globalThis as { location?: { search: string } }).location;
   if (loc) {
@@ -98,7 +98,7 @@ class BenchScene extends Scene {
     const top = this.ui.add(new Anchor({ x: "left", y: "top", safe: 12 }));
     this.hud = top.add(new Label("", 0, 0, { font: FONT, shadow: 0x000000 }));
     const bottom = this.ui.add(new Anchor({ x: "center", y: "bottom", safe: 12 }));
-    bottom.add(new Label(this.p.pool ? "Kiln bench: sprites move in the kernel node table (?pool=0 for script nodes)" : "Kiln bench: sprites move as script nodes (?pool=1 for the kernel node table)", 0, 0, { font: FONT, align: "center", shadow: 0x000000 }));
+    bottom.add(new Label(this.p.pool ? "Blackiron bench: sprites move in the kernel node table (?pool=0 for script nodes)" : "Blackiron bench: sprites move as script nodes (?pool=1 for the kernel node table)", 0, 0, { font: FONT, align: "center", shadow: 0x000000 }));
   }
 
   override update(dt: number): void {

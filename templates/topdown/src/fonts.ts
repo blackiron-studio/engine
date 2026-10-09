@@ -1,4 +1,4 @@
-import type { FontSpec } from "@kiln/engine/render";
+import type { FontSpec } from "@blackiron-studio/engine/render";
 
 export const DISPLAY: FontSpec = { family: "Pixelify Sans", size: 64, weight: 700 };
 export const DISPLAY_SMALL: FontSpec = { family: "Pixelify Sans", size: 36, weight: 700 };

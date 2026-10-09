@@ -1,8 +1,8 @@
-# Kiln 0.13 upgrade validation
+# Blackiron 0.13 upgrade validation
 
 **Historical 0.13 validation.** The later [0.14 foundation upgrade](FOUNDATION-UPGRADE.md) supersedes its native-3D/content limitations and test counts. The earlier results below remain a record of that pass.
 
-9 September 2026. Engine source: `<engine-root>`. This upgrade keeps Kiln and improves the existing Wisp Hollow and Highground games. Lumen Salvage supplies the third, 3D example. The [roadmap](ROADMAP.md) is the proposal for the remaining quality and capability gaps; this report records work actually implemented and checked.
+9 September 2026. Engine source: `<engine-root>`. This upgrade keeps Blackiron and improves the existing Wisp Hollow and Highground games. Lumen Salvage supplies the third, 3D example. The [roadmap](ROADMAP.md) is the proposal for the remaining quality and capability gaps; this report records work actually implemented and checked.
 
 The later [Neon Bastion benchmark pass](NEON-BENCHMARK.md) adds further rendering, movement and presentation work. Its newer results supersede the test count, game screenshots, build sizes and game frame samples below; the original kernel/audio/Rust results remain the evidence for those unchanged components.
 
@@ -56,12 +56,12 @@ bun run typecheck
 bun test
 bun run check:3d
 bun run check:showcases
-KILN_NO_V8=1 bun cli/kiln.ts verify --host desktop --js quickjs
+BLACKIRON_NO_V8=1 bun cli/blackiron.ts verify --host desktop --js quickjs
 # In kernel/: cargo test --release --features 'physics codecs render'
 # In host/:   cargo test --release
 ```
 
-`check:showcases` uses isolated browser profiles and accepts an optional project directory. Set `CHROME_PATH` when Chrome is outside its default macOS location. Generated browser screenshots/results are under `.kiln/verification`. Broader logs, original-audit reruns, timing JSON, source backup and original images are in `<local-verification-artifacts>`.
+`check:showcases` uses isolated browser profiles and accepts an optional project directory. Set `CHROME_PATH` when Chrome is outside its default macOS location. Generated browser screenshots/results are under `.blackiron/verification`. Broader logs, original-audit reruns, timing JSON, source backup and original images are in `<local-verification-artifacts>`.
 
 ## Practical limits
 

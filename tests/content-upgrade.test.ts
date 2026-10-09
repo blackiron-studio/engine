@@ -159,7 +159,7 @@ test("Aseprite restores clockwise rotation, authored trim canvas and variable re
   resetImageRegistry();
 });
 const document: SceneDocument = {
-  format: "kiln.scene",
+  format: "blackiron.scene",
   version: 1,
   prefabs: { crate: { id: "body", type: "Mesh3D", props: { color: 123 } } },
   root: {
@@ -187,7 +187,7 @@ test("prefabs instantiate independently, overrides resolve and resources dispose
 test("scene validation rejects cycles, duplicate ids, unknown codecs and dangerous property keys", () => {
   expect(() =>
     parseSceneDocument(
-      '{"format":"kiln.scene","version":1,"root":{"id":"x","type":"Node","props":{"__proto__":{}}}}',
+      '{"format":"blackiron.scene","version":1,"root":{"id":"x","type":"Node","props":{"__proto__":{}}}}',
     ),
   ).toThrow("Unsafe");
   const registry = createSceneRegistry();
@@ -240,7 +240,7 @@ test("visual editor picks the nearest visible triangle and moves through parent 
   geometry.dispose();
 });
 test("persistent scene saves survive reload and reject stale writes / cross-origin edits", async () => {
-  const root = await mkdtemp(join(tmpdir(), "kiln-scene-test-"));
+  const root = await mkdtemp(join(tmpdir(), "blackiron-scene-test-"));
   try {
     const url = "http://localhost:4285/dev/scene?name=main";
     const put = (revision: string, origin = "http://localhost:4285") =>
@@ -261,7 +261,7 @@ test("persistent scene saves survive reload and reject stale writes / cross-orig
     expect(saved.revision).not.toBe("new");
     expect(
       JSON.parse(
-        await readFile(join(root, "assets/scenes/main.kiln.json"), "utf8"),
+        await readFile(join(root, "assets/scenes/main.blackiron.json"), "utf8"),
       ),
     ).toEqual(document);
   } finally {
@@ -282,7 +282,7 @@ test("scene instance releases resources even when its root teardown fails", () =
     },
   });
   const instance = registry.instantiate({
-    format: "kiln.scene",
+    format: "blackiron.scene",
     version: 1,
     root: { id: "root", type: "Failing" },
   });

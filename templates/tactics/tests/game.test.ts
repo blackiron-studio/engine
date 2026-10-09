@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { grid } from "@kiln/engine/core";
+import { grid } from "@blackiron-studio/engine/core";
 import { TERRAIN, TYPES, attack, createGame, endTurn, enemyStep, moveUnit, reachable, targets, team, unitById } from "../src/game.ts";
 
 describe("tactics rules", () => {

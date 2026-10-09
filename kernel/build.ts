@@ -2,10 +2,10 @@
 //   - WebAssembly, embedded as base64 in src/kernel/kernel.wasm.ts (committed, so tests and
 //     builds work without a Rust toolchain)
 //   - an XCFramework of static libraries for the iOS simulator and devices, in kernel/dist/
-// Usage: bun kernel/build.ts [--web-only]
+// Usage: bun kernel/build.ts [--web-only | --ios-only [--ios-out path]]
 
 import { mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const root = import.meta.dir;
 const webOnly = process.argv.includes("--web-only");
@@ -32,7 +32,7 @@ if (!iosOnly) {
     "cdylib",
   ]);
   const wasm = await Bun.file(
-    join(root, "target/wasm32-unknown-unknown/release/kiln_kernel.wasm"),
+    join(root, "target/wasm32-unknown-unknown/release/blackiron_kernel.wasm"),
   ).arrayBuffer();
   const b64 = Buffer.from(wasm).toString("base64");
   await Bun.write(
@@ -62,7 +62,7 @@ if (!iosOnly) {
   const physics = await Bun.file(
     join(
       root,
-      "target/physics/wasm32-unknown-unknown/release/kiln_kernel.wasm",
+      "target/physics/wasm32-unknown-unknown/release/blackiron_kernel.wasm",
     ),
   ).arrayBuffer();
   await Bun.write(join(root, "..", "src", "kernel", "physics.wasm"), physics);
@@ -87,7 +87,7 @@ if (!iosOnly) {
     "target/codecs",
   ]);
   const codecs = await Bun.file(
-    join(root, "target/codecs/wasm32-unknown-unknown/release/kiln_kernel.wasm"),
+    join(root, "target/codecs/wasm32-unknown-unknown/release/blackiron_kernel.wasm"),
   ).arrayBuffer();
   await Bun.write(join(root, "..", "src", "kernel", "audio.wasm"), codecs);
   console.log(
@@ -112,15 +112,17 @@ if (!webOnly && process.platform === "darwin") {
       "--crate-type",
       "staticlib",
     ]);
-    libs.push(join(root, "target", t, "release", "libkiln_kernel.a"));
+    libs.push(join(root, "target", t, "release", "libblackiron_kernel.a"));
   }
-  const out = join(root, "dist", "KilnKernel.xcframework");
+  const outputFlag = process.argv.indexOf("--ios-out");
+  if (outputFlag >= 0 && !process.argv[outputFlag + 1]) throw Error("--ios-out requires a path");
+  const out = outputFlag >= 0 ? resolve(process.argv[outputFlag + 1]) : join(root, "dist", "BlackironKernel.xcframework");
   await rm(out, { recursive: true, force: true });
-  await mkdir(join(root, "dist"), { recursive: true });
+  await mkdir(dirname(out), { recursive: true });
   const args = ["xcodebuild", "-create-xcframework"];
   for (const lib of libs)
     args.push("-library", lib, "-headers", join(root, "include"));
   args.push("-output", out);
   run(args);
-  console.log("  KilnKernel.xcframework -> kernel/dist/");
+  console.log(`  BlackironKernel.xcframework -> ${out}`);
 }

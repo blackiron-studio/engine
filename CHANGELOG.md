@@ -1,10 +1,19 @@
 # Changelog
 
+## 0.17.0 — Blackiron Engine (2026-10-09)
+
+- Rename the CLI, configuration, imports, scene schemas, generated directories, runtime globals, native hosts, Swift framework, Android JNI and C/Wasm ABI together.
+- Add `blackiron migrate`: preview by default, explicit application, complete source backups, cache archival, stale-preview/conflict checks and rollback on write failure.
+- Preserve explicit and implicit application identities, release metadata and game save keys during migration. Desktop hosts import existing saves into Blackiron storage once, retaining the originals.
+- Build each iOS framework inside its own staged export so concurrent game exports cannot replace a shared framework.
+- Remove legacy command and import aliases. Rebuild the shipped Wasm kernels against the canonical ABI.
+- Document source pinning and generic Code/Deploy/Games integration without coupling the engine to a build provider.
+
 ## Generic iOS export contract (2026-10-08)
 
 - iOS exports accept version, build-number, bundle-ID, team-ID and signing overrides without changing saved configuration. Shared export metadata resolution validates inputs before building or replacing output.
 - Exported plists reference Xcode marketing/build settings so archive-time version overrides reach the final binary. Signing is explicit: external, automatic or unsigned; simulator runs remain unsigned.
-- Each iOS export includes a portable `kiln-export.json` manifest with engine identity, project/scheme paths and export defaults. No build-provider variables, credentials or publishing behavior are part of the engine.
+- Each iOS export includes a portable `blackiron-export.json` manifest with engine identity, project/scheme paths and export defaults. No build-provider variables, credentials or publishing behavior are part of the engine.
 - Added export contract regressions and a macOS acceptance command that relocates a real export, builds a simulator app and unsigned device archive, and checks their final identity/version values.
 
 ## Post-0.16 engine hardening (2026-09-23)
@@ -76,7 +85,7 @@
   dropped a frame, and a pad button at startup pressed Play: three ways a golden went wrong.
 - Desktop host: a scripted run (a snapshot) shows no window at all, keeps the size it asked
   for, counts time and taps by the frames the script submitted rather than the frames the GPU
-  showed, and ignores every physical input. Before, `kiln verify` popped a window per snapshot
+  showed, and ignores every physical input. Before, `blackiron verify` popped a window per snapshot
   and took focus; macOS shrank a phone-tall window to the display now and then; a lost surface
   dropped a frame; and a pad button at startup pressed Play. Goldens are stable and silent.
 - `SettingsScene.toggleExtra(label, key)` adds a row for a boolean a game keeps in settings, and
@@ -105,7 +114,7 @@
 - The web loads `audio.wasm` (the codec build, served and bundled next to `physics.wasm`)
   into the worklet when present, and falls back to the plain kernel and whole samples when it
   is not. iOS and the Rust host link the codec build. The Rust host and iOS bridges expose
-  `loadStream` and `closeStream`; the C ABI gains `kiln_audio_stream_begin/write/open/close`.
+  `loadStream` and `closeStream`; the C ABI gains `blackiron_audio_stream_begin/write/open/close`.
 - Kernel voices read streams with fractional resampling and pitch, so a 44.1 kHz file plays
   right on a 48 kHz device.
 
@@ -137,14 +146,14 @@
 - Tiles: blob autotiles (`defineAutotile(set, spec, paint, { mode: "blob" })`, 47 tiles by
   `BLOB_MASKS`; `autotileMask8`, `blobIndex`); `TileMap.pathfind` (A* with a heap, optional
   diagonals without corner cutting) and `pathPoints`; `TileMap.attachPhysics(world)` builds
-  merged box colliders and one-way platforms; `kiln art tileset <png> --tile 16 --terrain
+  merged box colliders and one-way platforms; `blackiron art tileset <png> --tile 16 --terrain
   blob|edges` slices a sheet, checks the seams a terrain joins, and writes a manifest that
   `defineTileSet` loads as an autotile set.
 - Rigs: `crossfade(clip, seconds)` and `blend(a, b, t)` weight base clips (the blend keeps the
   two cycles in phase); `reach(bone, x, y)` solves two-bone IK, `aim(bone, x, y)` turns one
   bone; `Skin2D` cuts a sprite into a weighted triangle grid that bones deform, on its own or
   following a `Rig2D`.
-- Localization: `src/i18n` (`@kiln/engine/i18n`): message tables per locale, `t(key, values)`
+- Localization: `src/i18n` (`@blackiron-studio/engine/i18n`): message tables per locale, `t(key, values)`
   with `{name}`, ICU-style plural and select, Intl numbers and dates, fallbacks by base locale,
   `watch` for re-rendering, `rtl`, `I18n.preferred`. `Row`/`Column` take `reverse`.
 - Accessibility and input: `app.accessibility.announce(text)` reaches the web's live region,
@@ -157,7 +166,7 @@
 ## 0.11.0 — Sprite sets and rigs
 
 - Sprite sets (`src/art/spritesets.ts`): `defineSpriteSet("knight", "assets/knight.json")`
-  reads the manifest `kiln art import` now writes. Animations carry facings (`down`, `up`,
+  reads the manifest `blackiron art import` now writes. Animations carry facings (`down`, `up`,
   `left`, `right`), a `mirror` flag so one side stands for both, per-frame `events`, a `hold`
   for single-frame poses and `hitboxes`. `AnimatedSprite` gained `facing`, `face(x, y)`,
   `onEvent`, `hitbox()`, `mirrored` and `willFinish`: `play("knight.walk")` picks the frames
@@ -169,14 +178,14 @@
   run, swing, thrust, hurt, fall, cast and carry with no keyframes; `clipFromKeys` turns
   keyframed JSON into a clip; `layer("upper", "swing")` swings the arms while the legs walk;
   clips fire events ("step", "hit", "cast") and one-shots report `onFinished`.
-- `kiln art parts <sheet.png> --frame 3 --cut head=x,y,w,h ...` cuts one frame into a rig's
+- `blackiron art parts <sheet.png> --frame 3 --cut head=x,y,w,h ...` cuts one frame into a rig's
   parts, packs them and works out every bone's pivot from where the parts sat, so the rest
   pose is the drawing. `defineRig("knight-rig", "assets/knight-rig.json")` loads it and
   `new Rig2D("knight-rig")` stands it up.
-- `kiln art import` takes `--anim walk=down:4,5;up:1;left:2,6;right:3,7`, `--mirror`,
+- `blackiron art import` takes `--anim walk=down:4,5;up:1;left:2,6;right:3,7`, `--mirror`,
   `--event attack:9=hit`, `--hold hurt=0.4`, `--hitbox 9=x,y,w,h`, and records the pitch, the
-  cast height and the anchor in the manifest. `kiln art check` lints imported sheets against
-  the style bible (off-palette colours, missing pitch, cast heights that drift). `kiln art
+  cast height and the anchor in the manifest. `blackiron art check` lints imported sheets against
+  the style bible (off-palette colours, missing pitch, cast heights that drift). `blackiron art
   brief` prints the prompt to hand an artist or an image model so what comes back imports.
 - `registerAssetLoader` lets any module queue work for the App's asset pass.
 - `examples/knight` shows the sheet and the rig side by side, moving together; Wisp Hollow's
@@ -191,7 +200,7 @@
 - Pixel art as text in `src/art/rows.ts`: `defineRowSprite`, `defineRowAnimation`,
   `paintRows`, `mirrorRows`, `stackRows`, `placeRows`. Rows plus a legend draw a sprite with
   intent; the same rows under another legend are another character.
-- `kiln art import <sheet.png>`: a generated or scanned sprite sheet becomes game pixels. The
+- `blackiron art import <sheet.png>`: a generated or scanned sprite sheet becomes game pixels. The
   ground is keyed out, poses are found (or a grid sliced), the source pixel size is measured
   and the image resampled to it, colours snap to the project's palette, and every frame is
   stood on one baseline in a sheet plus an Aseprite-style JSON that `defineSheet` imports.
@@ -206,7 +215,7 @@
   smaller bits (a sword tip, sparkles) join the nearest pose and poses never merge.
 - `examples/knight`: sixteen poses of a generated knight imported with one command and
   driving idle, walk, attack, hurt, victory, pickup and guard in a small scene.
-- Native builds and `kiln atlas` bake imported sheets into the prebaked atlas, so imported
+- Native builds and `blackiron atlas` bake imported sheets into the prebaked atlas, so imported
   art reaches iOS, Android and the desktops, not only the browser. Wisp Hollow's hero is the
   imported knight by default; K swaps to the painted lantern-bearer for a side-by-side.
 - `--shrink 2` on the importer halves the frames, so a character drawn at sixty pixels can
@@ -223,12 +232,12 @@
   `drive`, so generated music has a beat and a shape.
 - `MenuScene.back()` ignores a second call in the same frame: one key can drive both the
   `back` and `pause` actions, and the second call used to pop the scene under the menu.
-- `kiln new` gives a project its own `typescript` and `@types/bun` dev dependencies and a
+- `blackiron new` gives a project its own `typescript` and `@types/bun` dev dependencies and a
   `typecheck` script, so a project typechecks from its own folder.
 
 ## 0.10.0 — The shell
 
-Menus, settings, saves and hints as optional modules under `@kiln/engine/shell`. A game
+Menus, settings, saves and hints as optional modules under `@blackiron-studio/engine/shell`. A game
 uses any of them or none; nothing in the engine core depends on them.
 
 ### Settings (`src/shell/settings.ts`)
@@ -332,8 +341,8 @@ Phase 3 of the roadmap: the engine core.
 ### Script engines (`host/src/script/`)
 - Host bindings are engine-neutral: natives take and return values, and QuickJS and V8
   implement one interface. V8 (Deno's prebuilt rusty_v8) is a build feature, on by default
-  for desktop builds (`KILN_NO_V8=1` opts out); `kiln run desktop --js quickjs|v8` and
-  `KILN_JS` choose at run time. Android has no prebuilt V8 and keeps QuickJS.
+  for desktop builds (`BLACKIRON_NO_V8=1` opts out); `blackiron run desktop --js quickjs|v8` and
+  `BLACKIRON_JS` choose at run time. Android has no prebuilt V8 and keeps QuickJS.
 - The bench's script-heavy mode (10,000 script sprites): 85 ms a frame on QuickJS, 2.7 ms
   on V8, on the same machine.
 - Typed arrays cross the boundary through alignment-safe copies, and a panic inside a native
@@ -346,8 +355,8 @@ Phase 3 of the roadmap: the engine core.
   frame sections (input, update, physics, tweens, draw, present), averaged over a window;
   `report()`, `lines()` and an on-screen panel. Off, it costs one null check per node.
 
-### Visual harness (`kiln verify`)
-- Renders each project's `snapshots` scenarios (`kiln.json`) with a synthetic 60 Hz clock
+### Visual harness (`blackiron verify`)
+- Renders each project's `snapshots` scenarios (`blackiron.json`) with a synthetic 60 Hz clock
   and scripted logical-unit taps on the desktop host, the iOS Simulator (environment
   variables through `simctl launch`) or an Android device (intent extras, the PNG pulled
   with `run-as`), then compares with `<project>/snapshots/<host>/<name>.png`. Failures write
@@ -366,12 +375,12 @@ Phase 3 of the roadmap: the engine core.
 
 - Android verified with the 0.7 host: physics, stereo audio and scissor clipping run on the
   emulator's OpenGL ES path at 60 FPS (Crate Yard).
-- Controllers on Android. gilrs has no backend there, so `kiln export android` now generates
-  `KilnActivity` (a GameActivity subclass) and `KilnInput`, which forward controller motion
+- Controllers on Android. gilrs has no backend there, so `blackiron export android` now generates
+  `BlackironActivity` (a GameActivity subclass) and `BlackironInput`, which forward controller motion
   and buttons to the host over JNI (`host/src/android.rs`). The host maps Android axes and
   key codes to the same `Gamepad*` codes as the web, event by event, so a press and release
   inside one frame keep both edges. Hot-unplugging releases held keys.
-- Haptics on Android go through `KilnInput.haptic`, which picks a system vibration effect
+- Haptics on Android go through `BlackironInput.haptic`, which picks a system vibration effect
   (tick, click, heavy click) instead of a raw millisecond buzz.
 - `Row` and `Column` place children by their layout box: text aligned "center" or "right"
   draws around its origin, so it now lines up with buttons and panels instead of drifting
@@ -398,7 +407,7 @@ The second wave of engine features that Godot and Unity have and 0.6 did not.
   kinematic character controller with slopes, snapping and autostep.
 - Nodes: `RigidBody2D`, `StaticBody2D`, `KinematicBody2D`, `Area2D` (enter and exit),
   `CharacterBody2D` with `velocity` and `moveAndSlide`. Collision events route to the nodes.
-- `physics` in `kiln.json` creates the world at start; `app.enablePhysics()` does it later.
+- `physics` in `blackiron.json` creates the world at start; `app.enablePhysics()` does it later.
   On the web the physics module (`physics.wasm`, 670 KB) is fetched only by games that
   use it; native hosts have it built in.
 
@@ -446,20 +455,20 @@ the same game bundles as the iOS and web builds.
 - The script reaches the kernel and the synthesiser through small copying wrappers, so
   the JavaScript engine is replaceable.
 - `--snapshot out.png --snapshot-frame N --exit` and `--tap X,Y:FRAME` make headless
-  screenshot tests possible on desktop; `KILN_SNAPSHOT` does the same through the environment.
-- Saves live in the platform's config directory (`Kiln/<game>.json`) and in the app's data
+  screenshot tests possible on desktop; `BLACKIRON_SNAPSHOT` does the same through the environment.
+- Saves live in the platform's config directory (`Blackiron/<game>.json`) and in the app's data
   directory on Android; WAV samples decode in the host.
 
 ### CLI
-- `kiln export desktop [--platform macos|windows|linux]`: a macOS app bundle with an icon,
-  or a folder with the executable and the game in `Kiln/`. `kiln run desktop` builds and
+- `blackiron export desktop [--platform macos|windows|linux]`: a macOS app bundle with an icon,
+  or a folder with the executable and the game in `Blackiron/`. `blackiron run desktop` builds and
   opens a window.
-- `kiln export android`: a Gradle project with the host as a shared library behind
-  GameActivity, the game as assets and an icon; `kiln run android` assembles the debug APK,
+- `blackiron export android`: a Gradle project with the host as a shared library behind
+  GameActivity, the game as assets and an icon; `blackiron run android` assembles the debug APK,
   installs and launches it on the connected device or emulator.
-- `kiln build --target native` now bundles fonts for every host; the app icon painter is
+- `blackiron build --target native` now bundles fonts for every host; the app icon painter is
   shared by all exports (`cli/icon.ts`).
-- `android` block in `kiln.json`: `applicationId`, `orientation`.
+- `android` block in `blackiron.json`: `applicationId`, `orientation`.
 
 ## 0.5.0 — iOS parity: sound, fonts, controllers, haptics, icons
 
@@ -473,13 +482,13 @@ game controllers, haptics, an app icon and launch screen.
   platform renders the same PCM.
 - Web: the kernel runs inside an AudioWorklet (`WorkletBackend`); samples decode with the
   browser and stream to the worklet. iOS: an `AVAudioSourceNode` pulls from the kernel
-  (`KilnAudio.swift`); samples decode with CoreAudio (WAV, AIFF, MP3, AAC, FLAC, CAF).
+  (`BlackironAudio.swift`); samples decode with CoreAudio (WAV, AIFF, MP3, AAC, FLAC, CAF).
 - `AudioEngine` is now platform-independent over an `AudioBackend`; its API is unchanged.
   `sfxVolume` and `musicVolume` take effect immediately.
 
 ### Fonts
-- `kiln export ios` bundles the project's fonts: local `.ttf`/`.otf` paths are copied and
-  Google Fonts CSS URLs are resolved to TrueType files (cached in `.kiln/fonts`). The host
+- `blackiron export ios` bundles the project's fonts: local `.ttf`/`.otf` paths are copied and
+  Google Fonts CSS URLs are resolved to TrueType files (cached in `.blackiron/fonts`). The host
   registers them with CoreText and matches family, weight and style, so `Label.font` looks
   the same on device as on the web.
 
@@ -506,8 +515,8 @@ iOS (no JIT) the bench went from 40 FPS at 20.8 ms to 60 FPS at 6.1 ms.
   culled command per frame; animated tiles live in a second small batch.
 - Particle emitters live in the kernel; `ParticleEmitter` steps and draws with one command.
 - `TsKernel` (reference), `WasmKernel` (web, embedded base64), and the native bridge on iOS;
-  `createKernel("auto" | "wasm" | "ts")`, `kernel` and `kernelOptions` in `kiln.json`, `?kernel=ts`.
-- `bun kernel/build.ts` builds the Wasm module and `KilnKernel.xcframework`; `kiln export ios`
+  `createKernel("auto" | "wasm" | "ts")`, `kernel` and `kernelOptions` in `blackiron.json`, `?kernel=ts`.
+- `bun kernel/build.ts` builds the Wasm module and `BlackironKernel.xcframework`; `blackiron export ios`
   links the framework and builds it first when missing.
 - `tests/kernel.test.ts` checks the Wasm build against the reference vertex for vertex.
 
@@ -522,7 +531,7 @@ iOS (no JIT) the bench went from 40 FPS at 20.8 ms to 60 FPS at 6.1 ms.
 - `examples/bench`: tiles, sprites, particles, lights and text under one FPS pill, with
   `?n=&p=&cols=&rows=` overrides.
 - The FPS pill and frame graph show whole-frame CPU time (`App.cpuMs`), not just the draw phase.
-- iOS build products live in `<project>/.kiln/ios-build`, so `kiln run ios` stays incremental.
+- iOS build products live in `<project>/.blackiron/ios-build`, so `blackiron run ios` stays incremental.
 
 ## 0.3.0 — Native iOS
 
@@ -531,29 +540,29 @@ through Metal, with no web view. Web builds are unchanged apart from the entry c
 
 ### Entry convention
 - Games export `default async function main(app: App)`. The CLI writes a bootstrap wrapper
-  per target under `.kiln/` (a canvas on the web, the host bridge natively). The demo and
+  per target under `.blackiron/` (a canvas on the web, the host bridge natively). The demo and
   all four starters follow it.
 
 ### Native protocol
 - `NativeRenderer`: one vertex buffer plus begin, pass, draw and end commands per frame,
   post settings as a fixed float array, textures uploaded by slot (atlas, glyph cache, LUT).
-- `NativePlatform` and `KilnHostApi`: time, storage, bundled files, images, glyph
+- `NativePlatform` and `BlackironHostApi`: time, storage, bundled files, images, glyph
   rasterisation and the screen description come from a host object; `App.bindHost()` installs
-  the `__kiln` bridge the host drives (frame, pointer, key, resize, visibility, capture).
+  the `__blackiron` bridge the host drives (frame, pointer, key, resize, visibility, capture).
 - `App` native mode: letterboxed layout from the screen in points, present rect in device
   pixels, safe-area insets, pointer mapping from touches to logical units.
-- `Atlas.fromManifest` restores a prebaked atlas; `kiln build --target native` writes the
+- `Atlas.fromManifest` restores a prebaked atlas; `blackiron build --target native` writes the
   bundle, atlas bytes, manifest and a project manifest to `dist/native/`.
 
 ### iOS host (`native/ios/`)
-- Swift + Metal: `KilnRuntime` (JSContext, bridge, display loop, hardware keys),
-  `KilnHost` (JSExport host, CoreText glyphs, UserDefaults storage, bundle files),
+- Swift + Metal: `BlackironRuntime` (JSContext, bridge, display loop, hardware keys),
+  `BlackironHost` (JSExport host, CoreText glyphs, UserDefaults storage, bundle files),
   `MetalRenderer` (scene, light, overlay and bloom targets, composite with LUT, grain,
   scanlines, vignette), `Shaders.metal`.
-- `kiln export ios` generates an XcodeGen project with the host and the native build in a
-  `Kiln/` bundle folder (shaders compile on device, so no Metal toolchain is needed);
-  `kiln run ios` builds it for the simulator, boots the device, installs and launches.
-- `ios` block in `kiln.json`: `bundleId`, `orientation`, `minVersion`, `icon`, `team`.
+- `blackiron export ios` generates an XcodeGen project with the host and the native build in a
+  `Blackiron/` bundle folder (shaders compile on device, so no Metal toolchain is needed);
+  `blackiron run ios` builds it for the simulator, boots the device, installs and launches.
+- `ios` block in `blackiron.json`: `bundleId`, `orientation`, `minVersion`, `icon`, `team`.
 
 ### Tests
 - `tests/native.test.ts` runs the App against a fake host and checks the frame protocol,
@@ -583,7 +592,7 @@ the art density, real light, sharp text and imported art. Nothing from 0.1 was r
 - LUT colour grading (`post.lut`: dusk, warm, cool, noir, vivid, faded, or 768 bytes),
   film grain and scanlines.
 - Canvas 2D backend keeps sprites, text, tint, lighting and the simple post chain.
-- `renderer.snapshot()` and F8 capture a PNG; under `kiln dev` it is saved to `screenshots/`.
+- `renderer.snapshot()` and F8 capture a PNG; under `blackiron dev` it is saved to `screenshots/`.
 
 ### Art
 - `ramp7` seven-tone ramps; painter `noise`, `hatch`, `radial`, `edges`, `lightFrom`,
@@ -605,10 +614,10 @@ the art density, real light, sharp text and imported art. Nothing from 0.1 was r
 - Audio samples (`app.loadSample`) next to the synth, sharing the mixer.
 
 ### Tooling
-- `kiln gallery` serves the demo and every starter behind one menu.
-- The dev server re-reads `kiln.json` on reload.
+- `blackiron gallery` serves the demo and every starter behind one menu.
+- The dev server re-reads `blackiron.json` on reload.
 - Debug overlay shows the target size and a frame-time graph.
-- Frame-rate pill in every project (`fps` in `kiln.json`, F3, `?fps=`), colour-coded by frame rate.
+- Frame-rate pill in every project (`fps` in `blackiron.json`, F3, `?fps=`), colour-coded by frame rate.
 - `?scale=`, `?snap=`, `?renderer=`, `?debug=` URL overrides.
 
 ### Demo and starters

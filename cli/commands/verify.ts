@@ -3,11 +3,11 @@ import { supportsTarget } from "../export-support.ts";
 // clock and scripted taps, then compare the pixels with the golden images kept in the
 // project. `--update` accepts the current renders as the new goldens.
 //
-//   kiln verify                       every project (or the current one), desktop host
-//   kiln verify --host ios            the iOS Simulator (device: --device)
-//   kiln verify --host android        the connected Android device or emulator
-//   kiln verify --host all            all three
-//   kiln verify --js quickjs          desktop renders with QuickJS instead of the build's default (V8)
+//   blackiron verify                       every project (or the current one), desktop host
+//   blackiron verify --host ios            the iOS Simulator (device: --device)
+//   blackiron verify --host android        the connected Android device or emulator
+//   blackiron verify --host all            all three
+//   blackiron verify --js quickjs          desktop renders with QuickJS instead of the build's default (V8)
 //
 // Goldens live in <project>/snapshots/<host>/<name>.png. A failing comparison writes
 // <name>.actual.png and <name>.diff.png next to the golden.
@@ -44,16 +44,16 @@ function scenarios(project: Project): SnapshotSpec[] {
   return list && list.length ? list : [{ name: "title", frame: 40 }];
 }
 
-/** Projects to verify: the current directory when it holds a kiln.json, else the demo, bench and starters. */
+/** Projects to verify: the current directory when it holds a blackiron.json, else the demo, bench and starters. */
 async function projects(args: Args): Promise<Project[]> {
   const explicit = args._.filter((a) => a !== "verify");
   if (explicit.length) return Promise.all(explicit.map((d) => loadProject(resolve(d))));
-  if (existsSync(resolve(process.cwd(), "kiln.json"))) return [await loadProject()];
+  if (existsSync(resolve(process.cwd(), "blackiron.json"))) return [await loadProject()];
   const dirs: string[] = [];
   for (const group of ["examples", "templates"]) {
     const base = join(ENGINE_ROOT, group);
     if (!existsSync(base)) continue;
-    for (const d of readdirSync(base)) if (existsSync(join(base, d, "kiln.json"))) dirs.push(join(base, d));
+    for (const d of readdirSync(base)) if (existsSync(join(base, d, "blackiron.json"))) dirs.push(join(base, d));
   }
   return Promise.all(dirs.map((d) => loadProject(d)));
 }
@@ -102,7 +102,7 @@ async function bundleFor(project: Project): Promise<string> {
   if (!dir) {
     // Every project defines its own sprites; the registry is global to this process.
     resetSpriteRegistry();
-    dir = (await buildNative(project, { out: join(project.root, ".kiln", "verify-bundle") })).dir;
+    dir = (await buildNative(project, { out: join(project.root, ".blackiron", "verify-bundle") })).dir;
     bundles.set(project.root, dir);
   }
   return dir;
@@ -136,8 +136,8 @@ async function renderIos(project: Project, spec: SnapshotSpec, out: string, devi
   if (!dataDir) throw new Error("could not find the app's data container");
   const file = join(dataDir, "Documents", `${spec.name}.png`);
   await rm(file, { force: true });
-  if (process.env.KILN_VERBOSE) console.log(`    container ${dataDir}\n    waiting for ${file}`);
-  launchIosApp(device, iosBuilt, { KILN_SNAPSHOT: file, KILN_SNAPSHOT_FRAME: String(spec.frame ?? 40), KILN_FIXED_DT: String(FIXED_DT), KILN_TAPS: (spec.taps ?? []).join(";") });
+  if (process.env.BLACKIRON_VERBOSE) console.log(`    container ${dataDir}\n    waiting for ${file}`);
+  launchIosApp(device, iosBuilt, { BLACKIRON_SNAPSHOT: file, BLACKIRON_SNAPSHOT_FRAME: String(spec.frame ?? 40), BLACKIRON_FIXED_DT: String(FIXED_DT), BLACKIRON_TAPS: (spec.taps ?? []).join(";") });
   const deadline = Date.now() + 90_000;
   while (!existsSync(file) && Date.now() < deadline) await Bun.sleep(250);
   await Bun.sleep(300);
@@ -158,7 +158,7 @@ async function renderAndroid(project: Project, spec: SnapshotSpec, out: string, 
   const adb = adbFor(serial);
   const file = `${spec.name}.png`;
   Bun.spawnSync([...adb, "shell", "run-as", androidBuilt.applicationId, "rm", "-f", `files/${file}`]);
-  launchAndroidApp(androidBuilt, serial, { KILN_SNAPSHOT: file, KILN_SNAPSHOT_FRAME: String(spec.frame ?? 40), KILN_FIXED_DT: String(FIXED_DT), KILN_TAPS: (spec.taps ?? []).join(";"), KILN_SNAPSHOT_EXIT: "1" });
+  launchAndroidApp(androidBuilt, serial, { BLACKIRON_SNAPSHOT: file, BLACKIRON_SNAPSHOT_FRAME: String(spec.frame ?? 40), BLACKIRON_FIXED_DT: String(FIXED_DT), BLACKIRON_TAPS: (spec.taps ?? []).join(";"), BLACKIRON_SNAPSHOT_EXIT: "1" });
   const deadline = Date.now() + 90_000;
   let bytes: Uint8Array | null = null;
   while (Date.now() < deadline) {

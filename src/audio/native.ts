@@ -3,7 +3,7 @@
 
 import type { AudioBackend } from "./backend.ts";
 
-/** What a native host exposes as `__kilnHost.audio`. */
+/** What a native host exposes as `__blackironHost.audio`. */
 export interface NativeAudioHost {
   unlock(): void;
   time(): number;

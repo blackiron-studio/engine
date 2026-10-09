@@ -1,4 +1,4 @@
-import type { AudioEngine } from "@kiln/engine/audio";
+import type { AudioEngine } from "@blackiron-studio/engine/audio";
 
 const MINOR = [0, 2, 3, 5, 7, 8, 10];
 

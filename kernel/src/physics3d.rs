@@ -400,7 +400,7 @@ pub fn call(json_text: &str) -> String {
 /// # Safety
 /// input must contain len readable UTF-8 bytes. Output is valid until the next bridge call.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_physics3d_json(
+pub unsafe extern "C" fn blackiron_physics3d_json(
     input: *const u8,
     len: u32,
 ) -> *const std::ffi::c_char {

@@ -2,8 +2,8 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 const engine = resolve(import.meta.dir, ".."),
-  output = resolve(engine, ".kiln/verification/lowline"),
-  temp = await mkdtemp(join(tmpdir(), "kiln-lowline-"));
+  output = resolve(engine, ".blackiron/verification/lowline"),
+  temp = await mkdtemp(join(tmpdir(), "blackiron-lowline-"));
 await mkdir(output, { recursive: true });
 const build = await Bun.build({
   entrypoints: [resolve(engine, "tests/browser/lowline-smoke.ts")],
@@ -35,7 +35,7 @@ const server = Bun.serve({
     if (u.pathname === "/smoke.js")
       return new Response(Bun.file(join(temp, "smoke.js")));
     return new Response(
-      '<!doctype html><html><body style="margin:0;background:#142b34"><canvas id="kiln" style="width:1280px;height:720px"></canvas><script type="module" src="/smoke.js"></script></body></html>',
+      '<!doctype html><html><body style="margin:0;background:#142b34"><canvas id="blackiron" style="width:1280px;height:720px"></canvas><script type="module" src="/smoke.js"></script></body></html>',
       { headers: { "content-type": "text/html" } },
     );
   },

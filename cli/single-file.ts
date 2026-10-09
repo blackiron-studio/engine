@@ -71,6 +71,6 @@ export async function singleFileResources(
     }
     styles += css + "\n";
   }
-  const script = `globalThis.KILN_BUNDLED_ASSETS=${JSON.stringify(assets)};\nif(document.fonts)await Promise.all(${JSON.stringify([...fontLoads])}.map(f=>document.fonts.load(f)));\n`;
+  const script = `globalThis.BLACKIRON_BUNDLED_ASSETS=${JSON.stringify(assets)};\nif(document.fonts)await Promise.all(${JSON.stringify([...fontLoads])}.map(f=>document.fonts.load(f)));\n`;
   return { script, styles };
 }

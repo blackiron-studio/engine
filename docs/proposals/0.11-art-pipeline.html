@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kiln 0.11: the art pipeline</title>
+<title>Blackiron 0.11: the art pipeline</title>
 <style>
   :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
   @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fbf8a; } }
@@ -30,14 +30,14 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">Kiln engine · proposal 0.11 · 2026-09-05 · draft</div>
+  <div class="eyebrow">Blackiron engine · proposal 0.11 · 2026-09-05 · draft</div>
   <h1>The art pipeline: generic import, animation and rigs</h1>
-  <p>Godot and Unity do not make art. They give an artist a good import path and good ways to animate what comes in, and they stay out of the way of the style. Kiln has to do the same, with one difference: our artist is an image model, and our authoring tool is a command line, because there is no editor and the games are generated. This proposal makes that first-class and keeps every part of it generic. Nothing in it knows what a warden or a knight is.</p>
+  <p>Godot and Unity do not make art. They give an artist a good import path and good ways to animate what comes in, and they stay out of the way of the style. Blackiron has to do the same, with one difference: our artist is an image model, and our authoring tool is a command line, because there is no editor and the games are generated. This proposal makes that first-class and keeps every part of it generic. Nothing in it knows what a warden or a knight is.</p>
 
-  <h2>What Godot and Unity give, and where Kiln stands</h2>
+  <h2>What Godot and Unity give, and where Blackiron stands</h2>
   <table>
-    <tr><th>Capability</th><th>Godot</th><th>Unity</th><th>Kiln today</th><th>After 0.11</th></tr>
-    <tr><td>Import a sheet, slice frames</td><td>Texture + SpriteFrames, Aseprite importer</td><td>Sprite Editor, Aseprite importer, PSB</td><td><span class="good">kiln art import</span>, Aseprite JSON, grids; keying, pitch detection, adaptive resample, palette snap, shrink</td><td>plus a manifest per set, facings, frame events, hitboxes</td></tr>
+    <tr><th>Capability</th><th>Godot</th><th>Unity</th><th>Blackiron today</th><th>After 0.11</th></tr>
+    <tr><td>Import a sheet, slice frames</td><td>Texture + SpriteFrames, Aseprite importer</td><td>Sprite Editor, Aseprite importer, PSB</td><td><span class="good">blackiron art import</span>, Aseprite JSON, grids; keying, pitch detection, adaptive resample, palette snap, shrink</td><td>plus a manifest per set, facings, frame events, hitboxes</td></tr>
     <tr><td>Frame animation</td><td>AnimatedSprite2D, AnimationPlayer</td><td>Animator, Animation clips</td><td>AnimatedSprite: name, frames, fps, loop, onFinished</td><td>AnimationSet: directions, per-frame durations, events, blend to the facing</td></tr>
     <tr><td>Cutout and skeletal 2D</td><td>Skeleton2D, Bone2D, Polygon2D skinning, IK</td><td>2D Animation package: bones, skinning, IK</td><td>none</td><td>Rig2D: parts, bones, clips, procedural motion library; skinning stays out</td></tr>
     <tr><td>Tiles</td><td>TileSet terrains, autotiles, scenes as tiles</td><td>Tilemap, rule tiles</td><td>TileMap, autotile masks, IsoTileMap</td><td>tileset import with seam check and mask derivation</td></tr>
@@ -125,21 +125,21 @@
 
   <h2>3. Tiles and environments</h2>
   <ul>
-    <li><code>kiln art import --tiles 32</code>: a generated tileset on a flat ground is keyed, pitched and cut on the tile grid; each tile's four edges are compared with its neighbours to derive the autotile mask it plays, and seams that do not close are reported with the tile number.</li>
+    <li><code>blackiron art import --tiles 32</code>: a generated tileset on a flat ground is keyed, pitched and cut on the tile grid; each tile's four edges are compared with its neighbours to derive the autotile mask it plays, and seams that do not close are reported with the tile number.</li>
     <li>Terrain sets like Godot's: a manifest lists terrains (grass, path, water) and which tiles carry which edges; <code>TileMap</code> paints from terrain ids and picks tiles by mask, as it does for painted autotiles now.</li>
     <li>Decoration and prop sheets import as sprite sets with an anchor at the feet and a sort key, so a tree stands on the ground and sorts with characters.</li>
   </ul>
 
   <h2>4. The style bible and its linter</h2>
-  <p>The style bible grows two fields, <code>pitch</code> and <code>castHeight</code>, and gets a command. <code>kiln art check</code> reads every sheet under <code>assets/</code> and every painted sprite and reports what breaks the bible: a pitch off by more than one, a character taller than the cast by a fifth, colours farther from the palette than a threshold before snapping, an outline missing where the bible asks for one. The check runs in <code>kiln verify</code>, so a sheet that would look wrong fails the build before anyone sees it.</p>
+  <p>The style bible grows two fields, <code>pitch</code> and <code>castHeight</code>, and gets a command. <code>blackiron art check</code> reads every sheet under <code>assets/</code> and every painted sprite and reports what breaks the bible: a pitch off by more than one, a character taller than the cast by a fifth, colours farther from the palette than a threshold before snapping, an outline missing where the bible asks for one. The check runs in <code>blackiron verify</code>, so a sheet that would look wrong fails the build before anyone sees it.</p>
 
   <h2>5. Briefs: the engine tells the generator what to draw</h2>
-  <p>Godot's artist knows the rules from experience. Ours needs them written down every time. <code>kiln art brief character --facings 4 --clips walk,attack,hurt</code> prints the prompt that produces a sheet the importer likes: a flat magenta ground, a strict grid with a stated cell, one pose per cell in a stated order, the pitch and height from the style bible, the palette as hex, no anti-aliasing, no drop shadow. <code>kiln art brief parts</code> prints the parts-sheet brief for a rig, <code>--tiles</code> the tileset brief. A game's generation step becomes: ask for the brief, hand it to the model, import the result, run the check.</p>
+  <p>Godot's artist knows the rules from experience. Ours needs them written down every time. <code>blackiron art brief character --facings 4 --clips walk,attack,hurt</code> prints the prompt that produces a sheet the importer likes: a flat magenta ground, a strict grid with a stated cell, one pose per cell in a stated order, the pitch and height from the style bible, the palette as hex, no anti-aliasing, no drop shadow. <code>blackiron art brief parts</code> prints the parts-sheet brief for a rig, <code>--tiles</code> the tileset brief. A game's generation step becomes: ask for the brief, hand it to the model, import the result, run the check.</p>
 
   <h2>6. Review and round trip</h2>
   <ul>
-    <li><code>kiln art strip</code> renders every animation of every set and rig as a strip PNG, one row per animation, one column per frame or per sampled time; <code>kiln verify</code> keeps them as goldens like scene snapshots, so a regenerated sheet that changes a walk fails visibly.</li>
-    <li><code>kiln art export --aseprite</code> writes any set back out as PNG plus Aseprite JSON with tags, so a person can fix a hand or a face and re-import without touching the game.</li>
+    <li><code>blackiron art strip</code> renders every animation of every set and rig as a strip PNG, one row per animation, one column per frame or per sampled time; <code>blackiron verify</code> keeps them as goldens like scene snapshots, so a regenerated sheet that changes a walk fails visibly.</li>
+    <li><code>blackiron art export --aseprite</code> writes any set back out as PNG plus Aseprite JSON with tags, so a person can fix a hand or a face and re-import without touching the game.</li>
   </ul>
 
   <h2>What stays out</h2>
@@ -157,12 +157,12 @@
     <tr><td>1</td><td>Sprite set manifests; facings, mirror, frame events and hitboxes on <code>AnimatedSprite</code>; importer writes and reads the manifest; the knight example uses facings instead of hand-named animations</td><td>2</td></tr>
     <tr><td>2</td><td><code>Rig2D</code>, the humanoid template, the procedural clip library, keyframed clips, parts import; the knight rebuilt as a rig with smooth walk, attack and hurt next to its sheet version</td><td>5</td></tr>
     <tr><td>3</td><td>Tileset import with seam check and mask derivation; terrain manifests on <code>TileMap</code></td><td>2</td></tr>
-    <tr><td>4</td><td><code>kiln art check</code> with pitch and cast height in the style bible, wired into <code>kiln verify</code>; <code>kiln art brief</code></td><td>1</td></tr>
-    <tr><td>5</td><td><code>kiln art strip</code> goldens; Aseprite export; the quadruped, flyer and blob templates</td><td>2</td></tr>
+    <tr><td>4</td><td><code>blackiron art check</code> with pitch and cast height in the style bible, wired into <code>blackiron verify</code>; <code>blackiron art brief</code></td><td>1</td></tr>
+    <tr><td>5</td><td><code>blackiron art strip</code> goldens; Aseprite export; the quadruped, flyer and blob templates</td><td>2</td></tr>
   </table>
   <p>Twelve days. After milestone 2, a consumer game can regenerate its cast from briefs: humanoid characters as parts sheets, enemies as sprite sets with four facings, and rigged bosses. The game's art comes from the pipeline end to end while its character roster remains separate from the engine.</p>
 
-  <div class="note">Status, 5 September 2026: milestones 1 and 2 shipped in 0.11.0. Sprite sets with facings, mirroring, events, holds and hitboxes; <code>Rig2D</code> with the humanoid, quadruped, flyer and blob templates, nine procedural clips, keyframed clips and layers; <code>kiln art parts</code>, <code>check</code> and <code>brief</code>. The knight runs as a sheet and as a rig in <code>examples/knight</code>, and the rig is Wisp Hollow's hero. Milestones 3 to 5 (tilesets, strips as goldens, Aseprite export) are next.</div>
+  <div class="note">Status, 5 September 2026: milestones 1 and 2 shipped in 0.11.0. Sprite sets with facings, mirroring, events, holds and hitboxes; <code>Rig2D</code> with the humanoid, quadruped, flyer and blob templates, nine procedural clips, keyframed clips and layers; <code>blackiron art parts</code>, <code>check</code> and <code>brief</code>. The knight runs as a sheet and as a rig in <code>examples/knight</code>, and the rig is Wisp Hollow's hero. Milestones 3 to 5 (tilesets, strips as goldens, Aseprite export) are next.</div>
 </main>
 </body>
 </html>

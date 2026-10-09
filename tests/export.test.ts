@@ -15,10 +15,10 @@ import { singleFileResources } from "../cli/single-file.ts";
 import { fetchResource } from "../src/platform/resources.ts";
 const roots: string[] = [];
 async function project(): Promise<Project> {
-  const root = await mkdtemp(join(tmpdir(), "kiln-export-"));
+  const root = await mkdtemp(join(tmpdir(), "blackiron-export-"));
   roots.push(root);
   await Bun.write(
-    join(root, "kiln.json"),
+    join(root, "blackiron.json"),
     JSON.stringify({ name: "Export fixture", entry: "src/main.ts" }),
   );
   await Bun.write(
@@ -63,7 +63,7 @@ test("export output rejects source ancestors, descendants and symlink aliases", 
     expect(() => exportDirectory(p, out)).toThrow();
   await symlink(join(p.root, "src"), join(p.root, "alias"));
   expect(() => exportDirectory(p, "alias/generated")).toThrow();
-  const external = await mkdtemp(join(tmpdir(), "kiln-source-"));
+  const external = await mkdtemp(join(tmpdir(), "blackiron-source-"));
   roots.push(external);
   await symlink(external, join(p.root, "assets"));
   expect(() => exportDirectory(p, join(external, "cache"))).toThrow();
@@ -99,11 +99,11 @@ test("single-file resource registry round-trips binary and JSON through platform
   const embedded = await singleFileResources(p, dist);
   expect(embedded.styles).toContain("data:font/ttf;base64,AQID");
   const global = globalThis as typeof globalThis & {
-    KILN_BUNDLED_ASSETS?: Record<string, string>;
+    BLACKIRON_BUNDLED_ASSETS?: Record<string, string>;
   };
-  const previous = global.KILN_BUNDLED_ASSETS;
+  const previous = global.BLACKIRON_BUNDLED_ASSETS;
   try {
-    global.KILN_BUNDLED_ASSETS = JSON.parse(
+    global.BLACKIRON_BUNDLED_ASSETS = JSON.parse(
       embedded.script.slice(embedded.script.indexOf("=") + 1).split(";\n")[0],
     );
     expect(await (await fetchResource("assets/data.json")).json()).toEqual({
@@ -115,8 +115,8 @@ test("single-file resource registry round-trips binary and JSON through platform
       ),
     ]).toEqual([0, 255, 17]);
   } finally {
-    if (previous) global.KILN_BUNDLED_ASSETS = previous;
-    else delete global.KILN_BUNDLED_ASSETS;
+    if (previous) global.BLACKIRON_BUNDLED_ASSETS = previous;
+    else delete global.BLACKIRON_BUNDLED_ASSETS;
   }
 });
 
@@ -169,7 +169,7 @@ test("project release metadata is validated", async () => {
     { buildNumber: 1.5 },
   ]) {
     await Bun.write(
-      join(p.root, "kiln.json"),
+      join(p.root, "blackiron.json"),
       JSON.stringify({ name: "fixture", entry: "src/main.ts", ...config }),
     );
     await expect(loadProject(p.root)).rejects.toThrow();
@@ -182,14 +182,14 @@ test("iOS export CLI overrides config without modifying saved source or caller m
   p.config.buildNumber = 8;
   p.config.ios = { bundleId: "com.example.original", team: "ABCDE12345", signing: "automatic" };
   const before = JSON.stringify(p);
-  const saved = await Bun.file(join(p.root, "kiln.json")).text();
+  const saved = await Bun.file(join(p.root, "blackiron.json")).text();
   const args = parseArgs(["ios", "--version", "3.4.5", "--build-number=42", "--bundle-id", "com.example.release", "--team-id", "FGHIJ67890", "--signing", "external"]);
   const resolved = resolveIosExportProject(p, iosExportOptionsFromArgs(args));
   expect(resolved.config.version).toBe("3.4.5");
   expect(resolved.config.buildNumber).toBe(42);
   expect(resolved.config.ios).toEqual({ bundleId: "com.example.release", team: "FGHIJ67890", signing: "external" });
   expect(JSON.stringify(p)).toBe(before);
-  expect(await Bun.file(join(p.root, "kiln.json")).text()).toBe(saved);
+  expect(await Bun.file(join(p.root, "blackiron.json")).text()).toBe(saved);
   const configured = resolveIosExportProject(p);
   expect(configured.config.version).toBe("2.3.4");
   expect(configured.config.buildNumber).toBe(8);
@@ -275,7 +275,7 @@ test("export manifest contains portable paths and identifies engine and export d
     bundleId: "com.example.fixture", version: "1.2.3", buildNumber: 7, signing: "external",
   });
   const manifest = await Bun.file(path).json();
-  expect(manifest.schema).toBe("kiln.export/v1");
+  expect(manifest.schema).toBe("blackiron.export/v1");
   expect(manifest.engine).toEqual({ name: "@blackiron-studio/engine", version: (await Bun.file(join(import.meta.dir, "../package.json")).json()).version });
   expect(manifest.projectPath).toBe("ExportFixture.xcodeproj");
   expect(manifest.buildNumber).toBe(7);

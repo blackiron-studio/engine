@@ -284,8 +284,8 @@ export async function createPhysics3D(
   gravity = { x: 0, y: -9.81, z: 0 },
 ): Promise<PhysicsBackend3D> {
   const host = (
-    globalThis as { __kilnHost?: { physics3D?: (command: string) => string } }
-  ).__kilnHost;
+    globalThis as { __blackironHost?: { physics3D?: (command: string) => string } }
+  ).__blackironHost;
   if (host) {
     if (!host.physics3D) throw new Error("Native host lacks physics3D support");
     return new NativePhysicsWorld3D(host.physics3D.bind(host), gravity);

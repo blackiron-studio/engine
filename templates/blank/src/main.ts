@@ -1,6 +1,6 @@
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
-import { Anchor, Label, Scene, Sprite, TouchControls } from "@kiln/engine/scene";
+import type { App } from "@blackiron-studio/engine/app";
+import { Anchor, Label, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
 
 const UI = { family: "Instrument Sans", size: 22, weight: 600 };
 

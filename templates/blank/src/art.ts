@@ -1,7 +1,7 @@
-// Sprites are painted in code. Keep this module free of game logic so `kiln atlas`
+// Sprites are painted in code. Keep this module free of game logic so `blackiron atlas`
 // can import it on its own.
 
-import { defineSprite, materials, ramp } from "@kiln/engine/art";
+import { defineSprite, materials, ramp } from "@blackiron-studio/engine/art";
 
 export const HERO = defineSprite("hero", { w: 24, h: 32, origin: [0.5, 0.95] }, (p, { rng }) => {
   const body = ramp("#c0574a");

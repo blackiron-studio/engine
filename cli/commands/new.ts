@@ -41,7 +41,7 @@ export async function scaffold(args: Args): Promise<void> {
     return;
   }
   const target = args._[0];
-  if (!target) throw new Error("Usage: kiln new <dir> [--template <name>] [--list]");
+  if (!target) throw new Error("Usage: blackiron new <dir> [--template <name>] [--list]");
   const template = args.str("template", "blank");
   if (!templates.some((t) => t.name === template)) {
     throw new Error(`Unknown template "${template}". Available: ${templates.map((t) => t.name).join(", ")}`);
@@ -50,7 +50,7 @@ export async function scaffold(args: Args): Promise<void> {
   if (existsSync(dest)) throw new Error(`${dest} already exists`);
   await cp(join(TEMPLATES_DIR, template), dest, {
     recursive: true,
-    filter: (src) => !/\/(node_modules|dist|atlas|screenshots)(\/|$)/.test(src),
+    filter: (src) => !/\/(node_modules|dist|atlas|screenshots|\.blackiron|\.kiln)(\/|$)/.test(src),
   });
 
   const name = slug(target.split("/").pop() ?? target);
@@ -63,15 +63,15 @@ export async function scaffold(args: Args): Promise<void> {
   const pkg = JSON.parse(await readFile(pkgPath, "utf8")) as { name: string; scripts?: Record<string, string> };
   pkg.name = name;
   // A project typechecks on its own: the compiler and Bun's types come from its own node_modules.
-  (pkg as { devDependencies?: Record<string, string> }).devDependencies = { "@types/bun": "^1.2.0", typescript: "^5.6.0" };
+  (pkg as { devDependencies?: Record<string, string> }).devDependencies = { "@types/bun": "1.4.0", typescript: "5.9.3" };
   pkg.scripts = { ...(pkg.scripts ?? {}), typecheck: "tsc --noEmit -p tsconfig.json" };
-  for (const [k, v] of Object.entries(pkg.scripts ?? {})) (pkg.scripts as Record<string, string>)[k] = v.replaceAll("../../cli/kiln.ts", `${enginePath}/cli/kiln.ts`);
+  for (const [k, v] of Object.entries(pkg.scripts ?? {})) (pkg.scripts as Record<string, string>)[k] = v.replaceAll("../../cli/blackiron.ts", `${enginePath}/cli/blackiron.ts`);
   await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-  const kilnPath = join(dest, "kiln.json");
-  const kiln = JSON.parse(await readFile(kilnPath, "utf8")) as { name: string };
-  kiln.name = title;
-  await writeFile(kilnPath, `${JSON.stringify(kiln, null, 2)}\n`);
+  const blackironPath = join(dest, "blackiron.json");
+  const blackiron = JSON.parse(await readFile(blackironPath, "utf8")) as { name: string };
+  blackiron.name = title;
+  await writeFile(blackironPath, `${JSON.stringify(blackiron, null, 2)}\n`);
 
   await writeFile(
     join(dest, "tsconfig.json"),
@@ -89,9 +89,6 @@ export async function scaffold(args: Args): Promise<void> {
           skipLibCheck: true,
           noEmit: true,
           paths: {
-            "@kiln/engine": [`${enginePath}/src/index.ts`],
-            "@kiln/engine/scene/ui": [`${enginePath}/src/scene/ui.ts`],
-            "@kiln/engine/*": [`${enginePath}/src/*/index.ts`],
             "@blackiron-studio/engine": [`${enginePath}/src/index.ts`],
             "@blackiron-studio/engine/scene/ui": [`${enginePath}/src/scene/ui.ts`],
             "@blackiron-studio/engine/*": [`${enginePath}/src/*/index.ts`],

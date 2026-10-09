@@ -1,4 +1,4 @@
-import { defineAnimation, defineSprite, defineVariants, materials, ramp } from "@kiln/engine/art";
+import { defineAnimation, defineSprite, defineVariants, materials, ramp } from "@blackiron-studio/engine/art";
 
 const WOOD = ramp("#a4713f");
 const STONE = ramp("#6d7383");

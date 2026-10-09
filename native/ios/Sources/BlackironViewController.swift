@@ -3,9 +3,9 @@ import UIKit
 
 /// Hosts the Metal-layer view and the script runtime. The view fills the screen; the engine
 /// letterboxes its logical viewport inside it and is told the safe-area insets.
-final class KilnViewController: UIViewController {
-    private(set) var runtime: KilnRuntime?
-    private var kilnView: KilnView!
+final class BlackironViewController: UIViewController {
+    private(set) var runtime: BlackironRuntime?
+    private var blackironView: BlackironView!
 
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
@@ -14,11 +14,11 @@ final class KilnViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
-        kilnView = KilnView(frame: view.bounds)
-        kilnView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(kilnView)
-        let runtime = KilnRuntime(view: kilnView)
-        kilnView.runtime = runtime
+        blackironView = BlackironView(frame: view.bounds)
+        blackironView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(blackironView)
+        let runtime = BlackironRuntime(view: blackironView)
+        blackironView.runtime = runtime
         self.runtime = runtime
         runtime.boot()
         runtime.start()
@@ -26,14 +26,14 @@ final class KilnViewController: UIViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        runtime?.viewChanged(size: kilnView.bounds.size, scale: kilnView.contentScaleFactor, insets: view.safeAreaInsets)
+        runtime?.viewChanged(size: blackironView.bounds.size, scale: blackironView.contentScaleFactor, insets: view.safeAreaInsets)
     }
 }
 
 /// A view backed by a CAMetalLayer the kernel renders into. It forwards touches to the
 /// runtime as pointer events in points, and acts as the text receiver for the keyboard.
-final class KilnView: UIView, UIKeyInput {
-    weak var runtime: KilnRuntime?
+final class BlackironView: UIView, UIKeyInput {
+    weak var runtime: BlackironRuntime?
 
     override class var layerClass: AnyClass { CAMetalLayer.self }
     var metalLayer: CAMetalLayer { layer as! CAMetalLayer }
@@ -92,7 +92,7 @@ final class KilnView: UIView, UIKeyInput {
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
         for p in presses {
-            if let code = KilnRuntime.keyCode(for: p.key) { runtime?.key(code: code, down: true) }
+            if let code = BlackironRuntime.keyCode(for: p.key) { runtime?.key(code: code, down: true) }
             // Printable characters from a hardware keyboard also arrive as text while typing.
             if let key = p.key, isFirstResponder == false, key.characters.count == 1, let s = key.characters.unicodeScalars.first, s.value >= 32, !key.modifierFlags.contains(.command), !key.modifierFlags.contains(.control) {
                 runtime?.text(key.characters)
@@ -101,7 +101,7 @@ final class KilnView: UIView, UIKeyInput {
     }
 
     override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
-        for p in presses { if let code = KilnRuntime.keyCode(for: p.key) { runtime?.key(code: code, down: false) } }
+        for p in presses { if let code = BlackironRuntime.keyCode(for: p.key) { runtime?.key(code: code, down: false) } }
     }
 
     override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {

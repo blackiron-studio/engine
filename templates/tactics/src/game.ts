@@ -1,7 +1,7 @@
 // Rules for the tactics starter: a grid, two teams, movement by flood fill, attacks by
 // range, an enemy phase. Pure state, deterministic, tested without a browser.
 
-import { Rng, TileMapData, grid } from "@kiln/engine/core";
+import { Rng, TileMapData, grid } from "@blackiron-studio/engine/core";
 
 export const GRID = { cols: 20, rows: 12, tile: 32 } as const;
 

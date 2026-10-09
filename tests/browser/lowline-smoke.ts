@@ -1,6 +1,6 @@
 import main, { LowlineScene } from "../../examples/lowline/src/main.ts";
 import { App } from "../../src/app/app.ts";
-import config from "../../examples/lowline/kiln.json";
+import config from "../../examples/lowline/blackiron.json";
 import {
   angleDelta,
   distance,
@@ -19,7 +19,7 @@ const capture = async (app: App, name: string) =>
     body: app.canvas!.toDataURL("image/png"),
   });
 try {
-  const app = await App.create({ canvas: "#kiln", config: config as any });
+  const app = await App.create({ canvas: "#blackiron", config: config as any });
   await main(app);
   app.audio.setMuted(true);
   const frame = (n = 1) => {

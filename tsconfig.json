@@ -17,15 +17,6 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "@kiln/engine": [
-        "./src/index.ts"
-      ],
-      "@kiln/engine/*": [
-        "./src/*/index.ts"
-      ],
-      "@kiln/engine/scene/ui": [
-        "./src/scene/ui.ts"
-      ],
       "@blackiron-studio/engine": [
         "./src/index.ts"
       ],

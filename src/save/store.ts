@@ -22,7 +22,7 @@ export function localStorageBackend(): StoreBackend | null {
   try {
     const ls = (globalThis as { localStorage?: Storage }).localStorage;
     if (!ls) return null;
-    const probe = "__kiln_probe__";
+    const probe = "__blackiron_probe__";
     ls.setItem(probe, "1");
     ls.removeItem(probe);
     return {

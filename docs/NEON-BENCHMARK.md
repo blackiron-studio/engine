@@ -1,4 +1,4 @@
-# Neon Bastion as Kiln's minimum quality reference
+# Neon Bastion as Blackiron's minimum quality reference
 
 **Historical 0.13 validation.** The later [0.14 foundation upgrade](FOUNDATION-UPGRADE.md) supersedes its native-3D/content limitations and test counts. The earlier results below remain a record of that pass.
 
@@ -8,13 +8,13 @@
 
 Neon is real 3D geometry viewed through an orthographic camera, with planar movement and shooting. Its quality comes from a consistent palette, well-proportioned cuboid actors, detailed cover, readable ground markings, a composed interface and coordinated movement/hit effects. It does not need textures, sprites, imported models or a full 3D physics solver to work well.
 
-Kiln's orthographic `Scene3D` path is appropriate for games of this kind. Its older projected-sprite path remains useful for games such as Highground; whole-sprite depth sorting cannot substitute for per-triangle depth and lighting in a mesh arena. A shared engine can support both, provided their coordinate systems remain explicit.
+Blackiron's orthographic `Scene3D` path is appropriate for games of this kind. Its older projected-sprite path remains useful for games such as Highground; whole-sprite depth sorting cannot substitute for per-triangle depth and lighting in a mesh arena. A shared engine can support both, provided their coordinate systems remain explicit.
 
-Build games using reusable Kiln systems and let those games expose missing capabilities. Rewriting projection, rendering, input, audio and collision for each game would duplicate the work that now belongs in Kiln. General-purpose editor and export breadth remain separate from this smaller visual/gameplay target.
+Build games using reusable Blackiron systems and let those games expose missing capabilities. Rewriting projection, rendering, input, audio and collision for each game would duplicate the work that now belongs in Blackiron. General-purpose editor and export breadth remain separate from this smaller visual/gameplay target.
 
 ## Implemented from the comparison
 
-| Reference requirement | Kiln change and evidence |
+| Reference requirement | Blackiron change and evidence |
 | --- | --- |
 | Controlled palette and face lighting | Lambert shading, explicit ambient/diffuse balance, optional tone mapping; real GPU pixel checks |
 | Differently coloured primitives | Per-instance `Mesh3D.tint`; 400 differently coloured shared cubes in one main draw |
@@ -29,11 +29,11 @@ See [the 3D API](THREE.md) and each game's README for controls and contracts. Th
 
 ## A concrete rendering acceptance fixture
 
-`bun run check:neon` builds a reference-style arena using Kiln's own camera, meshes, materials, instancing and GPU depth. No Neon renderer is embedded. `tests/browser/neon-reference.ts` contains the procedural reconstruction; `scripts/check-neon-reference.ts` drives Chrome and writes evidence under `.kiln/verification/neon`.
+`bun run check:neon` builds a reference-style arena using Blackiron's own camera, meshes, materials, instancing and GPU depth. No Neon renderer is embedded. `tests/browser/neon-reference.ts` contains the procedural reconstruction; `scripts/check-neon-reference.ts` drives Chrome and writes evidence under `.blackiron/verification/neon`.
 
 The inspected 1440×900 result contains **319 visible meshes, 4,660 triangles, 11 main draws and one final composition draw**, with zero GL errors. Its camera projection differs from Neon's reference math by less than **0.00003 pixels**. On this Apple M1 Pro / 16 GB Mac, a 60-sample CPU collection/submission measurement was **0.70 ms median / 1.50 ms p95**. This excludes GPU completion and display frame pacing.
 
-This validates a rendering baseline, not a complete combat-game port. The fixture has four articulated actors, omits Neon's world-radial fog and uses full cuboids plus MSAA. There is no claim of pixel-identical artwork, equivalent combat balance or faster total rendering: Neon uses two custom batches, while Kiln's retained scene uses eleven main draws here. Static geometry merging/upload caching remains a useful performance follow-up.
+This validates a rendering baseline, not a complete combat-game port. The fixture has four articulated actors, omits Neon's world-radial fog and uses full cuboids plus MSAA. There is no claim of pixel-identical artwork, equivalent combat balance or faster total rendering: Neon uses two custom batches, while Blackiron's retained scene uses eleven main draws here. Static geometry merging/upload caching remains a useful performance follow-up.
 
 ## Verification
 
@@ -43,7 +43,7 @@ This validates a rendering baseline, not a complete combat-game port. The fixtur
 - Desktop native visual verification passes **14 comparisons**, with Lumen explicitly skipped as web-only. Highground's deliberately changed images were reviewed before updating its three baselines; prior images were backed up.
 - Highground and Lumen production web builds pass. Native mesh rendering remains unsupported.
 
-The reference's 14 collision checks and deterministic gameplay smoke also pass under Bun. The smoke reaches wave two, damage, defeat and restart; it stubs rendering. Additional inspection found terminal-state/pickup ordering, shortened dash protection, shared render/gameplay randomness, thin-wall tunnelling and expanded-box corner approximations worth guarding against. Kiln regressions cover thin walls, rounded corners, overlap recovery, nearest cover hits, longer invulnerability preservation, independent effects randomness and physical Escape handling.
+The reference's 14 collision checks and deterministic gameplay smoke also pass under Bun. The smoke reaches wave two, damage, defeat and restart; it stubs rendering. Additional inspection found terminal-state/pickup ordering, shortened dash protection, shared render/gameplay randomness, thin-wall tunnelling and expanded-box corner approximations worth guarding against. Blackiron regressions cover thin walls, rounded corners, overlap recovery, nearest cover hits, longer invulnerability preservation, independent effects randomness and physical Escape handling.
 
 Short CPU `App.frame` smoke measurements at 1280×720 were Wisp 1.3/1.6 ms, Highground 0.4/0.7 ms and Lumen 1.8/8.2 ms median/p95. These are short CPU submission samples, with driver/compilation variance, not GPU timings or sustained frame-pacing guarantees. Lumen's sampled scene used 26 main plus 18 shadow draws (56 total including UI/post); Highground used 13 total draws.
 
@@ -53,10 +53,10 @@ bun test
 bun run check:3d
 bun run check:neon
 bun run check:showcases
-KILN_NO_V8=1 bun cli/kiln.ts verify --host desktop --js quickjs
+BLACKIRON_NO_V8=1 bun cli/blackiron.ts verify --host desktop --js quickjs
 ```
 
-Evidence, prior Highground images and a source archive are retained in `<local-verification-artifacts>`. The browser runner saves both Lumen perspectives under `.kiln/verification/showcases/lumen`.
+Evidence, prior Highground images and a source archive are retained in `<local-verification-artifacts>`. The browser runner saves both Lumen perspectives under `.blackiron/verification/showcases/lumen`.
 
 ## Remaining gates
 

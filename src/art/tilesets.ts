@@ -1,4 +1,4 @@
-// Tile sets: a sheet of tiles plus a manifest `kiln art tileset` writes. Frames become
+// Tile sets: a sheet of tiles plus a manifest `blackiron art tileset` writes. Frames become
 // `${prefix}.${index}`; a set imported with a terrain mode becomes an autotile set, so a
 // TileMap entry `{ autotile: prefix }` picks the right tile from each cell's neighbours.
 
@@ -45,7 +45,7 @@ export function defineTileSet(prefix: string, jsonUrl: string, spec: ImageSprite
     });
     const terrain = json.meta.tiles.terrain;
     if (terrain) {
-      if (items.length < terrainTileCount(terrain)) console.warn(`[kiln] tile set "${prefix}" has ${items.length} tiles; a ${terrain} terrain needs ${terrainTileCount(terrain)}`);
+      if (items.length < terrainTileCount(terrain)) console.warn(`[blackiron] tile set "${prefix}" has ${items.length} tiles; a ${terrain} terrain needs ${terrainTileCount(terrain)}`);
       setAutotileMode(prefix, terrain);
     }
     return items;

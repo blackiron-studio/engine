@@ -1,12 +1,12 @@
-import { TileMapData } from "@kiln/engine/core";
+import { TileMapData } from "@blackiron-studio/engine/core";
 import {
   Anchor,
   Button,
   Graphics2D,
   IsoTileMap,
   Sprite,
-} from "@kiln/engine/scene";
-import { TitleScene } from "@kiln/engine/shell";
+} from "@blackiron-studio/engine/scene";
+import { TitleScene } from "@blackiron-studio/engine/shell";
 import { TILE } from "../art.ts";
 
 /** The regular shell menu, dressed with the same projected art as the game. */

@@ -30,7 +30,7 @@
     "pixelsPerMeter": 100
   },
   "ios": {
-    "bundleId": "com.kiln.crateyard",
+    "bundleId": "com.blackiron.crateyard",
     "orientation": "landscape"
   },
   "snapshots": [

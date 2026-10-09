@@ -1,11 +1,11 @@
 import AVFoundation
 import JavaScriptCore
-import KilnKernel
+import BlackironKernel
 
 /// The kernel synthesiser on an AVAudioEngine. The engine's script writes commands into
 /// `scratch` and calls `command`; the render block on the audio thread pulls stereo PCM
 /// from the kernel, which mixes voices and samples with the same DSP as the web build.
-@objc protocol KilnAudioExports: JSExport {
+@objc protocol BlackironAudioExports: JSExport {
     var scratch: JSValue { get }
     func unlock()
     func time() -> Double
@@ -18,25 +18,25 @@ import KilnKernel
 
 // The source-node closure retains this owner until its last callback has returned.
 // Every FFI access uses one lock, avoiding overlapping Rust &mut Audio references.
-private final class KilnAudioState {
+private final class BlackironAudioState {
     let handle: OpaquePointer
     let lock = NSLock()
     let capacity = 8192
     let output: UnsafeMutablePointer<Float>
     init(rate: Double) {
-        handle = kiln_audio_new(UInt32(rate), 64)!
+        handle = blackiron_audio_new(UInt32(rate), 64)!
         output = .allocate(capacity: capacity * 2)
         output.initialize(repeating: 0, count: capacity * 2)
     }
     deinit {
         output.deinitialize(count: capacity * 2)
         output.deallocate()
-        kiln_audio_free(handle)
+        blackiron_audio_free(handle)
     }
 }
 
-@objc final class KilnAudio: NSObject, KilnAudioExports {
-    private let state: KilnAudioState
+@objc final class BlackironAudio: NSObject, BlackironAudioExports {
+    private let state: BlackironAudioState
     private var handle: OpaquePointer { state.handle }
     private let engine = AVAudioEngine()
     private let context: JSContext
@@ -51,10 +51,10 @@ private final class KilnAudioState {
         try? session.setActive(true)
         let hw = session.sampleRate
         sampleRate = hw >= 8000 ? hw : 48000
-        state = KilnAudioState(rate: sampleRate)
+        state = BlackironAudioState(rate: sampleRate)
         var exception: JSValueRef?
         // JS owns its command staging area. It never writes kernel memory while audio renders.
-        let ref = JSObjectMakeTypedArray(context.jsGlobalContextRef, kJSTypedArrayTypeFloat32Array, Int(kiln_audio_scratch_words(state.handle)), &exception)
+        let ref = JSObjectMakeTypedArray(context.jsGlobalContextRef, kJSTypedArrayTypeFloat32Array, Int(blackiron_audio_scratch_words(state.handle)), &exception)
         scratch = JSValue(jsValueRef: ref, in: context)
         super.init()
         // The kernel renders interleaved stereo; the engine's buses want deinterleaved channels.
@@ -75,7 +75,7 @@ private final class KilnAudioState {
             var offset = 0
             while offset < Int(frameCount) {
                 let n = min(Int(frameCount) - offset, audio.capacity)
-                kiln_audio_render_into(audio.handle, position + Double(offset), audio.output, UInt32(n))
+                blackiron_audio_render_into(audio.handle, position + Double(offset), audio.output, UInt32(n))
                 if buffers.count >= 2, let l = buffers[0].mData?.assumingMemoryBound(to: Float.self), let r = buffers[1].mData?.assumingMemoryBound(to: Float.self) {
                     for i in 0..<n {
                         l[offset + i] = audio.output[i * 2]
@@ -103,14 +103,14 @@ private final class KilnAudioState {
     func unlock() {
         // Local simulator previews can opt out of opening an output stream without
         // changing the game's persisted audio settings or release behavior.
-        if ProcessInfo.processInfo.environment["KILN_MUTE"] == "1" { return }
+        if ProcessInfo.processInfo.environment["BLACKIRON_MUTE"] == "1" { return }
         guard !started else { return }
         do {
             try engine.start()
             started = true
-            kilnLog("[kiln] audio: \(Int(sampleRate)) Hz")
+            blackironLog("[blackiron] audio: \(Int(sampleRate)) Hz")
         } catch {
-            kilnLog("[kiln] audio failed to start: \(error)")
+            blackironLog("[blackiron] audio failed to start: \(error)")
         }
     }
 
@@ -124,32 +124,32 @@ private final class KilnAudioState {
 
     func time() -> Double {
         state.lock.lock(); defer { state.lock.unlock() }
-        return kiln_audio_time(handle)
+        return blackiron_audio_time(handle)
     }
     func command(_ words: Int) {
-        guard let (source, bytes) = KilnHost.typedArrayBytes(scratch, in: context) else { return }
+        guard let (source, bytes) = BlackironHost.typedArrayBytes(scratch, in: context) else { return }
         state.lock.lock(); defer { state.lock.unlock() }
-        let count = min(max(0, words), bytes / 4, Int(kiln_audio_scratch_words(handle)))
-        if let target = kiln_audio_scratch(handle) {
+        let count = min(max(0, words), bytes / 4, Int(blackiron_audio_scratch_words(handle)))
+        if let target = blackiron_audio_scratch(handle) {
             UnsafeMutableRawPointer(target).copyMemory(from: source, byteCount: count * 4)
-            _ = kiln_audio_command(handle, UInt32(count))
+            _ = blackiron_audio_command(handle, UInt32(count))
         }
     }
     func peak() -> Double {
         state.lock.lock(); defer { state.lock.unlock() }
-        return Double(kiln_audio_peak(handle))
+        return Double(blackiron_audio_peak(handle))
     }
 
     /// Decode a file with CoreAudio (WAV, AIFF, MP3, AAC, FLAC, CAF) to mono at the engine rate.
     func loadSample(_ id: Int, _ bytes: JSValue) -> Bool {
-        guard let (ptr, len) = KilnHost.typedArrayBytes(bytes, in: context) else { return false }
+        guard let (ptr, len) = BlackironHost.typedArrayBytes(bytes, in: context) else { return false }
         let data = Data(bytes: ptr, count: len)
-        let ext = KilnAudio.sniff(data)
-        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("kiln-sample-\(id).\(ext)")
+        let ext = BlackironAudio.sniff(data)
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("blackiron-sample-\(id).\(ext)")
         do { try data.write(to: tmp) } catch { return false }
         defer { try? FileManager.default.removeItem(at: tmp) }
         guard let file = try? AVAudioFile(forReading: tmp) else {
-            kilnLog("[kiln] could not decode sample \(id)")
+            blackironLog("[blackiron] could not decode sample \(id)")
             return false
         }
         let inFormat = file.processingFormat
@@ -178,13 +178,13 @@ private final class KilnAudioState {
         guard let channels = mono.floatChannelData else { return false }
         let frames = Int(mono.frameLength)
         state.lock.lock(); defer { state.lock.unlock() }
-        guard kiln_audio_sample_begin(handle, Int32(id), UInt32(frames)) != 0, let scratchPtr = kiln_audio_scratch(handle) else { return false }
-        let cap = Int(kiln_audio_scratch_words(handle))
+        guard blackiron_audio_sample_begin(handle, Int32(id), UInt32(frames)) != 0, let scratchPtr = blackiron_audio_scratch(handle) else { return false }
+        let cap = Int(blackiron_audio_scratch_words(handle))
         var offset = 0
         while offset < frames {
             let n = min(cap, frames - offset)
             scratchPtr.update(from: channels[0] + offset, count: n)
-            _ = kiln_audio_sample_write(handle, Int32(id), UInt32(offset), UInt32(n))
+            _ = blackiron_audio_sample_write(handle, Int32(id), UInt32(offset), UInt32(n))
             offset += n
         }
         return true
@@ -192,24 +192,24 @@ private final class KilnAudioState {
 
     /// Hand an encoded track to the kernel's streaming decoder; returns its rate, or 0.
     func loadStream(_ id: Int, _ bytes: JSValue) -> Int {
-        guard let (ptr, len) = KilnHost.typedArrayBytes(bytes, in: context), len > 0 else { return 0 }
+        guard let (ptr, len) = BlackironHost.typedArrayBytes(bytes, in: context), len > 0 else { return 0 }
         state.lock.lock(); defer { state.lock.unlock() }
-        guard kiln_audio_stream_begin(handle, Int32(id), UInt32(len)) != 0, let scratchPtr = kiln_audio_scratch(handle) else { return 0 }
-        let cap = Int(kiln_audio_scratch_words(handle)) * 4
+        guard blackiron_audio_stream_begin(handle, Int32(id), UInt32(len)) != 0, let scratchPtr = blackiron_audio_scratch(handle) else { return 0 }
+        let cap = Int(blackiron_audio_scratch_words(handle)) * 4
         let raw = UnsafeMutableRawPointer(scratchPtr)
         var offset = 0
         while offset < len {
             let n = min(cap, len - offset)
             raw.copyMemory(from: ptr.advanced(by: offset), byteCount: n)
-            if kiln_audio_stream_write(handle, Int32(id), UInt32(n)) == 0 { return 0 }
+            if blackiron_audio_stream_write(handle, Int32(id), UInt32(n)) == 0 { return 0 }
             offset += n
         }
-        return Int(kiln_audio_stream_open(handle, Int32(id)))
+        return Int(blackiron_audio_stream_open(handle, Int32(id)))
     }
 
     func closeStream(_ id: Int) {
         state.lock.lock(); defer { state.lock.unlock() }
-        kiln_audio_stream_close(handle, Int32(id))
+        blackiron_audio_stream_close(handle, Int32(id))
     }
 
     private static func sniff(_ data: Data) -> String {

@@ -973,14 +973,14 @@ fn biquad(v: &mut Voice, x: f64) -> f64 {
 // --- C ABI ---------------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_new(sample_rate: u32, max_voices: u32) -> *mut Audio {
+pub extern "C" fn blackiron_audio_new(sample_rate: u32, max_voices: u32) -> *mut Audio {
     Box::into_raw(Box::new(Audio::new(sample_rate, max_voices as usize)))
 }
 
 /// # Safety
-/// `a` must come from `kiln_audio_new` and not be used afterwards.
+/// `a` must come from `blackiron_audio_new` and not be used afterwards.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_audio_free(a: *mut Audio) {
+pub unsafe extern "C" fn blackiron_audio_free(a: *mut Audio) {
     if !a.is_null() {
         drop(Box::from_raw(a));
     }
@@ -999,74 +999,74 @@ macro_rules! with_audio {
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_scratch(a: *mut Audio) -> *mut f32 {
+pub extern "C" fn blackiron_audio_scratch(a: *mut Audio) -> *mut f32 {
     with_audio!(a, |a: &mut Audio| a.scratch.as_mut_ptr(), std::ptr::null_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_scratch_words(a: *mut Audio) -> u32 {
+pub extern "C" fn blackiron_audio_scratch_words(a: *mut Audio) -> u32 {
     with_audio!(a, |a: &mut Audio| a.scratch.len() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_command(a: *mut Audio, words: u32) -> i32 {
+pub extern "C" fn blackiron_audio_command(a: *mut Audio, words: u32) -> i32 {
     with_audio!(a, |a: &mut Audio| a.command(words as usize) as i32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_sample_begin(a: *mut Audio, id: i32, frames: u32) -> i32 {
+pub extern "C" fn blackiron_audio_sample_begin(a: *mut Audio, id: i32, frames: u32) -> i32 {
     with_audio!(a, |a: &mut Audio| a.sample_begin(id, frames as usize) as i32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_sample_write(a: *mut Audio, id: i32, offset: u32, words: u32) -> i32 {
+pub extern "C" fn blackiron_audio_sample_write(a: *mut Audio, id: i32, offset: u32, words: u32) -> i32 {
     with_audio!(a, |a: &mut Audio| a.sample_write(id, offset as usize, words as usize) as i32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_stream_begin(a: *mut Audio, id: i32, len: u32) -> i32 {
+pub extern "C" fn blackiron_audio_stream_begin(a: *mut Audio, id: i32, len: u32) -> i32 {
     with_audio!(a, |a: &mut Audio| a.stream_begin(id, len as usize) as i32, 0)
 }
 
 /// Append `bytes` bytes from the scratch buffer (its words viewed as bytes) to a stream.
 #[no_mangle]
-pub extern "C" fn kiln_audio_stream_write(a: *mut Audio, id: i32, bytes: u32) -> i32 {
+pub extern "C" fn blackiron_audio_stream_write(a: *mut Audio, id: i32, bytes: u32) -> i32 {
     with_audio!(a, |a: &mut Audio| a.stream_write(id, bytes as usize) as i32, 0)
 }
 
 /// Open the received bytes; returns the sample rate, or 0 when no codec handles them.
 #[no_mangle]
-pub extern "C" fn kiln_audio_stream_open(a: *mut Audio, id: i32) -> u32 {
+pub extern "C" fn blackiron_audio_stream_open(a: *mut Audio, id: i32) -> u32 {
     with_audio!(a, |a: &mut Audio| a.stream_open(id), 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_stream_close(a: *mut Audio, id: i32) {
+pub extern "C" fn blackiron_audio_stream_close(a: *mut Audio, id: i32) {
     with_audio!(a, |a: &mut Audio| a.stream_close(id), ())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_time(a: *mut Audio) -> f64 {
+pub extern "C" fn blackiron_audio_time(a: *mut Audio) -> f64 {
     with_audio!(a, |a: &mut Audio| a.time(), 0.0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_peak(a: *mut Audio) -> f32 {
+pub extern "C" fn blackiron_audio_peak(a: *mut Audio) -> f32 {
     with_audio!(a, |a: &mut Audio| a.peak(), 0.0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_active(a: *mut Audio) -> u32 {
+pub extern "C" fn blackiron_audio_active(a: *mut Audio) -> u32 {
     with_audio!(a, |a: &mut Audio| a.active() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_out(a: *mut Audio) -> *const f32 {
+pub extern "C" fn blackiron_audio_out(a: *mut Audio) -> *const f32 {
     with_audio!(a, |a: &mut Audio| a.out.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_audio_render(a: *mut Audio, position: f64, frames: u32) {
+pub extern "C" fn blackiron_audio_render(a: *mut Audio, position: f64, frames: u32) {
     with_audio!(a, |a: &mut Audio| a.render(position, frames as usize), ())
 }
 
@@ -1074,7 +1074,7 @@ pub extern "C" fn kiln_audio_render(a: *mut Audio, position: f64, frames: u32) {
 /// `out` must point to at least `frames * CHANNELS` floats (interleaved stereo).
 /// The caller must serialize all calls using the same Audio handle, including scratch writes.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_audio_render_into(a: *mut Audio, position: f64, out: *mut f32, frames: u32) {
+pub unsafe extern "C" fn blackiron_audio_render_into(a: *mut Audio, position: f64, out: *mut f32, frames: u32) {
     if a.is_null() || out.is_null() {
         return;
     }
@@ -1091,7 +1091,7 @@ mod tests {
     fn native_render_into_count_is_stereo_frames() {
         let mut audio = Audio::new(48000, 8);
         let mut output = vec![f32::NAN; 512 * CHANNELS + 2];
-        unsafe { kiln_audio_render_into(&mut audio, 0.0, output.as_mut_ptr(), 512); }
+        unsafe { blackiron_audio_render_into(&mut audio, 0.0, output.as_mut_ptr(), 512); }
         assert!(output[..512 * CHANNELS].iter().all(|x| *x == 0.0));
         assert!(output[512 * CHANNELS..].iter().all(|x| x.is_nan()));
         assert!((audio.time() - 512.0 / 48000.0).abs() < 1e-9);

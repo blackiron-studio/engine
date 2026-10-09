@@ -9,5 +9,5 @@
   "background": "#0e1216",
   "post": { "bloom": 0.5, "bloomThreshold": 0.6, "vignette": 0.2 },
   "bench": { "sprites": 2000, "particles": 1000, "cols": 120, "rows": 80 },
-  "ios": { "bundleId": "com.kiln.bench", "orientation": "landscape" }
+  "ios": { "bundleId": "com.blackiron.bench", "orientation": "landscape" }
 }

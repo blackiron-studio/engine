@@ -1596,7 +1596,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
-name = "kiln-host"
+name = "blackiron-host"
 version = "0.6.0"
 dependencies = [
  "android-activity",
@@ -1610,7 +1610,7 @@ dependencies = [
  "gilrs",
  "jni 0.21.1",
  "jpeg-decoder",
- "kiln_kernel",
+ "blackiron_kernel",
  "log",
  "ndk 0.9.0",
  "ndk-context",
@@ -1624,7 +1624,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kiln_kernel"
+name = "blackiron_kernel"
 version = "0.8.0"
 dependencies = [
  "bytemuck",

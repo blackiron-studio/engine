@@ -34,7 +34,7 @@ for (const project of projects) {
   const cwd = resolve(engine, project),
     build = async () => {
       const proc = Bun.spawn(
-        [process.execPath, resolve(engine, "cli/kiln.ts"), "build"],
+        [process.execPath, resolve(engine, "cli/blackiron.ts"), "build"],
         { cwd, stdout: "inherit", stderr: "inherit" },
       );
       if ((await proc.exited) !== 0)
@@ -47,11 +47,11 @@ for (const project of projects) {
     throw new Error(`Non-reproducible output: ${project}`);
   reports.push({ project, files: second, status: "PASS" });
 }
-await mkdir(resolve(engine, ".kiln/verification/reproducible"), {
+await mkdir(resolve(engine, ".blackiron/verification/reproducible"), {
   recursive: true,
 });
 await Bun.write(
-  resolve(engine, ".kiln/verification/reproducible/result.json"),
+  resolve(engine, ".blackiron/verification/reproducible/result.json"),
   JSON.stringify(
     {
       bun: Bun.version,

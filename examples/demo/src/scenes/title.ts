@@ -1,4 +1,4 @@
-import { Anchor, Button, FocusGroup, Graphics2D, Label, Light2D, Scene, Sprite } from "@kiln/engine/scene";
+import { Anchor, Button, FocusGroup, Graphics2D, Label, Light2D, Scene, Sprite } from "@blackiron-studio/engine/scene";
 import { BUTTON, DISPLAY, UI, UI_SMALL } from "../fonts.ts";
 import { WORLD_H, WORLD_W, createGame } from "../game.ts";
 import { saves } from "../store.ts";
@@ -29,7 +29,7 @@ export class TitleScene extends Scene {
 
     const center = this.ui.add(new Anchor({ x: "center", y: "top", dy: 110 }));
     center.add(new Graphics2D(-355,-34).roundedRect(0,0,710,192,22,{color:0x132c3d,alpha:.9}));
-    center.add(new Label("KILN  /  THE 2D COLLECTION",0,-12,{font:UI_SMALL,align:"center",color:0x9fc6b7}));
+    center.add(new Label("BLACKIRON  /  THE 2D COLLECTION",0,-12,{font:UI_SMALL,align:"center",color:0x9fc6b7}));
     const halo = center.add(new Sprite("__blob", 0, 30));
     halo.scaleX = 11;
     halo.scaleY = 3;

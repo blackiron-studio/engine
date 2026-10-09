@@ -546,14 +546,14 @@ impl Physics {
 // --- C ABI ---------------------------------------------------------------------------
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_new(pixels_per_meter: f32) -> *mut Physics {
+pub extern "C" fn blackiron_physics_new(pixels_per_meter: f32) -> *mut Physics {
     Box::into_raw(Box::new(Physics::new(pixels_per_meter)))
 }
 
 /// # Safety
-/// `p` must come from `kiln_physics_new` and not be used afterwards.
+/// `p` must come from `blackiron_physics_new` and not be used afterwards.
 #[no_mangle]
-pub unsafe extern "C" fn kiln_physics_free(p: *mut Physics) {
+pub unsafe extern "C" fn blackiron_physics_free(p: *mut Physics) {
     if !p.is_null() {
         drop(Box::from_raw(p));
     }
@@ -572,37 +572,37 @@ macro_rules! with_physics {
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_scratch(p: *mut Physics) -> *mut f32 {
+pub extern "C" fn blackiron_physics_scratch(p: *mut Physics) -> *mut f32 {
     with_physics!(p, |p: &mut Physics| p.scratch.as_mut_ptr(), std::ptr::null_mut())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_scratch_words(p: *mut Physics) -> u32 {
+pub extern "C" fn blackiron_physics_scratch_words(p: *mut Physics) -> u32 {
     with_physics!(p, |p: &mut Physics| p.scratch.len() as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_call(p: *mut Physics, op: u32, words: u32) -> i32 {
+pub extern "C" fn blackiron_physics_call(p: *mut Physics, op: u32, words: u32) -> i32 {
     with_physics!(p, |p: &mut Physics| p.call(op, words as usize), -1)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_transforms(p: *mut Physics) -> *const f32 {
+pub extern "C" fn blackiron_physics_transforms(p: *mut Physics) -> *const f32 {
     with_physics!(p, |p: &mut Physics| p.transforms.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_transform_count(p: *mut Physics) -> u32 {
+pub extern "C" fn blackiron_physics_transform_count(p: *mut Physics) -> u32 {
     with_physics!(p, |p: &mut Physics| (p.transforms.len() / TRANSFORM_STRIDE) as u32, 0)
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_events(p: *mut Physics) -> *const f32 {
+pub extern "C" fn blackiron_physics_events(p: *mut Physics) -> *const f32 {
     with_physics!(p, |p: &mut Physics| p.events.as_ptr(), std::ptr::null())
 }
 
 #[no_mangle]
-pub extern "C" fn kiln_physics_event_count(p: *mut Physics) -> u32 {
+pub extern "C" fn blackiron_physics_event_count(p: *mut Physics) -> u32 {
     with_physics!(p, |p: &mut Physics| (p.events.len() / EVENT_STRIDE) as u32, 0)
 }
 

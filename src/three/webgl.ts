@@ -49,7 +49,7 @@ interface Group {
   mirrored: boolean;
   depth: number;
 }
-/** Internal WebGL stage. Writes directly into Kiln's existing scene target before its 2D HUD. */
+/** Internal WebGL stage. Writes directly into Blackiron's existing scene target before its 2D HUD. */
 export class WebGL3DStage {
   private readonly mesh: Program;
   private readonly depth: Program;
@@ -115,12 +115,12 @@ export class WebGL3DStage {
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-          throw new Error(`Kiln3D shader: ${gl.getShaderInfoLog(shader)}`);
+          throw new Error(`Blackiron3D shader: ${gl.getShaderInfoLog(shader)}`);
         gl.attachShader(program, shader);
       }
       gl.linkProgram(program);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-        throw new Error(`Kiln3D link: ${gl.getProgramInfoLog(program)}`);
+        throw new Error(`Blackiron3D link: ${gl.getProgramInfoLog(program)}`);
     } catch (e) {
       gl.deleteProgram(program);
       throw e;
@@ -245,7 +245,7 @@ export class WebGL3DStage {
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.sceneFramebuffer);
     gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
-      throw new Error("Kiln3D multisample framebuffer incomplete");
+      throw new Error("Blackiron3D multisample framebuffer incomplete");
   }
   private shadowTarget(requested: number): void {
     const gl = this.gl,
@@ -286,7 +286,7 @@ export class WebGL3DStage {
     gl.drawBuffers([gl.NONE]);
     gl.readBuffer(gl.NONE);
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
-      throw new Error("Kiln3D shadow framebuffer incomplete");
+      throw new Error("Blackiron3D shadow framebuffer incomplete");
   }
   private groups(
     meshes: readonly Mesh3D[],

@@ -3,12 +3,12 @@ import GameController
 /// Game controllers through the GameController framework, delivered to the engine as the
 /// key codes the web build reads from the Gamepad API: `GamepadA`, `GamepadDpadLeft`,
 /// `GamepadLeftStickUp` and so on, so one action map covers both.
-final class KilnGamepad {
-    private weak var runtime: KilnRuntime?
+final class BlackironGamepad {
+    private weak var runtime: BlackironRuntime?
     private var down: Set<String> = []
     private let deadzone: Float = 0.5
 
-    init(runtime: KilnRuntime) {
+    init(runtime: BlackironRuntime) {
         self.runtime = runtime
         NotificationCenter.default.addObserver(forName: .GCControllerDidConnect, object: nil, queue: .main) { [weak self] note in
             if let controller = note.object as? GCController { self?.attach(controller) }
@@ -23,7 +23,7 @@ final class KilnGamepad {
     private func attach(_ controller: GCController) {
         guard let pad = controller.extendedGamepad else { return }
         pad.valueChangedHandler = { [weak self] pad, _ in self?.poll(pad) }
-        kilnLog("[kiln] controller: \(controller.vendorName ?? "unknown")")
+        blackironLog("[blackiron] controller: \(controller.vendorName ?? "unknown")")
     }
 
     private func poll(_ pad: GCExtendedGamepad) {

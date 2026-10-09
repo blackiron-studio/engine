@@ -9,7 +9,7 @@ import {
   Material3D,
 } from "../../src/three/index.ts";
 import { RELAYS } from "../../examples/breach/src/level.ts";
-import config from "../../examples/breach/kiln.json";
+import config from "../../examples/breach/blackiron.json";
 const errors: string[] = [];
 window.addEventListener("error", (e) => errors.push(e.message));
 window.addEventListener("unhandledrejection", (e) =>
@@ -25,7 +25,7 @@ async function capture(app: App, name: string) {
   });
 }
 try {
-  const app = await App.create({ canvas: "#kiln", config: config as any });
+  const app = await App.create({ canvas: "#blackiron", config: config as any });
   const s = await exerciseBreach(app, capture);
   const frame = (n = 1) => {
     for (let i = 0; i < n; i++) app.frame(1 / 60);

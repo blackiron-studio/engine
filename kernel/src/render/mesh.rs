@@ -232,15 +232,15 @@ impl MeshStage {
             count: None,
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Kiln mesh materials"),
+            label: Some("Blackiron mesh materials"),
             entries: &entries,
         });
         let depth_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("Kiln mesh shadow"),
+            label: Some("Blackiron mesh shadow"),
             entries: &entries[..3],
         });
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Kiln mesh shaders"),
+            label: Some("Blackiron mesh shaders"),
             source: wgpu::ShaderSource::Wgsl(include_str!("mesh.wgsl").into()),
         });
         let pipeline = |blend: bool, depth: bool, instanced: bool| {
@@ -267,7 +267,7 @@ impl MeshStage {
             let instance_layout = wgpu::VertexBufferLayout { array_stride: (INSTANCE_FLOATS * 4) as u64, step_mode: wgpu::VertexStepMode::Instance, attributes: &instance_attributes };
             let buffers = if instanced { vec![vertex_layout, instance_layout] } else { vec![vertex_layout] };
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-                label:Some("Kiln mesh pipeline"),layout:Some(&pl),
+                label:Some("Blackiron mesh pipeline"),layout:Some(&pl),
                 vertex:wgpu::VertexState{module:&shader,entry_point:Some(match (depth,instanced) {(true,true)=>"depth_vs_instanced",(true,false)=>"depth_vs",(false,true)=>"vs_instanced",(false,false)=>"vs"}),compilation_options:Default::default(),buffers:&buffers},
                 fragment:Some(wgpu::FragmentState{module:&shader,entry_point:Some(if depth{"depth_fs"}else{"fs"}),compilation_options:Default::default(),targets:if depth{&[]}else{&targets}}),
                 primitive:wgpu::PrimitiveState{cull_mode:None,..Default::default()},
@@ -324,7 +324,7 @@ impl MeshStage {
             }
         }
         let texture = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Kiln mesh texture"),
+            label: Some("Blackiron mesh texture"),
             size: wgpu::Extent3d {
                 width: t.width,
                 height: t.height,
@@ -397,7 +397,7 @@ impl MeshStage {
     }
     fn depth_texture(device: &wgpu::Device, w: u32, h: u32, samples: u32) -> (wgpu::Texture, wgpu::TextureView) {
         let t = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("Kiln mesh depth"),
+            label: Some("Blackiron mesh depth"),
             size: wgpu::Extent3d {
                 width: w,
                 height: h,
@@ -594,7 +594,7 @@ impl MeshStage {
         }
         if self.samples > 1 && self.msaa_color.as_ref().map(|t| (t.2, t.3)) != Some((w, h)) {
             let texture = device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("Kiln mesh MSAA color"),
+                label: Some("Blackiron mesh MSAA color"),
                 size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
                 mip_level_count: 1,
                 sample_count: self.samples,

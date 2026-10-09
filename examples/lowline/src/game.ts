@@ -1,4 +1,4 @@
-import { ArcadeWorld2D } from "@kiln/engine/physics";
+import { ArcadeWorld2D } from "@blackiron-studio/engine/physics";
 import {
   START,
   PICKUP,

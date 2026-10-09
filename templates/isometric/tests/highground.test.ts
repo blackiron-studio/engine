@@ -1,6 +1,6 @@
 import { beforeAll, expect, test } from "bun:test";
-import { App } from "@kiln/engine/app";
-import { bakeAtlas, resetSpriteRegistry, type Atlas } from "@kiln/engine/art";
+import { App } from "@blackiron-studio/engine/app";
+import { bakeAtlas, resetSpriteRegistry, type Atlas } from "@blackiron-studio/engine/art";
 import type { Progress } from "../src/shell.ts";
 import type { PlayScene as PlaySceneType } from "../src/scenes/play.ts";
 

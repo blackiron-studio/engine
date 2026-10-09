@@ -1,11 +1,11 @@
-// The knight comes from a generated sheet, imported with `kiln art import` (see package.json's
+// The knight comes from a generated sheet, imported with `blackiron art import` (see package.json's
 // `import` script) into a sprite set: one animation name, frames picked by facing, the attack
 // mirrored from its right side, a hit event on the frame the sword lands, a held hurt pose.
-// The same knight also runs as a cutout rig: `kiln art parts` cut seven parts from frame 3 and
+// The same knight also runs as a cutout rig: `blackiron art parts` cut seven parts from frame 3 and
 // worked out the bone pivots, and the engine's humanoid clips pose them. Everything else here
 // is a few painted tiles for the floor.
 
-import { defineRig, defineSprite, defineSpriteSet, defineStyle, defineVariants, materials, ramp } from "@kiln/engine/art";
+import { defineRig, defineSprite, defineSpriteSet, defineStyle, defineVariants, materials, ramp } from "@blackiron-studio/engine/art";
 
 // A small palette so the imported frames and the painted floor share one look.
 defineStyle({

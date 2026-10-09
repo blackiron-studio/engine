@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Kiln 0.1</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Blackiron 0.1</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500&display=swap">
 <style>
   :root {
@@ -285,7 +285,7 @@
   <div class="motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap">
     <div class="eyebrow">Engine proposal · working name, rename before M0</div>
-    <h1>Kiln <span class="ver">v0.1</span></h1>
+    <h1>Blackiron <span class="ver">v0.1</span></h1>
     <p class="thesis">
       One 2D, web-first runtime in TypeScript that Crownfall, Emberwake and Breach Protocol share,
       replacing the three copies of loop, renderer, art, audio, input, saves and tooling they carry today.
@@ -363,7 +363,7 @@
         <div>
           <h3>0.1 is</h3>
           <ul>
-            <li>A runtime library, <code>@kiln/engine</code>, with subpath modules</li>
+            <li>A runtime library, <code>@blackiron-studio/engine</code>, with subpath modules</li>
             <li>A CLI: <code>dev</code>, <code>build</code>, <code>export web</code>, <code>atlas</code>, <code>test</code></li>
             <li>A WebGL2 renderer with a Canvas 2D fallback behind one interface</li>
             <li>A post-effect chain: bloom, vignette, grade, tint, shake</li>
@@ -452,18 +452,18 @@
       </p>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Crownfall today</th><th>Kiln 0.1</th><th>What changes</th></tr></thead>
+          <thead><tr><th>Crownfall today</th><th>Blackiron 0.1</th><th>What changes</th></tr></thead>
           <tbody>
             <tr><td class="mono">main.js</td><td class="mono">app.App</td><td>The rAF scheduler with its hidden-tab timer fallback becomes the engine default. Resize and pointer mapping go with it.</td></tr>
             <tr><td class="mono">util.js</td><td class="mono">core.rng · core.hex · core.tween</td><td>mulberry32 becomes the one RNG. The Swift port already matches it bit for bit, so saves and replays stay portable.</td></tr>
             <tr><td class="mono">effects.js</td><td class="mono">render.post · scene.ParticleEmitter · scene.Atmosphere</td><td>Bloom moves from a blurred canvas to a two-pass shader. Motes, clouds and floaters become nodes. Shake lives on the camera.</td></tr>
-            <tr><td class="mono">paint.js · units.js · buildings.js · art.js</td><td class="mono">art.Painter · art.defineSprite · art.Atlas</td><td>Same primitives: <code>ball</code>, <code>slab</code>, <code>limb</code>, <code>folds</code>, <code>bricks</code>, <code>fur</code>. Sprites register by name and pack into one texture at boot. <code>kiln atlas</code> replaces the console snippet and the <code>/dev/atlas</code> endpoint.</td></tr>
+            <tr><td class="mono">paint.js · units.js · buildings.js · art.js</td><td class="mono">art.Painter · art.defineSprite · art.Atlas</td><td>Same primitives: <code>ball</code>, <code>slab</code>, <code>limb</code>, <code>folds</code>, <code>bricks</code>, <code>fur</code>. Sprites register by name and pack into one texture at boot. <code>blackiron atlas</code> replaces the console snippet and the <code>/dev/atlas</code> endpoint.</td></tr>
             <tr><td class="mono">ui.js</td><td class="mono">scene.ui</td><td>Hit zones, panels, buttons and tooltips become nodes on a <code>CanvasLayer</code> instead of a per-frame zone list.</td></tr>
             <tr><td class="mono">audio.js</td><td class="mono">audio</td><td>Music moods and effects become data. Unlock-on-gesture and the mute preference are handled once.</td></tr>
             <tr><td class="mono">storage.js</td><td class="mono">save</td><td>Versioned, with a migration list and validation on load, taken from Emberwake's stricter module.</td></tr>
             <tr><td class="mono">adventure.js · battle.js · town.js</td><td>Stay in the game</td><td>Each becomes a <code>Scene</code> subclass. Their draw code calls sprites and UI nodes instead of the canvas.</td></tr>
             <tr><td class="mono">game.js · combat.js · map.js · ai.js · resolve.js · data.js</td><td>Stay in the game</td><td>Unchanged. The five test files run as they are.</td></tr>
-            <tr><td class="mono">server.ts · scripts/build.ts · index.html</td><td class="mono">cli</td><td>Deleted from the game. A <code>kiln.json</code> declares the entry, viewport and renderer.</td></tr>
+            <tr><td class="mono">server.ts · scripts/build.ts · index.html</td><td class="mono">cli</td><td>Deleted from the game. A <code>blackiron.json</code> declares the entry, viewport and renderer.</td></tr>
           </tbody>
         </table>
       </div>
@@ -479,7 +479,7 @@
     <h2>API sketch</h2>
     <div class="body">
       <p>What a game looks like on the engine. Enough to check the shape feels right before any of it exists.</p>
-<pre><code><span class="c">// kiln.json</span>
+<pre><code><span class="c">// blackiron.json</span>
 {
   <span class="s">"name"</span>: <span class="s">"crownfall"</span>,
   <span class="s">"entry"</span>: <span class="s">"src/main.ts"</span>,
@@ -488,7 +488,7 @@
   <span class="s">"post"</span>: [<span class="s">"bloom"</span>, <span class="s">"vignette"</span>, <span class="s">"dayTint"</span>]
 }</code></pre>
 <pre><code><span class="c">// src/art/creatures.ts — same painter primitives, now registered by name</span>
-<span class="k">import</span> { defineSprite, ball, slab, limb, ramp } <span class="k">from</span> <span class="s">"@kiln/engine/art"</span>;
+<span class="k">import</span> { defineSprite, ball, slab, limb, ramp } <span class="k">from</span> <span class="s">"@blackiron-studio/engine/art"</span>;
 
 <span class="k">export const</span> knight = defineSprite(<span class="s">"knight"</span>, { w: 48, h: 48, mirror: <span class="k">true</span> }, (p) => {
   <span class="k">const</span> steel = ramp(<span class="s">"#8a93a8"</span>), cloak = ramp(<span class="s">"#7a2f3a"</span>);
@@ -497,8 +497,8 @@
   limb(p, 20, 30, 8, 44, 4, steel);
 });</code></pre>
 <pre><code><span class="c">// src/scenes/adventure.ts — rules untouched, drawing becomes nodes</span>
-<span class="k">import</span> { Scene, Sprite, TileLayer, Camera2D, CanvasLayer } <span class="k">from</span> <span class="s">"@kiln/engine/scene"</span>;
-<span class="k">import</span> { Panel, Button } <span class="k">from</span> <span class="s">"@kiln/engine/scene/ui"</span>;
+<span class="k">import</span> { Scene, Sprite, TileLayer, Camera2D, CanvasLayer } <span class="k">from</span> <span class="s">"@blackiron-studio/engine/scene"</span>;
+<span class="k">import</span> { Panel, Button } <span class="k">from</span> <span class="s">"@blackiron-studio/engine/scene/ui"</span>;
 
 <span class="k">export class</span> Adventure <span class="k">extends</span> Scene {
   camera = <span class="k">this</span>.add(<span class="k">new</span> Camera2D({ bounds: map.pixelRect }));
@@ -513,7 +513,7 @@
   onAction(name: <span class="k">string</span>) { <span class="k">if</span> (name === <span class="s">"endTurn"</span>) endTurn(state); }
 }</code></pre>
 <pre><code><span class="c">// src/main.ts</span>
-<span class="k">import</span> { App } <span class="k">from</span> <span class="s">"@kiln/engine/app"</span>;
+<span class="k">import</span> { App } <span class="k">from</span> <span class="s">"@blackiron-studio/engine/app"</span>;
 
 <span class="k">const</span> app = <span class="k">await</span> App.create({ canvas: <span class="s">"#game"</span> });
 app.input.map({ endTurn: [<span class="s">"KeyE"</span>, <span class="s">"Enter"</span>], nextHero: [<span class="s">"KeyH"</span>], menu: [<span class="s">"Escape"</span>] });
@@ -538,12 +538,12 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
         <table>
           <thead><tr><th>#</th><th>Milestone</th><th>Delivers</th><th>Proof</th><th>Size</th></tr></thead>
           <tbody>
-            <tr><td class="mono">M0</td><td>Bootstrap</td><td>Repo, package, <code>kiln.json</code>, CLI <code>dev</code> and <code>build</code>, the App loop, a Canvas 2D backend lifted from Crownfall, a hello-sprite sample</td><td>Sample runs at 60 fps under <code>kiln dev</code></td><td><span class="pill s">S · 2–3 d</span></td></tr>
+            <tr><td class="mono">M0</td><td>Bootstrap</td><td>Repo, package, <code>blackiron.json</code>, CLI <code>dev</code> and <code>build</code>, the App loop, a Canvas 2D backend lifted from Crownfall, a hello-sprite sample</td><td>Sample runs at 60 fps under <code>blackiron dev</code></td><td><span class="pill s">S · 2–3 d</span></td></tr>
             <tr><td class="mono">M1</td><td>Core and scene</td><td>Math, RNG, tween, events. Node tree, Camera2D, CanvasLayer, canvas UI, input action map</td><td>Crownfall's adventure screen runs as a Scene with rules untouched</td><td><span class="pill m">M · 3–5 d</span></td></tr>
-            <tr><td class="mono">M2</td><td>Art, audio, save</td><td>Painter and atlas, <code>kiln atlas</code>, audio synth, versioned saves</td><td>Crownfall fully migrated. Five test files green. Screenshots match the existing ones in <code>screenshots/</code></td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M2</td><td>Art, audio, save</td><td>Painter and atlas, <code>blackiron atlas</code>, audio synth, versioned saves</td><td>Crownfall fully migrated. Five test files green. Screenshots match the existing ones in <code>screenshots/</code></td><td><span class="pill m">M · 3–5 d</span></td></tr>
             <tr><td class="mono">M3</td><td>WebGL2 backend</td><td>Sprite batcher, render targets, post chain as shaders, atlas upload. Canvas 2D becomes the fallback</td><td>Same screenshot diff passes on both backends. Frame time and draw calls logged</td><td><span class="pill l">L · 5–8 d</span></td></tr>
             <tr><td class="mono">M4</td><td>Second and third game</td><td>Emberwake migrated: fixed step, real-time input, atmosphere. Breach Protocol adopts core, audio, save, CLI</td><td>All ten existing test files green. Emberwake holds 60 fps with bloom on an iPhone in Safari</td><td><span class="pill m">M · 4–6 d</span></td></tr>
-            <tr><td class="mono">M5</td><td>Release 0.1</td><td>README, API reference from types, sample project, budgets checked, tag <code>v0.1.0</code></td><td>A fresh clone of Crownfall builds with <code>kiln build</code> and nothing else</td><td><span class="pill s">S · 2–3 d</span></td></tr>
+            <tr><td class="mono">M5</td><td>Release 0.1</td><td>README, API reference from types, sample project, budgets checked, tag <code>v0.1.0</code></td><td>A fresh clone of Crownfall builds with <code>blackiron build</code> and nothing else</td><td><span class="pill s">S · 2–3 d</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -563,7 +563,7 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
         <li>Every screenshot in each game's <code>screenshots/</code> folder matches the new build within a small pixel tolerance, on both backends.</li>
         <li>All ten existing test files pass unchanged, alongside the engine's own suite.</li>
         <li>Version 1 saves from both games still load.</li>
-        <li>The iOS sprite export is <code>kiln atlas</code>, not a console snippet.</li>
+        <li>The iOS sprite export is <code>blackiron atlas</code>, not a console snippet.</li>
         <li>A new game starts from the sample project with one command.</li>
         <li>The renderer backend contract is written down, so a third backend can be built from the document alone.</li>
       </ul>
@@ -572,8 +572,8 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
         <table>
           <thead><tr><th>Budget</th><th class="num">Target</th><th>Measured by</th></tr></thead>
           <tbody>
-            <tr><td>Engine runtime, gzipped</td><td class="num">≤ 60 KB</td><td><code>kiln build --report</code></td></tr>
-            <tr><td>Crownfall first load, gzipped, no external assets</td><td class="num">≤ 200 KB</td><td><code>kiln build --report</code></td></tr>
+            <tr><td>Engine runtime, gzipped</td><td class="num">≤ 60 KB</td><td><code>blackiron build --report</code></td></tr>
+            <tr><td>Crownfall first load, gzipped, no external assets</td><td class="num">≤ 200 KB</td><td><code>blackiron build --report</code></td></tr>
             <tr><td>Frame time, 1280×800 with bloom, M-series MacBook</td><td class="num">≤ 8 ms</td><td>Dev overlay, 60-second capture</td></tr>
             <tr><td>Frame time, same scene, iPhone 13-class in Safari</td><td class="num">≤ 16 ms</td><td>Dev overlay, 60-second capture</td></tr>
             <tr><td>Draw calls per frame on the adventure map</td><td class="num">≤ 30</td><td>Dev overlay</td></tr>
@@ -631,7 +631,7 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
         </div>
       </div>
       <p style="margin-top:1.2rem">
-        <strong>The name</strong> is the seventh decision. Kiln is a placeholder chosen because the art is fired in
+        <strong>The name</strong> is the seventh decision. Blackiron is a placeholder chosen because the art is fired in
         code at boot. It goes into the package scope and the CLI, so it should be settled before M0.
       </p>
     </div>
@@ -646,7 +646,7 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
           <tbody>
             <tr><td>WebGL2 backend runs long</td><td>M3 past eight days</td><td>Ship 0.1 on Canvas 2D. The interface is the deliverable. WebGL2 becomes 0.1.1.</td></tr>
             <tr><td>Abstraction shaped only by Crownfall</td><td>Emberwake needs engine changes in M4</td><td>That is what M4 is for. Budget for it and keep the scene API small enough to bend.</td></tr>
-            <tr><td>Boot-time painting too slow on phones</td><td>Atlas build over the budget</td><td><code>kiln atlas</code> prebakes a PNG atlas and the runtime loads it instead of painting.</td></tr>
+            <tr><td>Boot-time painting too slow on phones</td><td>Atlas build over the budget</td><td><code>blackiron atlas</code> prebakes a PNG atlas and the runtime loads it instead of painting.</td></tr>
             <tr><td>Save churn breaks players' autosaves</td><td>A version 1 save fails to load</td><td>Migrations from day one. Loading old saves is in the definition of done.</td></tr>
             <tr><td>Engine work crowds out games</td><td>A month without new game content</td><td>0.1 is capped at the milestones above. New features wait for a game that needs them.</td></tr>
             <tr><td>Safari WebGL2 quirks</td><td>Bloom looks different on iPhone</td><td>The screenshot parity check runs in Safari too, through the existing dev screenshot endpoint.</td></tr>
@@ -676,7 +676,7 @@ app.scenes.change(<span class="k">new</span> Title());</code></pre>
 
 <footer>
   <div class="wrap">
-    <span>Kiln 0.1 · engine proposal · draft of 3 September 2026</span>
+    <span>Blackiron 0.1 · engine proposal · draft of 3 September 2026</span>
     <span>Sources: the <code>games/</code> folder as of today, Godot 4.7 export documentation</span>
   </div>
 </footer>

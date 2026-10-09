@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 const engine = resolve(import.meta.dir, ".."),
-  output = resolve(engine, ".kiln/verification/ci");
+  output = resolve(engine, ".blackiron/verification/ci");
 await mkdir(output, { recursive: true });
 if (Bun.version !== "1.3.13")
   throw new Error(`CI requires Bun 1.3.13, got ${Bun.version}`);
@@ -54,7 +54,7 @@ const jobs: [string, string[]][] = [
     "native",
     [
       process.execPath,
-      "cli/kiln.ts",
+      "cli/blackiron.ts",
       "verify",
       "--host",
       "desktop",
@@ -71,7 +71,7 @@ for (const [name, command] of jobs) {
     cwd: engine,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, KILN_NO_V8: "1" },
+    env: { ...process.env, BLACKIRON_NO_V8: "1" },
   });
   const [stdout, stderr, code] = await Promise.all([
     new Response(proc.stdout).text(),

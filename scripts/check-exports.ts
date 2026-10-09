@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import { bundleFonts } from "../cli/commands/build.ts";
 import { loadProject } from "../cli/project.ts";
 const engine = resolve(import.meta.dir, ".."),
-  output = join(engine, ".kiln/verification/exports");
+  output = join(engine, ".blackiron/verification/exports");
 await mkdir(output, { recursive: true });
-const root = await mkdtemp(join(tmpdir(), "kiln-export-browser-"));
+const root = await mkdtemp(join(tmpdir(), "blackiron-export-browser-"));
 const chrome =
   process.env.CHROME_PATH ??
   (process.platform === "darwin"
@@ -33,9 +33,9 @@ try {
     join(root, "font.css"),
     '@font-face {font-family:"Export Audit";font-weight:500;src:url("assets/font.ttf")}',
   );
-  const config = await Bun.file(join(fixture, "kiln.json")).json();
+  const config = await Bun.file(join(fixture, "blackiron.json")).json();
   await Bun.write(
-    join(root, "kiln.json"),
+    join(root, "blackiron.json"),
     JSON.stringify({
       ...config,
       name: "Offline export acceptance",
@@ -74,7 +74,7 @@ try {
   const build = Bun.spawn(
     [
       process.execPath,
-      join(engine, "cli/kiln.ts"),
+      join(engine, "cli/blackiron.ts"),
       "export",
       "web",
       "--single-file",

@@ -1,4 +1,4 @@
-//! Kiln's generic native host. One codebase for Windows, Linux, macOS and Android: winit
+//! Blackiron's generic native host. One codebase for Windows, Linux, macOS and Android: winit
 //! for the window and input, wgpu for the GPU, QuickJS for the game, cpal for audio, and
 //! the kernel for everything heavy. The Swift host stays the Apple-polished alternative.
 
@@ -25,7 +25,7 @@ use winit::window::{CursorGrabMode,Window, WindowId};
 use bundle::Bundle;
 use js::{Js, Screen, TextureUpload};
 use script::EngineKind;
-use kiln_kernel::render::{Frame, Renderer, SurfaceSource};
+use blackiron_kernel::render::{Frame, Renderer, SurfaceSource};
 use winit::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 pub const MAX_QUADS: usize = 32768;
@@ -186,7 +186,7 @@ impl App {
             // Desktops have no screen-reader bridge yet; the log keeps the intent visible.
             log::info!("announce: {text}");
         }
-        if std::env::var_os("KILN_TRACE").is_some() {
+        if std::env::var_os("BLACKIRON_TRACE").is_some() {
             log::info!("frame {} submitted={} keyboard={:?}", renderer.frames, frame.is_some(), keyboard);
         }
         if let Some(f) = frame {

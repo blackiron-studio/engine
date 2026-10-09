@@ -1,13 +1,13 @@
 {
-  "name": "kiln-blank",
+  "name": "blackiron-blank",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun ../../cli/kiln.ts dev",
-    "build": "bun ../../cli/kiln.ts build --report",
-    "export": "bun ../../cli/kiln.ts export web --single-file",
-    "atlas": "bun ../../cli/kiln.ts atlas --split",
+    "dev": "bun ../../cli/blackiron.ts dev",
+    "build": "bun ../../cli/blackiron.ts build --report",
+    "export": "bun ../../cli/blackiron.ts export web --single-file",
+    "atlas": "bun ../../cli/blackiron.ts atlas --split",
     "test": "bun test"
   }
 }

@@ -1,6 +1,6 @@
 // All sprites at 32 px density. Units come in two team colours as variants.
 
-import { type Painter, type Ramp, defineSprite, defineVariants, materials, ramp } from "@kiln/engine/art";
+import { type Painter, type Ramp, defineSprite, defineVariants, materials, ramp } from "@blackiron-studio/engine/art";
 
 const GRASS = ramp("#5c9a52", 0.9);
 

@@ -1,6 +1,6 @@
 import "./art.ts";
-import type { App } from "@kiln/engine/app";
-import { SettingsScene, TitleScene, bindShellActions, createSaveSlots, createSettings } from "@kiln/engine/shell";
+import type { App } from "@blackiron-studio/engine/app";
+import { SettingsScene, TitleScene, bindShellActions, createSaveSlots, createSettings } from "@blackiron-studio/engine/shell";
 import { HighgroundTitle } from "./scenes/title.ts";
 import { PlayScene } from "./scenes/play.ts";
 import { type Progress, shell } from "./shell.ts";
@@ -38,6 +38,6 @@ export function title(app: App): TitleScene {
     const settings = shell.settings;
     entries.push({ label: "Settings", onPick: () => app.scenes.push(new SettingsScene(settings), { overlay: true }) });
   }
-  const scene = new HighgroundTitle({ title: "Highground", subtitle: "Find the sun coins. Build a foothold. Explore the sunlit terraces.", entries, version: "Kiln · 2.5D", background: 0x174f53 });
+  const scene = new HighgroundTitle({ title: "Highground", subtitle: "Find the sun coins. Build a foothold. Explore the sunlit terraces.", entries, version: "Blackiron · 2.5D", background: 0x174f53 });
   return scene;
 }

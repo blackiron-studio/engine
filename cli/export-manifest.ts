@@ -2,7 +2,7 @@ import { join } from "node:path";
 
 /** Export defaults and relative paths. Final binaries may use build-system overrides. */
 export interface ExportManifest {
-  schema: "kiln.export/v1";
+  schema: "blackiron.export/v1";
   engine: { name: string; version: string };
   target: string;
   projectPath: string;
@@ -20,11 +20,11 @@ export async function writeExportManifest(
 ): Promise<string> {
   const engine = await Bun.file(join(import.meta.dir, "..", "package.json")).json();
   const manifest: ExportManifest = {
-    schema: "kiln.export/v1",
+    schema: "blackiron.export/v1",
     engine: { name: engine.name, version: engine.version },
     ...metadata,
   };
-  const path = join(dir, "kiln-export.json");
+  const path = join(dir, "blackiron-export.json");
   await Bun.write(path, JSON.stringify(manifest, null, 2) + "\n");
   return path;
 }

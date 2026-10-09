@@ -1,9 +1,9 @@
 import JavaScriptCore
-import KilnKernel
+import BlackironKernel
 
 /// One physics world of the kernel, as the engine's `NativePhysicsWorld`: a scratch buffer
 /// over kernel memory, one call, and the transforms and events of the last step.
-@objc protocol KilnPhysicsExports: JSExport {
+@objc protocol BlackironPhysicsExports: JSExport {
     var scratch: JSValue { get }
     func call(_ op: Int, _ words: Int) -> Int
     func transforms() -> JSValue
@@ -11,24 +11,24 @@ import KilnKernel
     func destroy()
 }
 
-@objc final class KilnPhysicsBridge: NSObject, KilnPhysicsExports {
+@objc final class BlackironPhysicsBridge: NSObject, BlackironPhysicsExports {
     private var handle: OpaquePointer?
     private let context: JSContext
     let scratch: JSValue
 
     init(context: JSContext, pixelsPerMeter: Double) {
         self.context = context
-        let h = kiln_physics_new(Float(pixelsPerMeter))!
+        let h = blackiron_physics_new(Float(pixelsPerMeter))!
         handle = h
         var exception: JSValueRef?
-        let ref = JSObjectMakeTypedArrayWithBytesNoCopy(context.jsGlobalContextRef, kJSTypedArrayTypeFloat32Array, kiln_physics_scratch(h), Int(kiln_physics_scratch_words(h)) * 4, { _, _ in }, nil, &exception)
+        let ref = JSObjectMakeTypedArrayWithBytesNoCopy(context.jsGlobalContextRef, kJSTypedArrayTypeFloat32Array, blackiron_physics_scratch(h), Int(blackiron_physics_scratch_words(h)) * 4, { _, _ in }, nil, &exception)
         scratch = JSValue(jsValueRef: ref, in: context)
         super.init()
     }
 
     func call(_ op: Int, _ words: Int) -> Int {
         guard let handle else { return -1 }
-        return Int(kiln_physics_call(handle, UInt32(max(0, op)), UInt32(max(0, words))))
+        return Int(blackiron_physics_call(handle, UInt32(max(0, op)), UInt32(max(0, words))))
     }
 
     /// Copies, because the kernel's buffers move as bodies are added.
@@ -46,17 +46,17 @@ import KilnKernel
 
     func transforms() -> JSValue {
         guard let handle else { return copyFloats(nil, count: 0) }
-        return copyFloats(kiln_physics_transforms(handle), count: Int(kiln_physics_transform_count(handle)) * 8)
+        return copyFloats(blackiron_physics_transforms(handle), count: Int(blackiron_physics_transform_count(handle)) * 8)
     }
 
     func events() -> JSValue {
         guard let handle else { return copyFloats(nil, count: 0) }
-        return copyFloats(kiln_physics_events(handle), count: Int(kiln_physics_event_count(handle)) * 4)
+        return copyFloats(blackiron_physics_events(handle), count: Int(blackiron_physics_event_count(handle)) * 4)
     }
 
     func destroy() {
         if let handle {
-            kiln_physics_free(handle)
+            blackiron_physics_free(handle)
         }
         handle = nil
     }

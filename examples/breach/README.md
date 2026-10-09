@@ -1,6 +1,6 @@
 # Signal Breach
 
-A single-player 3D FPS inside an offshore relay station. Defeat three security waves and reboot three relays to restore the signal. Built with Kiln's reusable first-person input, capsule controller, weapon, combat, projectile and navigation systems.
+A single-player 3D FPS inside an offshore relay station. Defeat three security waves and reboot three relays to restore the signal. Built with Blackiron's reusable first-person input, capsule controller, weapon, combat, projectile and navigation systems.
 
 Run `bun run dev` here, or `bun run gallery` from the engine. This first release targets desktop browsers with WebGL2. Click **Enter the station** to request mouse capture. If the browser cannot capture the mouse, hold the **right mouse button and drag to aim**, and **left-click to fire** (including while aiming). Chrome supports the normal unrestricted FPS mouse controls. Press Enter to start with keyboard aiming; click the game to attempt capture or activate the mouse fallback.
 

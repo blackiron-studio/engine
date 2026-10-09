@@ -1,4 +1,4 @@
-import { Anchor, Button, FocusGroup, Label, Scene, Sprite } from "@kiln/engine/scene";
+import { Anchor, Button, FocusGroup, Label, Scene, Sprite } from "@blackiron-studio/engine/scene";
 import { BUTTON, DISPLAY, UI, UI_SMALL } from "../fonts.ts";
 import { PlayScene } from "./play.ts";
 

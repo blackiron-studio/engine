@@ -1,8 +1,8 @@
-import { Rng } from "@kiln/engine/core";
+import { Rng } from "@blackiron-studio/engine/core";
 import {
   Anchor, AnimatedSprite, AnimationPlayer, Area2D, Button, CharacterBody2D, Label, LightLayer, Light2D, Node2D,
   RichText, RigidBody2D, Scene, ScrollContainer, Sprite, StateMachine, StaticBody2D, Tooltip,
-} from "@kiln/engine/scene";
+} from "@blackiron-studio/engine/scene";
 import { TitleScene, saves } from "./title.ts";
 
 const TILE = 32;
@@ -182,7 +182,7 @@ export class PlayScene extends Scene {
 
   private shadowY: number | null = null;
 
-  override render(ctx: import("@kiln/engine/scene").DrawContext): void {
+  override render(ctx: import("@blackiron-studio/engine/scene").DrawContext): void {
     if (this.shadowY !== null && !this.hero.grounded) {
       const d = Math.max(0, Math.min(1, 1 - (this.shadowY - this.hero.y) / 400));
       ctx.rect(this.hero.x - 10 * d, this.shadowY - 2, 20 * d, 3, 0x000000, 0.35 * d);

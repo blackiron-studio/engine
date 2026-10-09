@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Kiln 0.3</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Blackiron 0.3</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500&display=swap">
 <style>
   :root {
@@ -123,10 +123,10 @@
 <header class="masthead">
   <div class="motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="wrap">
-    <div class="eyebrow">Engine proposal · follows Kiln 0.2</div>
-    <h1>Kiln <span class="ver">v0.3</span></h1>
+    <div class="eyebrow">Engine proposal · follows Blackiron 0.2</div>
+    <h1>Blackiron <span class="ver">v0.3</span></h1>
     <p class="thesis">
-      Native iOS export. <code>kiln export ios</code> produces an Xcode project that builds a real iOS app:
+      Native iOS export. <code>blackiron export ios</code> produces an Xcode project that builds a real iOS app:
       the engine and the game in TypeScript inside the system's JavaScript runtime, rendering through
       Metal, with no web view anywhere. The same way Godot exports, with our scripting language.
     </p>
@@ -142,7 +142,7 @@
 <nav class="toc" aria-label="Sections">
   <div class="wrap">
     <a href="#how">How Godot does it</a>
-    <a href="#shape">The shape for Kiln</a>
+    <a href="#shape">The shape for Blackiron</a>
     <a href="#protocol">The host protocol</a>
     <a href="#export">What the export produces</a>
     <a href="#scope">Scope</a>
@@ -165,7 +165,7 @@
         template, and pairing it with the game's data and scripts inside an Xcode project.
       </p>
       <p>
-        Kiln has the same two halves already. The engine and the games are TypeScript; the host is
+        Blackiron has the same two halves already. The engine and the games are TypeScript; the host is
         whatever runs them and draws for them. On the web that host is the browser, and 0.2 pushed
         every host-specific thing behind a <code>Platform</code> interface and a <code>Renderer</code>
         contract. 0.3 writes a second host, in Swift with Metal, and an export command that packages
@@ -183,7 +183,7 @@
   </section>
 
   <section id="shape">
-    <h2>The shape for Kiln</h2>
+    <h2>The shape for Blackiron</h2>
     <div class="body">
       <p>Everything above the dotted line is shared and already exists. The web host is the browser. The iOS host is new.</p>
       <div class="hosts" role="img" aria-label="Shared TypeScript stack over two hosts: the browser for the web, and a Swift and Metal host for iOS">
@@ -192,12 +192,12 @@
         <div class="layer shared"><div class="name">Seams<small>contracts</small></div><div class="chips"><span class="chip iface">Renderer</span><span class="chip iface">Platform</span><span class="chip iface">AudioBackend</span><span class="chip">NativeRenderer: frames as one vertex buffer and a command list</span></div></div>
         <div class="split">
           <div class="host"><div class="name">Web host<small>exists</small></div><div class="chips"><span class="chip">browser</span><span class="chip">WebGL2Renderer</span><span class="chip">WebPlatform</span><span class="chip">WebAudio</span><span class="chip">pointer + keyboard + Gamepad API</span></div></div>
-          <div class="host new"><div class="name">iOS host<small>Swift package: KilnHost</small></div><div class="chips"><span class="chip">JavaScriptCore</span><span class="chip">MetalRenderer</span><span class="chip">IosPlatform</span><span class="chip">AVAudioEngine voices</span><span class="chip">UITouch + GameController + keyboard</span><span class="chip">CADisplayLink</span></div></div>
+          <div class="host new"><div class="name">iOS host<small>Swift package: BlackironHost</small></div><div class="chips"><span class="chip">JavaScriptCore</span><span class="chip">MetalRenderer</span><span class="chip">IosPlatform</span><span class="chip">AVAudioEngine voices</span><span class="chip">UITouch + GameController + keyboard</span><span class="chip">CADisplayLink</span></div></div>
         </div>
       </div>
       <h3>The four pieces of the host</h3>
       <ul>
-        <li><strong>Runtime.</strong> JavaScriptCore, which ships in every iOS and needs no dependency. Inside an app it runs as an interpreter, since Apple allows just-in-time compilation only in WebKit. That is fine for per-frame scene work and is the main thing to measure early; boot-time art painting is avoided entirely by shipping the atlas prebaked with <code>kiln atlas</code>.</li>
+        <li><strong>Runtime.</strong> JavaScriptCore, which ships in every iOS and needs no dependency. Inside an app it runs as an interpreter, since Apple allows just-in-time compilation only in WebKit. That is fine for per-frame scene work and is the main thing to measure early; boot-time art painting is avoided entirely by shipping the atlas prebaked with <code>blackiron atlas</code>.</li>
         <li><strong>Renderer.</strong> A Metal implementation of the same passes the WebGL2 backend runs: the scene target at native resolution, the light target, the overlay target, the bloom chain and the composite. The five GLSL shaders become five Metal functions. On the TypeScript side a new <code>NativeRenderer</code> backend builds each frame as one vertex buffer and a short command list, which the host reads without copying.</li>
         <li><strong>Platform.</strong> The 0.2 seam implemented with the app bundle for assets, the Documents folder for saves, <code>CADisplayLink</code> for frames, <code>UIScreen</code> scale for the pixel ratio, plus two additions the browser used to provide for free: glyph rasterisation through CoreText for the text cache, and safe-area insets for anchors.</li>
         <li><strong>Audio.</strong> The synth's musical logic (moods, sequencing, envelopes) stays in TypeScript. What moves behind an <code>AudioBackend</code> interface is voice synthesis and sample playback, implemented on iOS with <code>AVAudioEngine</code> source nodes. The web keeps WebAudio behind the same interface.</li>
@@ -218,12 +218,12 @@
         hosts in 0.4 without touching the engine.
       </p>
 <pre><code><span class="c">// Host → engine (called by the host each display refresh and on events)</span>
-__kiln.frame(timeMs)
-__kiln.pointer(kind, id, x, y, type)      <span class="c">// down | move | up | cancel, in points</span>
-__kiln.key(code, down)                    <span class="c">// the same KeyboardEvent.code names as the web</span>
-__kiln.pad(index, buttons, axes)
-__kiln.resize(width, height, scale, safeInsets)
-__kiln.visibility(visible)
+__blackiron.frame(timeMs)
+__blackiron.pointer(kind, id, x, y, type)      <span class="c">// down | move | up | cancel, in points</span>
+__blackiron.key(code, down)                    <span class="c">// the same KeyboardEvent.code names as the web</span>
+__blackiron.pad(index, buttons, axes)
+__blackiron.resize(width, height, scale, safeInsets)
+__blackiron.visibility(visible)
 
 <span class="c">// Engine → host (a small object the host installs on the global before loading game.js)</span>
 host.now()
@@ -249,7 +249,7 @@ post:     bloom, threshold, passes, vignette, tint, saturation, contrast, bright
   <section id="export">
     <h2>What the export produces</h2>
     <div class="body">
-<pre><code>$ kiln export ios
+<pre><code>$ blackiron export ios
   bundled Wisp Hollow for native (game.js, 138 KB)
   baked 58 sprites into atlas.png
   wrote dist/ios/WispHollow/
@@ -257,22 +257,22 @@ post:     bloom, threshold, passes, vignette, tint, saturation, contrast, bright
 dist/ios/WispHollow/
   WispHollow.xcodeproj          <span class="c">// generated; open, sign, run</span>
   WispHollow/
-    Info.plist                  <span class="c">// bundle id, orientation, min iOS from kiln.json</span>
+    Info.plist                  <span class="c">// bundle id, orientation, min iOS from blackiron.json</span>
     Assets.xcassets/            <span class="c">// icon painted by the engine at 1024 px</span>
     Resources/
       game.js                   <span class="c">// engine + game, one file, no DOM references</span>
       atlas.png  atlas.json     <span class="c">// prebaked art; no painting at boot</span>
-      fonts/                    <span class="c">// bundled TTFs named in kiln.json</span>
+      fonts/                    <span class="c">// bundled TTFs named in blackiron.json</span>
       sounds/                   <span class="c">// samples, if any</span>
-  Packages/KilnHost             <span class="c">// the Swift package: runtime, Metal, platform, audio</span></code></pre>
+  Packages/BlackironHost             <span class="c">// the Swift package: runtime, Metal, platform, audio</span></code></pre>
       <p>
         Three small conventions make this work. A game's entry exports a <code>main</code> function
         instead of running at the top level, so one bundle serves both the web page and the native
-        host. <code>fonts</code> in <code>kiln.json</code> may name local TTF files, which the web build
+        host. <code>fonts</code> in <code>blackiron.json</code> may name local TTF files, which the web build
         also serves. And an <code>ios</code> block carries the bundle identifier, orientation and
         minimum version.
       </p>
-<pre><code><span class="c">// kiln.json</span>
+<pre><code><span class="c">// blackiron.json</span>
 {
   <span class="s">"ios"</span>: { <span class="s">"bundleId"</span>: <span class="s">"com.example.wisphollow"</span>, <span class="s">"orientation"</span>: <span class="s">"landscape"</span>, <span class="s">"minVersion"</span>: <span class="s">"16.0"</span>, <span class="s">"icon"</span>: <span class="s">"icon"</span> },
   <span class="s">"fonts"</span>: [<span class="s">"fonts/PixelifySans.ttf"</span>, <span class="s">"fonts/InstrumentSans.ttf"</span>]
@@ -284,7 +284,7 @@ dist/ios/WispHollow/
   app.scenes.change(<span class="k">new</span> TitleScene());
 }</code></pre>
       <p>
-        <code>kiln run ios</code> builds and launches on the booted simulator; the Metal renderer runs
+        <code>blackiron run ios</code> builds and launches on the booted simulator; the Metal renderer runs
         there too. Real-device builds go through Xcode's signing like any other app.
       </p>
     </div>
@@ -300,9 +300,9 @@ dist/ios/WispHollow/
             <li>The host protocol, versioned and documented</li>
             <li><code>NativeRenderer</code>, the <code>AudioBackend</code> seam, glyph rasterisation and safe insets on <code>Platform</code></li>
             <li>The <code>main</code> entry convention and local font files</li>
-            <li><code>KilnHost</code>, a Swift package: JavaScriptCore runtime, Metal renderer, iOS platform, audio voices, input, lifecycle</li>
+            <li><code>BlackironHost</code>, a Swift package: JavaScriptCore runtime, Metal renderer, iOS platform, audio voices, input, lifecycle</li>
             <li>The same package on macOS, used to iterate quickly and as a desktop build for free</li>
-            <li><code>kiln export ios</code> and <code>kiln run ios</code></li>
+            <li><code>blackiron export ios</code> and <code>blackiron run ios</code></li>
             <li>The demo and starters exported and running on device</li>
           </ul>
         </div>
@@ -331,11 +331,11 @@ dist/ios/WispHollow/
         <table>
           <thead><tr><th>#</th><th>Milestone</th><th>Delivers</th><th>Proof</th><th>Size</th></tr></thead>
           <tbody>
-            <tr><td class="mono">M0</td><td>Engine side</td><td>Host protocol spec, <code>NativeRenderer</code>, <code>AudioBackend</code> seam, glyph and safe-inset additions to <code>Platform</code>, <code>main</code> entry, local fonts, <code>kiln build --target native</code></td><td>The demo runs headlessly against a fake host that decodes every frame; tests green; the web build is unchanged</td><td><span class="pill m">M · 4–6 d</span></td></tr>
-            <tr><td class="mono">M1</td><td>KilnHost on macOS</td><td>Swift package: JavaScriptCore bridge with zero-copy typed arrays, Metal renderer with the five passes, macOS platform, keyboard and mouse</td><td>Wisp Hollow plays in a Mac window at 60 fps with lights, bloom and HD text</td><td><span class="pill l">L · 6–9 d</span></td></tr>
-            <tr><td class="mono">M2</td><td>KilnHost on iOS</td><td>Touch, GameController, keyboard, <code>CADisplayLink</code>, safe areas, backgrounding, audio session, orientation</td><td>The demo and starters play on an iPhone; the frame budget below holds</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M0</td><td>Engine side</td><td>Host protocol spec, <code>NativeRenderer</code>, <code>AudioBackend</code> seam, glyph and safe-inset additions to <code>Platform</code>, <code>main</code> entry, local fonts, <code>blackiron build --target native</code></td><td>The demo runs headlessly against a fake host that decodes every frame; tests green; the web build is unchanged</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M1</td><td>BlackironHost on macOS</td><td>Swift package: JavaScriptCore bridge with zero-copy typed arrays, Metal renderer with the five passes, macOS platform, keyboard and mouse</td><td>Wisp Hollow plays in a Mac window at 60 fps with lights, bloom and HD text</td><td><span class="pill l">L · 6–9 d</span></td></tr>
+            <tr><td class="mono">M2</td><td>BlackironHost on iOS</td><td>Touch, GameController, keyboard, <code>CADisplayLink</code>, safe areas, backgrounding, audio session, orientation</td><td>The demo and starters play on an iPhone; the frame budget below holds</td><td><span class="pill m">M · 4–6 d</span></td></tr>
             <tr><td class="mono">M3</td><td>Native audio</td><td><code>AVAudioEngine</code> source nodes for synth voices, sample playback, the mixer buses, mute</td><td>Music moods and effects play on device and sound like the web</td><td><span class="pill m">M · 3–5 d</span></td></tr>
-            <tr><td class="mono">M4</td><td>Export</td><td><code>kiln export ios</code> generating the Xcode project, icon, plist, resources; <code>kiln run ios</code> on the simulator</td><td>A fresh clone exports, opens in Xcode, builds and runs on simulator and device</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M4</td><td>Export</td><td><code>blackiron export ios</code> generating the Xcode project, icon, plist, resources; <code>blackiron run ios</code> on the simulator</td><td>A fresh clone exports, opens in Xcode, builds and runs on simulator and device</td><td><span class="pill m">M · 3–5 d</span></td></tr>
             <tr><td class="mono">M5</td><td>Budgets and release</td><td>Device measurements, the runtime decision confirmed or revised, docs, starters exported, tag <code>v0.3.0</code></td><td>Every budget passes on an iPhone 12-class device</td><td><span class="pill m">M · 4–6 d</span></td></tr>
           </tbody>
         </table>
@@ -352,7 +352,7 @@ dist/ios/WispHollow/
     <h2>Definition of done</h2>
     <div class="body">
       <ul class="check">
-        <li><code>kiln export ios</code> on the demo and each starter produces an Xcode project that builds without edits.</li>
+        <li><code>blackiron export ios</code> on the demo and each starter produces an Xcode project that builds without edits.</li>
         <li>Every game plays on an iPhone with touch, and with a paired gamepad, with no web view in the process.</li>
         <li>Lights, bloom, LUT grading, HD text and the overlay match the web build on the same scene, judged by side-by-side captures.</li>
         <li>Saves persist across launches; backgrounding pauses and resuming restores cleanly.</li>
@@ -366,7 +366,7 @@ dist/ios/WispHollow/
           <thead><tr><th>Budget</th><th class="num">Target</th><th>Measured by</th></tr></thead>
           <tbody>
             <tr><td>Frame rate, demo on an iPhone 12-class device at native resolution</td><td class="num">60 fps</td><td>Overlay graph over 60 seconds of play</td></tr>
-            <tr><td>Script time per frame in the interpreter</td><td class="num">≤ 6 ms</td><td>Host timer around <code>__kiln.frame</code></td></tr>
+            <tr><td>Script time per frame in the interpreter</td><td class="num">≤ 6 ms</td><td>Host timer around <code>__blackiron.frame</code></td></tr>
             <tr><td>GPU time per frame with lights and bloom</td><td class="num">≤ 5 ms</td><td>Xcode GPU capture</td></tr>
             <tr><td>Cold launch to title</td><td class="num">≤ 1.5 s</td><td>Host log from launch to first submit</td></tr>
             <tr><td>App size on device</td><td class="num">≤ 15 MB</td><td>Xcode archive report</td></tr>
@@ -403,7 +403,7 @@ dist/ios/WispHollow/
         <div class="decision">
           <div class="q">Boot</div>
           <h3>Prebaked atlas, no painting on device</h3>
-          <p><code>kiln export</code> bakes the atlas with the existing headless painter and ships the PNG. The interpreter never runs the pixel loops.</p>
+          <p><code>blackiron export</code> bakes the atlas with the existing headless painter and ships the PNG. The interpreter never runs the pixel loops.</p>
           <div class="alt"><b>Alternative</b>Paint at boot as the web does. Seconds of launch time in an interpreter.</div>
         </div>
         <div class="decision">
@@ -434,7 +434,7 @@ dist/ios/WispHollow/
             <tr><td>Text metrics differ between CoreText and the browser</td><td>HUD layouts shift on device</td><td>The glyph cache already measures through the host; layouts use those measurements, not constants</td></tr>
             <tr><td>Audio sounds different</td><td>Comparison on device in M3</td><td>Voices are simple oscillator envelopes; tune by ear, accept small differences, document them</td></tr>
             <tr><td>App Review and interpreted code</td><td>Rejection on submission</td><td>Bundled scripts run by JavaScriptCore are explicitly allowed by guideline 2.5.2; nothing is downloaded or executed from outside the bundle</td></tr>
-            <tr><td>Xcode, signing and provisioning friction</td><td>Export works, device build does not</td><td>The generated project uses automatic signing with the team id from <code>kiln.json</code>; the docs walk through the one-time setup</td></tr>
+            <tr><td>Xcode, signing and provisioning friction</td><td>Export works, device build does not</td><td>The generated project uses automatic signing with the team id from <code>blackiron.json</code>; the docs walk through the one-time setup</td></tr>
           </tbody>
         </table>
       </div>
@@ -445,7 +445,7 @@ dist/ios/WispHollow/
     <h2>After 0.3</h2>
     <div class="body">
       <ul>
-        <li><strong>0.4 Every platform.</strong> A second host speaking the same protocol for Android, Windows and Linux, most likely one Rust codebase on wgpu with an embedded interpreter, plus <code>kiln export android</code>, <code>windows</code>, <code>linux</code>. The macOS build from 0.3 becomes <code>kiln export macos</code>.</li>
+        <li><strong>0.4 Every platform.</strong> A second host speaking the same protocol for Android, Windows and Linux, most likely one Rust codebase on wgpu with an embedded interpreter, plus <code>blackiron export android</code>, <code>windows</code>, <code>linux</code>. The macOS build from 0.3 becomes <code>blackiron export macos</code>.</li>
         <li><strong>0.5 Store tooling.</strong> Archives and uploads, icons and screenshots generated by the engine, Game Center and achievements behind a platform seam.</li>
         <li><strong>Later.</strong> A compiled path for the engine itself if the interpreter ever becomes the limit, which the protocol keeps open.</li>
       </ul>
@@ -460,7 +460,7 @@ dist/ios/WispHollow/
 
 <footer>
   <div class="wrap">
-    <span>Kiln 0.3 · engine proposal · draft of 3 September 2026</span>
+    <span>Blackiron 0.3 · engine proposal · draft of 3 September 2026</span>
     <span>Builds on the 0.2 platform seam and renderer contract</span>
   </div>
 </footer>

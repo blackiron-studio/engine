@@ -1,8 +1,8 @@
-/** Resolve resources embedded by Kiln's single-file exporter without patching global fetch. */
+/** Resolve resources embedded by Blackiron's single-file exporter without patching global fetch. */
 export function resourceUrl(url: string): string {
   const assets = (
-    globalThis as { KILN_BUNDLED_ASSETS?: Record<string, string> }
-  ).KILN_BUNDLED_ASSETS;
+    globalThis as { BLACKIRON_BUNDLED_ASSETS?: Record<string, string> }
+  ).BLACKIRON_BUNDLED_ASSETS;
   if (!assets) return url;
   if (Object.hasOwn(assets, url)) return assets[url];
   if (typeof document === "undefined") return url;

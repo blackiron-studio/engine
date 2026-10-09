@@ -1,4 +1,4 @@
-/** Visual acceptance through Kiln's public mesh APIs, not a Neon gameplay port.
+/** Visual acceptance through Blackiron's public mesh APIs, not a Neon gameplay port.
  * bun scripts/check-neon-reference.ts [--chrome /path/to/chrome] [--serve] [--port 4213]
  */
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -11,7 +11,7 @@ const option = (name: string): string | undefined => {
   const at = args.indexOf(name);
   return at >= 0 ? args[at + 1] : undefined;
 };
-const output = resolve(import.meta.dir, "../.kiln/verification/neon");
+const output = resolve(import.meta.dir, "../.blackiron/verification/neon");
 await mkdir(output, { recursive: true });
 const bundle = await Bun.build({
   entrypoints: [resolve(import.meta.dir, "../tests/browser/neon-reference.ts")],
@@ -22,9 +22,9 @@ const bundle = await Bun.build({
 if (!bundle.success) throw new Error(bundle.logs.join("\n"));
 await writeFile(
   join(output, "index.html"),
-  `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kiln · Neon renderer reference</title><style>
+  `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Blackiron · Neon renderer reference</title><style>
 *{box-sizing:border-box}body{margin:0;overflow:hidden;background:#0a121a;color:#d9eeee;font-family:Arial,Helvetica,sans-serif}canvas{display:block;width:100vw;height:100vh}header{position:fixed;left:36px;top:30px;pointer-events:none}header small{display:block;color:#7eadad;letter-spacing:3px;font:10px monospace;margin-bottom:9px}h1{font-size:21px;font-weight:500;letter-spacing:2px;margin:0}footer{position:fixed;left:36px;right:36px;bottom:26px;display:flex;justify-content:space-between;gap:20px;color:#8ba6af;font:10px monospace;pointer-events:none}a{color:#8debd9;pointer-events:auto;text-decoration:none}pre{display:none}
-</style></head><body><canvas></canvas><header><small>KILN / RENDERER ACCEPTANCE</small><h1>NEON BASTION REFERENCE</h1></header><footer><span id="summary">Procedural geometry · no texture or model assets</span><a href="?animate=1">Animate the figure study ↗</a></footer><pre></pre><textarea hidden></textarea><script src="neon.js"></script></body></html>`,
+</style></head><body><canvas></canvas><header><small>BLACKIRON / RENDERER ACCEPTANCE</small><h1>NEON BASTION REFERENCE</h1></header><footer><span id="summary">Procedural geometry · no texture or model assets</span><a href="?animate=1">Animate the figure study ↗</a></footer><pre></pre><textarea hidden></textarea><script src="neon.js"></script></body></html>`,
 );
 const candidates = [
   option("--chrome"),
@@ -45,7 +45,7 @@ if (!chrome)
     "Chrome/Chromium is required; set CHROME_PATH or pass --chrome /path/to/browser",
   );
 await rm(join(output, "frame.png"), { force: true });
-const profile = await mkdtemp(join(tmpdir(), "kiln-neon-reference-"));
+const profile = await mkdtemp(join(tmpdir(), "blackiron-neon-reference-"));
 const proc = Bun.spawn(
   [
     chrome,

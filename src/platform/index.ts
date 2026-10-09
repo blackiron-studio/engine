@@ -10,6 +10,6 @@ import { WebPlatform } from "./web.ts";
 
 /** The platform for the current host: native when a host object is installed, web when a document exists, headless otherwise. */
 export function detectPlatform(): Platform {
-  if ((globalThis as { __kilnHost?: unknown }).__kilnHost) return new NativePlatform();
+  if ((globalThis as { __blackironHost?: unknown }).__blackironHost) return new NativePlatform();
   return typeof document !== "undefined" && typeof window !== "undefined" ? new WebPlatform() : new HeadlessPlatform();
 }
