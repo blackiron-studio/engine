@@ -1,0 +1,39 @@
+{
+  "name": "Lowline",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "render": {
+    "scale": 1,
+    "snap": "none"
+  },
+  "renderer": "webgl2",
+  "fallback": false,
+  "targets": [
+    "web",
+    "macos",
+    "windows",
+    "linux"
+  ],
+  "background": "#132e3b",
+  "pixelSnap": false,
+  "seed": 71,
+  "post": {
+    "bloom": 0.22,
+    "bloomThreshold": 0.75,
+    "bloomPasses": 2,
+    "vignette": 0.16,
+    "saturation": 1.08,
+    "contrast": 1.03
+  },
+  "snapshots": [
+    {
+      "name": "title",
+      "frame": 40
+    }
+  ]
+}

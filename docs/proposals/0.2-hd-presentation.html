@@ -1,0 +1,475 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Kiln 0.2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500&display=swap">
+<style>
+  :root {
+    --paper: #f4f4f9; --paper-2: #e9e9f2; --paper-3: #dfdfeb;
+    --ink: #191633; --ink-2: #4c4968; --ink-3: #7b789a;
+    --line: #d0cfe0; --line-strong: #b4b2c9;
+    --accent: #a5720e; --accent-fill: #e3b341; --link: #4b3fa3;
+    --ok: #2f7d4f; --warn: #b25a1b;
+    --mast-bg: #0f0d1a; --mast-bg-2: #1b1730; --mast-ink: #ebe9f5; --mast-ink-2: #a7a3c2; --glow: #f5cf70;
+    --code-bg: #e9e9f2; --art-bg: #1b1730;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f0d1a; --paper-2: #1a1729; --paper-3: #242038;
+      --ink: #ebe9f5; --ink-2: #b3afcc; --ink-3: #807c9e;
+      --line: #2c2942; --line-strong: #3f3b5c;
+      --accent: #e3b341; --accent-fill: #e3b341; --link: #b7aef5;
+      --ok: #6cc08d; --warn: #e6925a; --code-bg: #1a1729;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f0d1a; --paper-2: #1a1729; --paper-3: #242038;
+    --ink: #ebe9f5; --ink-2: #b3afcc; --ink-3: #807c9e;
+    --line: #2c2942; --line-strong: #3f3b5c;
+    --accent: #e3b341; --accent-fill: #e3b341; --link: #b7aef5;
+    --ok: #6cc08d; --warn: #e6925a; --code-bg: #1a1729;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Source Serif 4", Georgia, serif; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+  h1, h2, h3 { font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif; font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  h3 { font-size: 1.25rem; margin: 1.6rem 0 0.5rem; }
+  p { margin: 0 0 1rem; max-width: 66ch; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.2rem; max-width: 66ch; }
+  li { margin: 0.25rem 0; }
+  li::marker { color: var(--ink-3); }
+  strong { font-weight: 600; }
+  code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: 0.86em; background: var(--code-bg); padding: 0.05em 0.35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.55; margin: 0 0 1rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .c { color: var(--ink-3); } .k { color: var(--link); } .s { color: var(--accent); }
+
+  .masthead { background: radial-gradient(60rem 18rem at 78% 110%, rgba(245,207,112,0.22), transparent 60%), radial-gradient(34rem 12rem at 12% -20%, rgba(120,100,220,0.25), transparent 65%), linear-gradient(180deg, var(--mast-bg-2), var(--mast-bg)); color: var(--mast-ink); position: relative; overflow: hidden; }
+  .masthead .wrap { position: relative; padding: 3rem 1.5rem 2.4rem; }
+  .motes { position: absolute; inset: 0; pointer-events: none; }
+  .motes i { position: absolute; width: 3px; height: 3px; background: var(--glow); opacity: 0.55; animation: drift 14s linear infinite; }
+  .motes i:nth-child(1) { left: 8%; top: 70%; animation-delay: -2s; }
+  .motes i:nth-child(2) { left: 22%; top: 40%; animation-delay: -6s; width: 2px; height: 2px; }
+  .motes i:nth-child(3) { left: 41%; top: 82%; animation-delay: -9s; }
+  .motes i:nth-child(4) { left: 63%; top: 30%; animation-delay: -4s; width: 2px; height: 2px; }
+  .motes i:nth-child(5) { left: 74%; top: 64%; animation-delay: -11s; }
+  .motes i:nth-child(6) { left: 88%; top: 48%; animation-delay: -1s; width: 4px; height: 4px; opacity: 0.4; }
+  @keyframes drift { 0% { transform: translate(0,0); opacity: 0.15; } 30% { opacity: 0.6; } 100% { transform: translate(18px,-42px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .motes i { animation: none; opacity: 0.35; } }
+  .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mast-ink-2); margin-bottom: 1rem; }
+  .masthead h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 800; font-variation-settings: "opsz" 96; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .ver { font-family: "Pixelify Sans", monospace; font-weight: 500; font-size: 0.42em; color: var(--mast-bg); background: var(--glow); padding: 0.1em 0.45em 0.05em; border-radius: 2px; position: relative; top: -0.35em; }
+  .thesis { font-size: 1.22rem; line-height: 1.45; max-width: 46ch; margin: 1.2rem 0 1.6rem; color: var(--mast-ink); font-variation-settings: "opsz" 60; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.9rem 1.5rem; margin: 0; max-width: 60rem; border-top: 1px solid rgba(235,233,245,0.18); padding-top: 1.1rem; }
+  .facts div { display: grid; gap: 0.15rem; }
+  .facts dt { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mast-ink-2); }
+  .facts dd { margin: 0; font-size: 0.95rem; color: var(--mast-ink); line-height: 1.35; }
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+  nav.toc { border-bottom: 1px solid var(--line); background: var(--paper); }
+  nav.toc .wrap { display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; padding-top: 0.75rem; padding-bottom: 0.75rem; font-family: "JetBrains Mono", monospace; font-size: 0.76rem; }
+  nav.toc a { color: var(--ink-2); text-decoration: none; }
+  nav.toc a:hover { color: var(--ink); text-decoration: underline; }
+  main { padding: 1rem 0 4rem; }
+  section { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1rem 2.5rem; padding: 2.4rem 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+  section > h2 { padding-top: 0.35rem; }
+  .body { min-width: 0; }
+  .lede { font-size: 1.12rem; font-variation-settings: "opsz" 40; }
+  @media (max-width: 760px) { section { grid-template-columns: 1fr; gap: 0.6rem; padding: 1.8rem 0; } body { font-size: 16px; } }
+  .tablewrap { overflow-x: auto; margin: 0.6rem 0 1.2rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); padding: 0.5rem 0.8rem 0.5rem 0; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+  td { padding: 0.55rem 0.8rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { font-weight: 600; }
+  td.mono { font-family: "JetBrains Mono", monospace; font-size: 0.82rem; font-weight: 400; }
+  .num { text-align: right; white-space: nowrap; }
+  .pill { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.06em; padding: 0.12em 0.5em; border-radius: 2px; border: 1px solid var(--line-strong); color: var(--ink-2); white-space: nowrap; }
+  .pill.s { color: var(--ok); border-color: var(--ok); } .pill.m { color: var(--accent); border-color: var(--accent); } .pill.l { color: var(--warn); border-color: var(--warn); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.5rem 2.5rem; }
+  .two h3 { margin-top: 0; font-size: 1rem; }
+  .two ul { margin-bottom: 0; }
+
+  /* Art comparison */
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: 1rem; margin: 0.6rem 0 1rem; }
+  .panel { background: var(--art-bg); border: 1px solid var(--line-strong); padding: 1rem 1rem 0.8rem; color: #ebe9f5; }
+  .panel .label { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #a7a3c2; margin-bottom: 0.8rem; }
+  .panel .label b { color: var(--glow); font-weight: 600; }
+  .row { display: flex; align-items: flex-end; gap: 1.4rem; min-height: 200px; }
+  .row img { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+  .panel .note { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; color: #807c9e; margin-top: 0.7rem; }
+  figcaption { font-size: 0.9rem; color: var(--ink-2); max-width: 66ch; margin: 0 0 1rem; }
+  figure { margin: 0; }
+
+  /* Pipeline */
+  .pipe { display: grid; gap: 4px; margin: 0.6rem 0 1.2rem; }
+  .pass { display: grid; grid-template-columns: 9rem 1fr; gap: 0.5rem 1rem; align-items: start; background: var(--paper-2); border: 1px solid var(--line); padding: 0.65rem 0.9rem; }
+  .pass.new { border-left: 3px solid var(--accent-fill); }
+  .pass .name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 0.95rem; }
+  .pass .name small { display: block; font-family: "JetBrains Mono", monospace; font-weight: 400; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-top: 0.15rem; }
+  .pass .what { font-size: 0.92rem; color: var(--ink-2); }
+  @media (max-width: 560px) { .pass { grid-template-columns: 1fr; } }
+
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; margin-top: 0.4rem; }
+  .decision { border: 1px solid var(--line); background: var(--paper-2); padding: 1rem 1.1rem 1.05rem; display: grid; gap: 0.45rem; align-content: start; }
+  .decision .q { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .decision h3 { margin: 0; font-size: 1.05rem; }
+  .decision p { margin: 0; font-size: 0.93rem; }
+  .decision .alt { font-size: 0.85rem; color: var(--ink-2); border-top: 1px solid var(--line); padding-top: 0.5rem; margin-top: 0.2rem; }
+  .decision .alt b { font-weight: 600; color: var(--ink-3); font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 0.4rem; }
+  .check { list-style: none; padding: 0; }
+  .check li { position: relative; padding-left: 1.6rem; }
+  .check li::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.8em; height: 0.8em; border: 2px solid var(--accent-fill); }
+  .callout { border-left: 3px solid var(--accent-fill); background: var(--paper-2); padding: 0.8rem 1rem; margin: 0 0 1.2rem; max-width: 66ch; }
+  .callout p { margin: 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.6rem 0 3rem; color: var(--ink-2); font-size: 0.9rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; justify-content: space-between; }
+</style>
+
+<header class="masthead">
+  <div class="motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="wrap">
+    <div class="eyebrow">Engine proposal · follows Kiln 0.1</div>
+    <h1>Kiln <span class="ver">v0.2</span></h1>
+    <p class="thesis">
+      High-definition presentation. The same pixel-art engine rendered at the display's native
+      resolution, with four times the art density, real light, sharp text, and imported art,
+      without giving up the crisp pixel look.
+    </p>
+    <dl class="facts">
+      <div><dt>Scope</dt><dd>Rendering, art pipeline, text, lighting, tiles, input</dd></div>
+      <div><dt>Proof of done</dt><dd>Demo and starters re-authored at 32 px on 1280×720, 60 fps at 1440p</dd></div>
+      <div><dt>Effort</dt><dd>Seven milestones, 26 to 38 working days</dd></div>
+      <div><dt>Deferred</dt><dd>Mobile and desktop shells move to 0.3</dd></div>
+    </dl>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <div class="wrap">
+    <a href="#why">Why it looks low-res</a>
+    <a href="#dials">The three dials</a>
+    <a href="#scope">Scope</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#api">API sketch</a>
+    <a href="#milestones">Milestones</a>
+    <a href="#done">Definition of done</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#risks">Risks</a>
+    <a href="#after">After 0.2</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="why">
+    <h2>Why it looks low-res</h2>
+    <div class="body">
+      <p class="lede">
+        Nothing in 0.1 is blurry. It is small. Three numbers stack up, and each one alone would be
+        fine.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Number</th><th>Today</th><th>What a 2560-wide display shows</th></tr></thead>
+          <tbody>
+            <tr><td>Design resolution</td><td>320×180 in the starters, 640×360 in the demo</td><td>Every game unit is 8 screen pixels wide in a starter, 4 in the demo</td></tr>
+            <tr><td>Art density</td><td>16 px tiles, a 16×24 hero</td><td>A tile is a 128 px square of 256 art pixels. The eye reads the grid, not the drawing</td></tr>
+            <tr><td>Render target</td><td>Rendered at design size, then upscaled with nearest filtering</td><td>Particles, bloom, text and camera motion are all quantised to that same 8 px grid. Bloom is computed at 80×45</td></tr>
+            <tr><td>Text</td><td>A 5×7 bitmap font drawn as sprites</td><td>HUD letters are 40 px tall with 7 rows of detail</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The 0.1 choices were right for proving the engine, and the crisp look is worth keeping. The
+        fix is not to blur anything. It is to turn three dials that 0.1 left at their minimum.
+      </p>
+    </div>
+  </section>
+
+  <section id="dials">
+    <h2>The three dials</h2>
+    <div class="body">
+      <ul>
+        <li><strong>Design resolution</strong>, the coordinate space games are written in. Move the default from 320×180 to 1280×720. Four times the canvas, same aspect.</li>
+        <li><strong>Art density</strong>, how many art pixels a subject gets. Move tiles from 16 to 32 px, characters from 16×24 to 32×48, trees from 32×48 to 64×96. Same footprint on screen, four times the detail.</li>
+        <li><strong>Render scale</strong>, the resolution the frame is composed at. Move from "design size" to "native": the offscreen target matches the canvas backing store, so sub-pixel camera motion, particles, glow and text are smooth while sprites stay pixel-exact.</li>
+      </ul>
+      <figure>
+        <div class="compare">
+          <div class="panel">
+            <div class="label">Today · <b>16 px art</b> shown at 4×, as on a 2560-wide display</div>
+            <div class="row">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVR42mMwjLT6b1/s+p9cmgGZA8NRU8JR+OjyyHwGbCaDDIDxYYbh4jOgm46O0V2DjhloEgb4+CA2RhggC+LyK14XkILRw4SsMECOJZLDgOR0QPUwoF06QA5dssKA2HgnKQwI5QMQBgBWcuouy0LzygAAAABJRU5ErkJggg==" width="64" height="64" alt="16 pixel grass tile scaled four times">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAwCAYAAABwrHhvAAABqElEQVR42u1XQUrEUAydIwg6uBVm58JZCoIbt8IcQBC8gCcQ1GuI4Cm830jAlGeapEnmtxWmH0Lb4afvJf8l6axWy1pWbe0Nmw54fb0xbTRwC3D7fNO7jgaOIEM2K/j790tHgu6bgKPdf+56Vzb8/RBNdGKTkWugaBQx31c10aldi9wC054rmvhTakgiE7kEz5BQ61yCExgbgiMJTSthcE39XuS0fwg8kgWtq7k6wMi940EyJroVuVXrWqSaDuSzS6ACzkbkvQzAPp9ABTxjLoHfFPWESKnFitCiRT/cj34uAasKmICceghs+WnTMlT/2og1GosJyqSjDSktQDwuCZ4d1aWph2ctSUf6glp+GRIZP60p9dSfKTWpcukX6Qlq/Wemnhd5uh8MgVtTr+pnNqHMy/CLx/Pj40A/tRFkI3l7vNs/3F6G97MNfpFoHx94JWA2InB1fuqKzkx7dRHw1+tTR4IJTPbH0MrAZAQIlDMwC4HZM/BvNEDAiwaOVwMEejx94OTi7APN0oDc1xRUEtA04Pk0Ac5moEQk8pJDrGkmRgFuSSby7h/9FYckhfsdPAAAAABJRU5ErkJggg==" width="128" height="192" alt="32 by 48 pixel tree scaled four times">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAYCAYAAADzoH0MAAAA8UlEQVR42mNgoAXg5RT+r6Ng9x9GwzBJmkHY1zoNAxM0AF1DeXg7CiZoALLN6JqJMuBORRyK5tm18+D0oy29xIUDSCEIW2lp/X91YRucJjoWQJpBGkD488t7cExSVKIbQrTGw1MP/ceHCRqwMGkzWCGIdlVLAtMgnGs/CUwT5QKYJmQDkMUIugDdAJDtMEzQEGIMwGsIsp9BipA1gzBMDUEDcLkApMbKygq3F9BthGGYa55fXQvHOA3RUjL+D8LY+Pf3Vvz//+3EfxBNvgGXs//fXOJIvgEgzXgNkBJRQDEAnY8X8EkJdeDDFGmmiiHo6gHfuIS/7f1gggAAAABJRU5ErkJggg==" width="64" height="96" alt="16 by 24 pixel hero scaled four times">
+            </div>
+            <div class="note">grass 16×16 · tree 32×48 · hero 16×24</div>
+          </div>
+          <div class="panel">
+            <div class="label">0.2 · <b>32 px art</b> shown at 2×, same footprint</div>
+            <div class="row">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABSElEQVR42s1XsQ0CMQz0DCxAiRiAmoqaFhqWYBLGYA3EBmwCBWVQXnJkjOM4iV+h8FuffBL7cr7k4Xg5hO15F0Z5iA+LrfabYP0WbbFepoVy86QA4odxgDaQtvF+6zvO04QAn7TF+Dyg7RGNlEfe6psRmMugd08ptJRg1vFuCGAAfCEkdhYBZL/H3tIANE/X60KAZishwGteQsONA9K7hIjKAU3tPDRA5AAuyiGk7dS/H6fJcv0Is7UfJJXSmFtidRcCIzyUtN6acStH/geBmvPfsyJUBLCWazOj50KpqqDl/OclpY0toZUQeF7vk9VmKLVb9OQHAY3tEh8khOi2WXkCFgXLZcQ5Uspc4kZCILxuk0kXT+lC2nJHlMaAVcM9vIQQeOm8hkYOSVcl5JlVV8GwW/HfngXWf7+e/q8/o7kzzenIUA7EAD7Oor/pc6cXCgAAAABJRU5ErkJggg==" width="64" height="64" alt="32 pixel grass tile scaled twice">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABgCAYAAACtxXToAAAFSElEQVR42u1bsYoUQRC9LxCFU9BIQVBMNDERTcRQMD8MLjTxGww8P8LAyMgf8PdWa6Hk8aiqrurpGWdnZ6HonWFvut+rV93V1XMXF/tn/+yf/bN/lv3ce/rgsGlwLbv5/eUwlYRFScx0puD+fg0NfjdpPCNIHNJZBPzy5SOztYioErMKBcj99z8+HA1BV0yB63MsUthWQRJ6HT1cMVEWkmAADcOIyVosTBi8Zc8/v3JbNbzvgbXCSA3JsMDOpgAloOX5CDRft8BnwmjJ+SAFNjLxGF5XFKV/i/cXJYA9UwUvk10veOybyVhsWeTBRSCtVk2vPTKtcMGQ4T4XzQsynmeQFglTwgmVpITMPh+oAjIez1gWtAKMlKQEzJolYggwiB4Sqkpi0Hw9qwJw/Y8GhybeiFoG36skK5OcDTzOwjxYVodFhkVOJpx0HvHs8dWLw60n98eTYKWlSoAOkgcXeV4N5dtSlPxe+vCeKybgh5PggbdIqIYBg0cSquEk4xHw8n0YCR54a8mKBokeZ/DYcohEz1PFafjocwS82mQSmAB5YCtjQw9ag29lhFUF8HOQgEnLoYJXtgW82NSkJZMhZsPHUpKGAFoXCeh99bxFgEWClaZ6ss+u8x5ovmbwXQQweLSs51meveu6lTVGpLz+9vYIWtsuEpQA9Lxazy6wV/6ZXMLKBSarQH7MnmcVsKxZ+lM97yVNERHoeW7TBETyRwIUrBfvo+WfIUrB6kTYFQYof8vkQZbse2IeY7q1Z2i1SgAaKyFNgBX7GRJGyd/yLqfPbB7ochh4CtDMSluWfjajy3jeyhwjz8tY2PtiPDeUFGCZVbltLYEVT/eC59L5ZAWw51t1+tYurlIfsEjwSImSMjFWRBcB2Tp9T+x76W3G89y/qpHvT1JAtAv0kiEGz9lbZXaPPB9Vj9lKCvCqP63qbURCtbiRKZ95S7E3N5XBe2dx1iC8yTCaE3Q/j/t6rx2RdqdJyJz6ZuVnlbsqm54R/ZVUEJ36ZjrPTohcS8T+eg5dMEQy5wbDDz4zuz2u7kZngq1jsWp/fG6QPverDMLaq7e2rtay1XMy1FpxsL+SAqZ4PkuC9sdH3nMVWdIK8AbTqspUCxmt/kbVE9IEsAKyZ3W9VZyov0qNEMmM+kutBFM8kVnXtZXs7PrXx0n9VZKpdB4QeSRzBmgNDjM/NQEvJGT6m0JG+eBUflj1CGd4LY8oeG0r/fWk0V2lcW9QrVPaavmqh4RKf5NOhzKntpX9PHveU0K2Py6XcX9DDkhbg+LZ12u5QKGgcR7wSLBUN5vnvReie4+uFSTW7lpKkLa3v9lek8F3dFuxqZWYjKESrGtVhbfk4rtBi74wWbEWeG6rz1/9f5FcvXl2+Hr97mg/bz79+y73xZ7dvXM0fCN8U/9Gg+DVLBI2S8CugKQClIRdAfscsCvgvOcAud4ECer9qgI2RwCCt47ZeQ7YtAIsAuT+2ShAVcCEnNUcoATIfVQBKmATJHgKwIkQFbBZAqJVgOWP6jgLBXAmiPdOmgD0fk8esCkCqnsBJO5kSRihgM0QoLP9WStAJ7hdAfsccIYKEHDVesBJk8DglYAeBWyGALHMHCDtZghA8BgGuBFiBej3kyeAwVsKwNzf+v3mCGgpwCPgpEjwwKsCNB9AAjIkrI6A6LjaA4OyzygASfjvR+Pc8e2Hl98ti4D0KEDN6292QlqAs+CRhKoCIgI8QoaBz3ZcISBKhkaQoESsDryV5FQIWJSECgHZwY8goBoOi6pgTTb8PcFTAj77e4JrImQ1ecGc5Mz1juAfaM0CPVmnQEoAAAAASUVORK5CYII=" width="128" height="192" alt="64 by 96 pixel tree scaled twice">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAwCAYAAABwrHhvAAACBElEQVR42tWYoUsEQRTGrxo0qOmCXLEc/gOuoIjBdNkmBrGI2SuXtVhsIhjEajtsxgOjIAZBFCyiVbCevoO3vH375s3OzFsXFz7mbnZ2vt98Mzt7t63Wfzra851xFdVmPD01V9BSZ1UsTUHQmJpQ9Vb2nGUyBDWXRM1cSoKAi31mh1tHahkNQEcfYo4yg5BMNZ0PLgrfzaaA6214UpCrnclC1Ix9IKYAPnMOYbIXuADgkMzhMAd47m8XALJuVzTHelMAmkLIFJg/E6DDKuaf9ze25vxJBwYgMIOpQX19vOTmZk9G6GB0NioJIbiktskbEXRyuTsslZoO1k7zMhlAMt1Y3BFNoZ6amwBICUgAFMw8AZcRN8MEqMwS0KYAIVwJJD2OUxKg9VEQvgSoCa83gYALsu6CqqerdfV8MkDV1Y710iKMhqAAPE4eNV8D+Jn3EQTBE9BWu3YbRqcADXnMvgQQgiZABxMEQS/yrXZqSstkAB6zKwEcvSuBKAgtAT56aQ1wk8ltnWXVd0dMQJMUOxX/gUIBohKoCkETeH+8dsoLwEcUKujj9bZfEuygUNYOAELT8fddLoSo3bwEAMdvCebNADSVAJhRADUBS3OawATiYT839yZAtbncK6nqeWrIZf6OUNpkot8p0oYz7dnjECX/PYsx1WAaM4+CaByg8Sn4y0X4A4DLN8U293ASAAAAAElFTkSuQmCC" width="64" height="96" alt="32 by 48 pixel hero scaled twice">
+            </div>
+            <div class="note">grass 32×32 · tree 64×96 · hero 32×48</div>
+          </div>
+        </div>
+        <figcaption>
+          The right-hand set was painted with today's painter in one sitting and exported headlessly
+          by the CLI, so the density change needs no new machinery to start. What it needs is a
+          painter that makes this level of detail routine instead of laborious, which is milestone M1.
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="scope">
+    <h2>Scope</h2>
+    <div class="body">
+      <div class="two">
+        <div>
+          <h3>0.2 is</h3>
+          <ul>
+            <li>Native-resolution rendering with a sub-pixel camera and a bloom mip chain</li>
+            <li>Painter 2.0: materials, textures, wider ramps, selective outlines, masks and palette swaps</li>
+            <li>The demo and the three game starters re-authored at 32 px on 1280×720</li>
+            <li>HD text from any web font, plus UI anchors, containers and 9-slice panels</li>
+            <li>A lighting pass: ambient darkness and point lights that actually light the ground</li>
+            <li>Imported PNG sprite sheets and audio samples alongside painted art and synth sound</li>
+            <li>A TileMap node with autotiling, animated tiles and built-in collision</li>
+            <li>Parallax layers, overlay scenes, gamepad and touch controls</li>
+            <li>LUT colour grading, grain and scanline toggles, a screenshot command</li>
+          </ul>
+        </div>
+        <div>
+          <h3>0.2 is not</h3>
+          <ul>
+            <li>Mobile or desktop shells. Those are 0.3, and they benefit from 0.2 landing first</li>
+            <li>Normal-mapped lighting or shadow casting</li>
+            <li>An editor, 3D, networking, physics beyond tiles and overlap</li>
+            <li>WebGPU</li>
+            <li>Feature parity for the Canvas 2D backend, which becomes a compatibility fallback</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:1.4rem">
+        <p>
+          <strong>Retro stays possible.</strong> Integer scaling, the 5×7 font and 16 px art remain
+          supported and one config switch away. 0.2 changes the defaults new projects start from,
+          not what the engine can do.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2>Pipeline</h2>
+    <div class="body">
+      <p>The frame in 0.2, in order. Passes marked on the left are new; the rest exist and change size.</p>
+      <div class="pipe" role="img" aria-label="Render passes in order: scene target at native resolution, light layer, bloom mip chain, grade and grain, present">
+        <div class="pass"><div class="name">Scene<small>changed</small></div><div class="what">One sprite batch into an offscreen target sized to the canvas backing store instead of the design size. Sprites sample nearest; imported HD sprites may sample linear. The camera can sit between pixels.</div></div>
+        <div class="pass new"><div class="name">Light<small>new</small></div><div class="what">A second target at half resolution: an ambient colour plus additive point and cone lights drawn as soft sprites, multiplied over the scene. A lantern brightens the ground around it and the rest of the night stays dark.</div></div>
+        <div class="pass"><div class="name">Bloom<small>changed</small></div><div class="what">A bright pass into a three-level mip chain with blur at each level, capped at a quarter of the target so phones pay a fixed price. Wide soft glow at 1440p instead of a single blurred thumbnail.</div></div>
+        <div class="pass new"><div class="name">Grade<small>new</small></div><div class="what">Saturation, contrast, tint and vignette as today, plus a colour lookup table for the scene's mood, film grain, and an optional scanline mask.</div></div>
+        <div class="pass new"><div class="name">Text<small>new</small></div><div class="what">A glyph cache rendered by Canvas 2D at device resolution for any web font and size, uploaded as a second texture and batched like sprites. The bitmap font stays for retro projects.</div></div>
+        <div class="pass"><div class="name">Present<small>changed</small></div><div class="what">A straight copy when the target is native; the integer upscale path remains for projects that choose it.</div></div>
+      </div>
+      <h3>What moves where</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Module</th><th>0.2 change</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">render</td><td>Native target sizing, second texture for glyphs, light target, bloom mips, LUT and grain in the composite shader. Canvas 2D keeps sprites, text and tint only.</td></tr>
+            <tr><td class="mono">art</td><td>Painter 2.0 primitives and a materials library. Sprite sheets from PNG and Aseprite JSON packed into the same atlas at boot. Atlas grows to 2048 or 4096 as needed.</td></tr>
+            <tr><td class="mono">scene</td><td><code>LightLayer</code> and <code>Light2D</code>, <code>TileMap</code> with autotiling and <code>moveBody</code>, <code>ParallaxLayer</code>, <code>Label.font</code>, layout containers and anchors, 9-slice panels, overlay scenes in the stack.</td></tr>
+            <tr><td class="mono">input</td><td>Gamepad through the Gamepad API and touch controls: a virtual stick and buttons mapped to the same actions.</td></tr>
+            <tr><td class="mono">audio</td><td>Sample playback for WAV, OGG and MP3 next to the synth, with a shared mixer.</td></tr>
+            <tr><td class="mono">app / cli</td><td>A <code>render</code> block in <code>kiln.json</code>, <code>?scale=</code> for testing, <code>kiln shot</code> for native-resolution captures, a perf graph in the overlay.</td></tr>
+            <tr><td class="mono">templates</td><td>All four re-authored at 32 px on 1280×720 with HD text. The platformer drops its hand-rolled collision glue for <code>TileMap</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="api">
+    <h2>API sketch</h2>
+    <div class="body">
+      <p>Enough to check the shape. Everything here is additive; 0.1 projects keep running unchanged.</p>
+<pre><code><span class="c">// kiln.json</span>
+{
+  <span class="s">"viewport"</span>: { <span class="s">"width"</span>: 1280, <span class="s">"height"</span>: 720, <span class="s">"scale"</span>: <span class="s">"fit"</span> },
+  <span class="s">"render"</span>:   { <span class="s">"scale"</span>: <span class="s">"native"</span>, <span class="s">"snap"</span>: <span class="s">"world"</span> },
+  <span class="s">"post"</span>:     { <span class="s">"bloom"</span>: 0.8, <span class="s">"lut"</span>: <span class="s">"dusk"</span>, <span class="s">"grain"</span>: 0.05, <span class="s">"vignette"</span>: 0.4 }
+}</code></pre>
+<pre><code><span class="c">// Light: the lantern lights the ground, the night is dark elsewhere</span>
+<span class="k">const</span> lights = <span class="k">this</span>.world.add(<span class="k">new</span> LightLayer({ ambient: 0x1a1f3a }));
+<span class="k">const</span> lantern = lights.add(<span class="k">new</span> Light2D({ radius: 140, color: 0xffb060, flicker: 0.08 }));
+lantern.follow(hero);
+
+<span class="c">// HD text from any web font; the bitmap font is still there as { font: "pixel" }</span>
+<span class="k">new</span> Label(<span class="s">"EMBERS 12"</span>, x, y, { font: { family: <span class="s">"Bricolage Grotesque"</span>, size: 22, weight: 700 }, shadow: 0x000000 });
+
+<span class="c">// Imported art packs into the same atlas as painted art</span>
+<span class="k">const</span> sheet = <span class="k">await</span> loadSheet(<span class="s">"art/hero.json"</span>);   <span class="c">// Aseprite export: frames become sprites and animations</span>
+
+<span class="c">// Tiles with autotiling and collision built in</span>
+<span class="k">const</span> map = <span class="k">new</span> TileMap({ data: level, tileSize: 32, autotile: { ground: GROUND_SET } });
+<span class="k">const</span> r = map.moveBody(player, dx, dy);      <span class="c">// replaces the platformer's hand-rolled glue</span>
+
+<span class="c">// Overlay scenes draw over the one below and pause it</span>
+app.scenes.push(<span class="k">new</span> PauseMenu(), { overlay: <span class="k">true</span> });
+
+<span class="c">// Painter 2.0: materials instead of pixel-by-pixel</span>
+p.material(<span class="s">"bark"</span>, { x: 26, y: 44, w: 12, h: 46, ramp: trunk, seed: rng });
+p.foliage(32, 30, 27, 22, leaf, { clumps: 6, light: [-0.4, -0.8] });</code></pre>
+    </div>
+  </section>
+
+  <section id="milestones">
+    <h2>Milestones</h2>
+    <div class="body">
+      <p>
+        Ordered so the visible change lands first and the demo looks different by the end of M1. Each
+        milestone leaves the engine shippable.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>#</th><th>Milestone</th><th>Delivers</th><th>Proof</th><th>Size</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">M0</td><td>Native rendering</td><td>Target sized to the backing store, sub-pixel camera option, bloom mip chain, <code>render</code> config, <code>?scale=</code></td><td>Demo runs at 1440p at 60 fps with smooth camera and glow; screenshots before and after</td><td><span class="pill s">S · 3–4 d</span></td></tr>
+            <tr><td class="mono">M1</td><td>Painter 2.0 and 32 px art</td><td>Materials (bark, foliage, stone, cloth, metal), texture fills, 7-tone ramps, selective outlines, masks, palette swaps</td><td>Demo re-authored at 32 px on 1280×720 and looks like the spike above, everywhere</td><td><span class="pill l">L · 6–8 d</span></td></tr>
+            <tr><td class="mono">M2</td><td>HD text and UI</td><td>Glyph cache, <code>Label.font</code>, measurement, anchors and safe areas, Row and Column containers, 9-slice panels, keyboard focus for menus</td><td>Demo and starter UIs use HD text and hold at 4:3 and 21:9</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M3</td><td>Lighting</td><td><code>LightLayer</code>, <code>Light2D</code> point and cone, flicker, emissive sprites that bloom without lighting</td><td>The lantern lights the ground; wisps glow; the night is dark beyond them</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M4</td><td>Imported art and samples</td><td>PNG and Aseprite sheets into the atlas, <code>Sprite.smooth</code>, audio samples with a mixer</td><td>A starter mixes a hand-drawn hero with painted tiles and plays a sample</td><td><span class="pill m">M · 3–4 d</span></td></tr>
+            <tr><td class="mono">M5</td><td>Tiles, layers, input</td><td><code>TileMap</code> with autotiling, animated tiles and collision, <code>ParallaxLayer</code>, overlay scenes, gamepad and touch controls</td><td>Platformer and top-down starters rebuilt on <code>TileMap</code>; playable with a pad and on a touch screen</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M6</td><td>Grade, tooling, release</td><td>LUT grading, grain, scanlines, <code>kiln shot</code>, perf graph, starters re-authored at 32 px, docs, tag <code>v0.2.0</code></td><td>Budgets below pass on a MacBook and an iPhone; gallery shows every project in HD</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The day counts assume one developer pairing with Claude Code. If time runs short, M4 and the
+        grading half of M6 can slip without changing what 0.2 means.
+      </p>
+    </div>
+  </section>
+
+  <section id="done">
+    <h2>Definition of done</h2>
+    <div class="body">
+      <ul class="check">
+        <li>New projects default to 1280×720, native render scale and 32 px art; the demo and all starters are re-authored to match.</li>
+        <li>Every HUD and menu in the demo and starters uses HD text, and lays out correctly at 4:3, 16:9 and 21:9.</li>
+        <li>The demo's lantern and wisps light the world through the light pass, not through additive sprites alone.</li>
+        <li>One starter loads a PNG sprite sheet and a sound sample; painted and imported art share one atlas.</li>
+        <li>The platformer's collision and the top-down world run on <code>TileMap</code>; the platformer uses autotiling.</li>
+        <li>Every starter is playable with a gamepad and with touch controls.</li>
+        <li>Integer scaling, the bitmap font and 16 px art still work, covered by one retro variant of the blank starter.</li>
+        <li>Tests cover autotiling, layout, the glyph cache's measurement and the light layer's maths; total suite stays green.</li>
+      </ul>
+      <h3>Budgets</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Budget</th><th class="num">Target</th><th>Measured by</th></tr></thead>
+          <tbody>
+            <tr><td>Frame time, demo at 2560×1440, lights and bloom on, M-series MacBook</td><td class="num">≤ 6 ms</td><td>Perf graph, 60-second capture</td></tr>
+            <tr><td>Frame time, demo at iPhone native resolution in Safari</td><td class="num">≤ 16 ms</td><td>Perf graph, 60-second capture</td></tr>
+            <tr><td>Draw calls per frame with lights, text and particles</td><td class="num">≤ 40</td><td>Overlay</td></tr>
+            <tr><td>Engine runtime, gzipped</td><td class="num">≤ 90 KB</td><td><code>kiln build --report</code></td></tr>
+            <tr><td>Boot to title with the 32 px demo atlas painted</td><td class="num">≤ 700 ms</td><td><code>performance.mark</code> around the bake</td></tr>
+            <tr><td>Atlas size for the demo</td><td class="num">≤ 2048²</td><td><code>kiln atlas</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <h2>Decisions</h2>
+    <div class="body">
+      <p>Each needs a yes before M0. A recommendation is given for all of them.</p>
+      <div class="decisions">
+        <div class="decision">
+          <div class="q">Default render scale</div>
+          <h3>Native, with world snapping</h3>
+          <p>Compose at the backing store's size. Sprites snap to art pixels in the world so they never shimmer; UI and particles move freely. Integer mode stays for retro projects.</p>
+          <div class="alt"><b>Alternative</b>Keep design-size rendering and only raise art density. Cheaper, but glow and motion stay quantised.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Art density</div>
+          <h3>32 px tiles on 1280×720</h3>
+          <p>Forty by twenty-two tiles on screen, the same field of view as today with four times the detail. Characters at 32×48, big props up to 64×96.</p>
+          <div class="alt"><b>Alternative</b>48 px tiles. Prettier, but nine times today's painting cost per sprite and a 4096 atlas from day one.</div>
+        </div>
+        <div class="decision">
+          <div class="q">HD text</div>
+          <h3>Canvas 2D glyph cache</h3>
+          <p>Render glyphs with the browser's text engine at device resolution into a texture, then batch them like sprites. Any web font, any size, one afternoon of code.</p>
+          <div class="alt"><b>Alternative</b>Signed-distance fonts. Scale better under zoom, need a generator step per font. Revisit if text is zoomed in-world.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Lighting</div>
+          <h3>A multiplied light map</h3>
+          <p>Ambient plus soft additive lights in a half-resolution target, multiplied over the scene. Dramatic for night scenes and cheap on phones.</p>
+          <div class="alt"><b>Alternative</b>Normal-mapped sprites. Real relief, but doubles the art work for every sprite.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Canvas 2D backend</div>
+          <h3>Compatibility only</h3>
+          <p>It keeps sprites, text, tint and the simple post chain so a game still runs without WebGL2. Lighting and grading are WebGL2 features and the docs say so.</p>
+          <div class="alt"><b>Alternative</b>Full parity. Weeks of work for a fallback almost nobody sees.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Imported art</div>
+          <h3>Same atlas as painted art</h3>
+          <p>Sheets are unpacked at boot and packed next to painted sprites, so the batch stays one texture. The atlas grows to 2048 then 4096 before a second page is ever needed.</p>
+          <div class="alt"><b>Alternative</b>Separate textures per sheet. Simpler loader, more draw calls and a batching rewrite.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>Risks</h2>
+    <div class="body">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Early signal</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Native-resolution bloom too slow on phones</td><td>iPhone frame over 16 ms in M0</td><td>Mip chain capped at a quarter of the target; a <code>render.scale</code> of 2 as the phone default</td></tr>
+            <tr><td>Re-authoring art eats the schedule</td><td>M1 past eight days</td><td>Materials first, art second. Ship the demo at 32 px and let starters follow in M6, one at a time</td></tr>
+            <tr><td>Atlas overflows one texture</td><td>The demo bake reports over 2048²</td><td>Grow to 4096; only then add atlas pages and split batches</td></tr>
+            <tr><td>Glyph cache grows without bound</td><td>Text texture over 2048² in a long session</td><td>Cap per font and size, evict least recently used, warn in the overlay</td></tr>
+            <tr><td>Pixel snapping and native scale fight</td><td>Shimmer on moving sprites in M0</td><td>Snap world sprites to the art grid, never the camera to the screen grid; test with a scrolling checkerboard</td></tr>
+            <tr><td>0.2 becomes a grab bag</td><td>Any feature outside the milestone table</td><td>It waits for 0.3. The list above is the release</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="after">
+    <h2>After 0.2</h2>
+    <div class="body">
+      <ul>
+        <li><strong>0.3 Shells.</strong> Capacitor for iOS and Android with safe areas, prebaked atlases and IndexedDB saves; Tauri for desktop; the frame-time gate on real devices. Touch controls from 0.2 make this mostly packaging.</li>
+        <li><strong>0.4 Tooling.</strong> A scene inspector overlay, hot reload for painters, input record-and-replay, and screenshot parity in CI.</li>
+        <li><strong>Later.</strong> Normal-mapped lighting, atlas pages, Tiled import, a second scripting surface if a non-programmer ever needs one.</li>
+      </ul>
+      <p>
+        <strong>Next step.</strong> Settle the six decisions. M0 starts by sizing the render target to the
+        backing store, which is a one-day change, and the difference is visible in the gallery the same day.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Kiln 0.2 · engine proposal · draft of 3 September 2026</span>
+    <span>Art on this page painted with the 0.1 painter and exported by <code>kiln atlas</code></span>
+  </div>
+</footer>
+</body></html>

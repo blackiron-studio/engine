@@ -1,0 +1,163 @@
+{
+  "frames": [
+    {
+      "filename": "head",
+      "frame": {
+        "x": 1,
+        "y": 1,
+        "w": 33,
+        "h": 31
+      },
+      "duration": 100
+    },
+    {
+      "filename": "torso",
+      "frame": {
+        "x": 35,
+        "y": 1,
+        "w": 19,
+        "h": 28
+      },
+      "duration": 100
+    },
+    {
+      "filename": "arm.far",
+      "frame": {
+        "x": 55,
+        "y": 1,
+        "w": 13,
+        "h": 28
+      },
+      "duration": 100
+    },
+    {
+      "filename": "arm.near",
+      "frame": {
+        "x": 69,
+        "y": 1,
+        "w": 9,
+        "h": 16
+      },
+      "duration": 100
+    },
+    {
+      "filename": "weapon",
+      "frame": {
+        "x": 79,
+        "y": 1,
+        "w": 23,
+        "h": 13
+      },
+      "duration": 100
+    },
+    {
+      "filename": "leg.far",
+      "frame": {
+        "x": 103,
+        "y": 1,
+        "w": 12,
+        "h": 16
+      },
+      "duration": 100
+    },
+    {
+      "filename": "leg.near",
+      "frame": {
+        "x": 116,
+        "y": 1,
+        "w": 12,
+        "h": 16
+      },
+      "duration": 100
+    }
+  ],
+  "meta": {
+    "app": "kiln",
+    "image": "knight-rig.png",
+    "size": {
+      "w": 129,
+      "h": 33
+    },
+    "scale": "1",
+    "rig": {
+      "template": "humanoid",
+      "height": 66,
+      "pivots": {
+        "hips": [
+          0,
+          -24.75
+        ],
+        "torso": [
+          -2,
+          13.75
+        ],
+        "head": [
+          1,
+          -24
+        ],
+        "arm.far": [
+          -12.7,
+          -24.6
+        ],
+        "arm.near": [
+          8,
+          -20.4
+        ],
+        "shield": [
+          0,
+          14.44
+        ],
+        "weapon": [
+          -3.66,
+          14.95
+        ],
+        "leg.far": [
+          -6.5,
+          10.55
+        ],
+        "leg.near": [
+          5.5,
+          10.55
+        ]
+      },
+      "anchors": {
+        "hips": [
+          0.5,
+          0.5
+        ],
+        "torso": [
+          0.5,
+          1
+        ],
+        "head": [
+          0.5,
+          1
+        ],
+        "arm.far": [
+          0.6,
+          0.05
+        ],
+        "arm.near": [
+          0.5,
+          0.1
+        ],
+        "shield": [
+          0.5,
+          0.5
+        ],
+        "weapon": [
+          0.08,
+          0.35
+        ],
+        "leg.far": [
+          0.5,
+          0.05
+        ],
+        "leg.near": [
+          0.5,
+          0.05
+        ]
+      }
+    }
+  }
+}

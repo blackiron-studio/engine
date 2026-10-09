@@ -1,0 +1,49 @@
+{
+  "name": "Crate Yard",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "render": {
+    "scale": "native",
+    "snap": "world"
+  },
+  "renderer": "auto",
+  "fps": true,
+  "background": "#1a1c2c",
+  "fonts": [
+    "https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap"
+  ],
+  "post": {
+    "bloom": 0.4,
+    "bloomThreshold": 0.7,
+    "vignette": 0.25
+  },
+  "physics": {
+    "gravity": [
+      0,
+      1400
+    ],
+    "pixelsPerMeter": 100
+  },
+  "ios": {
+    "bundleId": "com.kiln.crateyard",
+    "orientation": "landscape"
+  },
+  "snapshots": [
+    {
+      "name": "title",
+      "frame": 40
+    },
+    {
+      "name": "play",
+      "frame": 150,
+      "taps": [
+        "640,486:30"
+      ]
+    }
+  ]
+}

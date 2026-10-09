@@ -1,0 +1,4 @@
+module KilnKernel {
+    header "kiln_kernel.h"
+    export *
+}

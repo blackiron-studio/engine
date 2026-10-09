@@ -1,0 +1,47 @@
+{
+  "name": "Lumen Salvage",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "renderer": "webgl2",
+  "fallback": false,
+  "background": "#b9cdd0",
+  "render": {
+    "scale": "native",
+    "snap": "none"
+  },
+  "pixelSnap": false,
+  "fps": false,
+  "fonts": [
+    "https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap"
+  ],
+  "post": {
+    "bloom": 0.25,
+    "bloomThreshold": 0.8,
+    "bloomPasses": 2,
+    "vignette": 0.16,
+    "saturation": 1.06,
+    "contrast": 1.02
+  },
+  "snapshots": [
+    {
+      "name": "courtyard",
+      "frame": 40
+    },
+    {
+      "name": "play",
+      "frame": 120,
+      "taps": [
+        "236,480:30"
+      ]
+    }
+  ],
+  "targets": [
+    "web",
+    "native"
+  ]
+}

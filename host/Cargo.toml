@@ -1,0 +1,60 @@
+[package]
+name = "kiln-host"
+version = "0.6.0"
+edition = "2021"
+description = "Kiln's generic native host: a window, the kernel's wgpu renderer, QuickJS, audio and input for Windows, Linux, macOS and Android."
+license = "MIT"
+repository = "https://github.com/blackiron-studio/engine"
+publish = false
+
+[lib]
+name = "kiln_host"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "kiln-host"
+path = "src/main.rs"
+
+[features]
+default = []
+# V8 (Deno's rusty_v8 prebuilt): desktops only; Android and iOS have no prebuilt library.
+v8 = ["dep:v8"]
+
+[dependencies]
+v8 = { version = "152", optional = true }
+kiln_kernel = { path = "../kernel", features = ["codecs", "physics", "physics3d", "render"] }
+winit = { version = "0.30", features = ["android-game-activity"] }
+bytemuck = { version = "1", features = ["derive"] }
+rquickjs = { version = "0.9", features = ["array-buffer"] }
+cpal = "0.15"
+fontdue = "0.9"
+png = "0.17"
+dirs = "6"
+log = "0.4"
+env_logger = "0.11"
+serde_json = "1"
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "ogg", "vorbis", "wav", "flac", "pcm", "isomp4", "aac"] }
+ttf-parser = "0.25"
+jpeg-decoder = { version = "=0.3.2", default-features = false }
+
+[target.'cfg(any(target_os = "macos", target_os = "windows"))'.dependencies]
+font-kit = "0.14"
+
+# gilrs has no Android backend; controllers there come through KilnActivity (see android.rs).
+[target.'cfg(not(target_os = "android"))'.dependencies]
+gilrs = "0.11"
+
+[target.'cfg(target_os = "android")'.dependencies]
+# rquickjs ships no prebuilt bindings for Android; generate them with bindgen (needs libclang).
+rquickjs = { version = "0.9", features = ["array-buffer", "bindgen"] }
+android-activity = { version = "0.6", features = ["game-activity"] }
+android_logger = "0.14"
+ndk-context = "0.1"
+jni = "0.21"
+ndk = "0.9"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 4

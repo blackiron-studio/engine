@@ -1,0 +1,278 @@
+{
+  "format": "kiln.scene",
+  "version": 1,
+  "root": {
+    "id": "gate",
+    "type": "Node3D",
+    "name": "Courtyard gate",
+    "children": [
+      {
+        "id": "left-pillar",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -3.4,
+            2.1,
+            -10.8
+          ],
+          "scale": [
+            0.9,
+            4.2,
+            0.9
+          ],
+          "color": 14734779,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "left-base",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -3.4,
+            0.2,
+            -10.8
+          ],
+          "scale": [
+            1.35,
+            0.4,
+            1.35
+          ],
+          "color": 8953499,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "left-cap",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -3.4,
+            4.2,
+            -10.8
+          ],
+          "scale": [
+            1.3,
+            0.3,
+            1.3
+          ],
+          "color": 8953499,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "right-pillar",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            3.4,
+            2.1,
+            -10.8
+          ],
+          "scale": [
+            0.9,
+            4.2,
+            0.9
+          ],
+          "color": 14734779,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "right-base",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            3.4,
+            0.2,
+            -10.8
+          ],
+          "scale": [
+            1.35,
+            0.4,
+            1.35
+          ],
+          "color": 8953499,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "right-cap",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            3.4,
+            4.2,
+            -10.8
+          ],
+          "scale": [
+            1.3,
+            0.3,
+            1.3
+          ],
+          "color": 8953499,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "lintel",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            0,
+            4.5,
+            -10.8
+          ],
+          "scale": [
+            8.3,
+            0.6,
+            1.1
+          ],
+          "color": 14734779,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "gold-trim",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            0,
+            4.86,
+            -10.8
+          ],
+          "scale": [
+            8.6,
+            0.15,
+            1.3
+          ],
+          "color": 16038241,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-0",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -2.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-1",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -1.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-2",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            -0.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-3",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            0.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-4",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            1.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      },
+      {
+        "id": "glyph-5",
+        "type": "Mesh3D",
+        "props": {
+          "primitive": "box",
+          "position": [
+            2.5,
+            4.5,
+            -10.2
+          ],
+          "scale": [
+            0.16,
+            0.26,
+            0.08
+          ],
+          "color": 3823199,
+          "roughness": 0.75
+        }
+      }
+    ],
+    "props": {}
+  }
+}

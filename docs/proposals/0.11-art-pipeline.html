@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiln 0.11: the art pipeline</title>
+<style>
+  :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fbf8a; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, "Inter", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 2rem; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); margin-bottom: 20px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; }
+  h3 { font-size: 1rem; margin: 24px 0 8px; }
+  p { max-width: 68ch; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; }
+  .good { color: var(--ok); font-weight: 600; }
+  .note { border-left: 3px solid var(--accent); padding: 4px 14px; color: var(--muted); }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  figure { margin: 20px 0; }
+  figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+  svg text { font: 12px ui-monospace, Menlo, monospace; fill: var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Kiln engine · proposal 0.11 · 2026-09-05 · draft</div>
+  <h1>The art pipeline: generic import, animation and rigs</h1>
+  <p>Godot and Unity do not make art. They give an artist a good import path and good ways to animate what comes in, and they stay out of the way of the style. Kiln has to do the same, with one difference: our artist is an image model, and our authoring tool is a command line, because there is no editor and the games are generated. This proposal makes that first-class and keeps every part of it generic. Nothing in it knows what a warden or a knight is.</p>
+
+  <h2>What Godot and Unity give, and where Kiln stands</h2>
+  <table>
+    <tr><th>Capability</th><th>Godot</th><th>Unity</th><th>Kiln today</th><th>After 0.11</th></tr>
+    <tr><td>Import a sheet, slice frames</td><td>Texture + SpriteFrames, Aseprite importer</td><td>Sprite Editor, Aseprite importer, PSB</td><td><span class="good">kiln art import</span>, Aseprite JSON, grids; keying, pitch detection, adaptive resample, palette snap, shrink</td><td>plus a manifest per set, facings, frame events, hitboxes</td></tr>
+    <tr><td>Frame animation</td><td>AnimatedSprite2D, AnimationPlayer</td><td>Animator, Animation clips</td><td>AnimatedSprite: name, frames, fps, loop, onFinished</td><td>AnimationSet: directions, per-frame durations, events, blend to the facing</td></tr>
+    <tr><td>Cutout and skeletal 2D</td><td>Skeleton2D, Bone2D, Polygon2D skinning, IK</td><td>2D Animation package: bones, skinning, IK</td><td>none</td><td>Rig2D: parts, bones, clips, procedural motion library; skinning stays out</td></tr>
+    <tr><td>Tiles</td><td>TileSet terrains, autotiles, scenes as tiles</td><td>Tilemap, rule tiles</td><td>TileMap, autotile masks, IsoTileMap</td><td>tileset import with seam check and mask derivation</td></tr>
+    <tr><td>Style consistency</td><td>import presets, nearest filtering, palette by discipline</td><td>presets, pixel-perfect camera</td><td><span class="good">style bible</span>: palette, outline, rim at bake</td><td>plus pitch and cast height, and a linter that rejects a sheet that breaks them</td></tr>
+    <tr><td>Round trip with an artist</td><td>native</td><td>native</td><td>import only</td><td>export back to Aseprite</td></tr>
+    <tr><td>Who draws</td><td>a person</td><td>a person</td><td>painters in code, rows of text, a generator</td><td>the engine ships the generator's brief</td></tr>
+  </table>
+
+  <h2>Principles</h2>
+  <ul>
+    <li><strong>Data, not code, describes art.</strong> A sprite set is a PNG plus a manifest. A rig is a manifest. A game names them; it never paints them in scene code.</li>
+    <li><strong>The engine has no opinion about the style</strong> beyond enforcing the one the project declares. The style bible is the project's, the palette snap is the mechanism.</li>
+    <li><strong>Every step is a command with a report and a preview</strong>, because there is no editor to look at. The harness renders what came in.</li>
+    <li><strong>Generic means every host.</strong> Whatever the importer writes bakes into the atlas for web, iOS, Android and the desktops alike. This landed with the knight and stays the rule.</li>
+    <li><strong>No skinning, no 3D.</strong> Cutout rigs cover what 2D games need. Mesh deformation is a later proposal if a game asks.</li>
+  </ul>
+
+  <h2>1. Sprite sets</h2>
+  <p>Today an import yields frames and flat animation tags. A <em>sprite set</em> is the same PNG with a richer manifest, written by the importer and read by one call.</p>
+<pre>assets/knight.json
+{
+  "frames": [ ... ],                          // as now: x, y, w, h, duration
+  "meta": { "image": "knight.png", "pitch": 4, "height": 66,
+    "anchor": [0.5, 0.97],
+    "animations": {
+      "walk": { "fps": 7, "loop": true,
+        "facings": { "down": [4, 5], "up": [1], "left": [2, 6], "right": [3, 7] },
+        "events": { "1": "step", "3": "step" } },
+      "attack": { "fps": 10, "loop": false, "facings": { "right": [8, 9] }, "mirror": true,
+        "events": { "1": "hit" } },
+      "hurt": { "frames": [13], "hold": 0.5 }
+    },
+    "hitboxes": { "8": { "x": 20, "y": 10, "w": 30, "h": 40 } }
+  }
+}</pre>
+  <ul>
+    <li><code>defineSpriteSet("knight", "assets/knight.json")</code> registers frames and every animation as <code>knight.walk</code> and so on, exactly like <code>defineSheet</code> does now.</li>
+    <li><code>AnimatedSprite.facing</code> is an angle or one of four names. <code>play("walk")</code> picks the facing's frames and flips when <code>mirror</code> says a left set is the right set flipped. Games stop writing <code>knight.left</code> and <code>knight.right</code> by hand.</li>
+    <li><code>onEvent("step" | "hit", frame)</code> fires from the frame table, so footsteps and hit frames live in data.</li>
+    <li>Hitboxes per frame feed the physics or the game's own checks; the sim never guesses where the sword is.</li>
+    <li>The importer's flags become manifest fields: <code>--anim walk=down:4,5;up:1;left:2,6;right:3,7</code>, and a <code>--manifest</code> that takes the whole thing from a file so a generator's brief and the import agree.</li>
+  </ul>
+
+  <h2>2. Rigs</h2>
+  <p>Generators give poses. Games want cycles. A cutout rig turns one drawn character into every cycle a game needs, the way Godot's <code>Skeleton2D</code> and Unity's 2D Animation do, without an editor: the parts come from a sheet, the bones from a template, the motion from a library.</p>
+  <figure>
+    <svg viewBox="0 0 760 200" width="100%" role="img" aria-label="A parts sheet becomes a rig: head, torso, arms, legs, weapon, each a sprite on a bone">
+      <g transform="translate(20,20)">
+        <rect x="0" y="0" width="200" height="150" fill="none" stroke="var(--line)"/>
+        <rect x="12" y="12" width="40" height="40" fill="none" stroke="var(--accent)"/><text x="16" y="70">head</text>
+        <rect x="70" y="12" width="50" height="60" fill="none" stroke="var(--accent)"/><text x="74" y="90">torso</text>
+        <rect x="140" y="12" width="24" height="50" fill="none" stroke="var(--accent)"/><text x="130" y="80">arm ×2</text>
+        <rect x="12" y="90" width="24" height="50" fill="none" stroke="var(--accent)"/><text x="44" y="120">leg ×2</text>
+        <rect x="90" y="100" width="90" height="16" fill="none" stroke="var(--accent)"/><text x="96" y="140">weapon</text>
+        <text x="0" y="170" fill="var(--muted)">parts sheet (generated or drawn)</text>
+      </g>
+      <g transform="translate(260,20)">
+        <text x="0" y="12">rig manifest</text>
+        <text x="0" y="36" fill="var(--muted)">root → hips → torso → head</text>
+        <text x="0" y="54" fill="var(--muted)">         torso → arm.l, arm.r → weapon</text>
+        <text x="0" y="72" fill="var(--muted)">hips → leg.l, leg.r</text>
+        <text x="0" y="100" fill="var(--muted)">pivots per bone, part per bone,</text>
+        <text x="0" y="118" fill="var(--muted)">draw order per facing</text>
+        <text x="0" y="150" fill="var(--muted)">→ Rig2D node</text>
+      </g>
+      <g transform="translate(540,20)">
+        <text x="0" y="12">clips</text>
+        <text x="0" y="36" fill="var(--muted)">procedural: idle, walk, run,</text>
+        <text x="0" y="54" fill="var(--muted)">swing, thrust, hurt, fall,</text>
+        <text x="0" y="72" fill="var(--muted)">cast, carry, sit</text>
+        <text x="0" y="100" fill="var(--muted)">keyframed: JSON tracks on</text>
+        <text x="0" y="118" fill="var(--muted)">bone rotation, offset, scale</text>
+        <text x="0" y="150" fill="var(--muted)">blend by weight, layer upper body</text>
+      </g>
+    </svg>
+    <figcaption>One parts sheet plus one template rig gives a character every clip in the library. The same template fits every humanoid; quadrupeds, flyers and blobs get their own.</figcaption>
+  </figure>
+  <ul>
+    <li><strong>Parts</strong> are frames of a sprite set named by role: <code>head</code>, <code>torso</code>, <code>arm.l</code>, <code>weapon</code>. The importer gets a <code>--parts</code> mode: a sheet of parts on a flat ground, found and named by a legend in the manifest. A generator produces such a sheet from a brief the engine prints.</li>
+    <li><strong>Bones</strong> form a hierarchy with pivots in part space. Templates ship with the engine: <code>humanoid</code>, <code>quadruped</code>, <code>flyer</code>, <code>blob</code>. A rig manifest names a template and the parts, and overrides pivots when the drawing needs it.</li>
+    <li><strong>Clips</strong> come two ways. Procedural clips are functions of time and a few parameters (stride, bounce, weapon length) that pose the template's bones: idle breathing, walk and run, a swing, a thrust, a hurt recoil, a fall, a cast, a carry. They give every rigged character motion on day one. Keyframed clips are JSON tracks, for the moments a game wants exact.</li>
+    <li><strong>Rig2D</strong> is a node: <code>play(clip)</code>, <code>blend</code>, <code>layer("upper", clip)</code> so the legs walk while the arms swing, <code>facing</code> picks the draw order and mirrors. Frame events and hitboxes work the same as on sprite sets; hitboxes attach to bones.</li>
+    <li><strong>The kernel later.</strong> A rig is a dozen transforms per character. Posing stays in script first; when a game rigs hundreds of enemies, posing moves behind a <code>RIG</code> op on the node table, the way pools did.</li>
+  </ul>
+
+  <h2>3. Tiles and environments</h2>
+  <ul>
+    <li><code>kiln art import --tiles 32</code>: a generated tileset on a flat ground is keyed, pitched and cut on the tile grid; each tile's four edges are compared with its neighbours to derive the autotile mask it plays, and seams that do not close are reported with the tile number.</li>
+    <li>Terrain sets like Godot's: a manifest lists terrains (grass, path, water) and which tiles carry which edges; <code>TileMap</code> paints from terrain ids and picks tiles by mask, as it does for painted autotiles now.</li>
+    <li>Decoration and prop sheets import as sprite sets with an anchor at the feet and a sort key, so a tree stands on the ground and sorts with characters.</li>
+  </ul>
+
+  <h2>4. The style bible and its linter</h2>
+  <p>The style bible grows two fields, <code>pitch</code> and <code>castHeight</code>, and gets a command. <code>kiln art check</code> reads every sheet under <code>assets/</code> and every painted sprite and reports what breaks the bible: a pitch off by more than one, a character taller than the cast by a fifth, colours farther from the palette than a threshold before snapping, an outline missing where the bible asks for one. The check runs in <code>kiln verify</code>, so a sheet that would look wrong fails the build before anyone sees it.</p>
+
+  <h2>5. Briefs: the engine tells the generator what to draw</h2>
+  <p>Godot's artist knows the rules from experience. Ours needs them written down every time. <code>kiln art brief character --facings 4 --clips walk,attack,hurt</code> prints the prompt that produces a sheet the importer likes: a flat magenta ground, a strict grid with a stated cell, one pose per cell in a stated order, the pitch and height from the style bible, the palette as hex, no anti-aliasing, no drop shadow. <code>kiln art brief parts</code> prints the parts-sheet brief for a rig, <code>--tiles</code> the tileset brief. A game's generation step becomes: ask for the brief, hand it to the model, import the result, run the check.</p>
+
+  <h2>6. Review and round trip</h2>
+  <ul>
+    <li><code>kiln art strip</code> renders every animation of every set and rig as a strip PNG, one row per animation, one column per frame or per sampled time; <code>kiln verify</code> keeps them as goldens like scene snapshots, so a regenerated sheet that changes a walk fails visibly.</li>
+    <li><code>kiln art export --aseprite</code> writes any set back out as PNG plus Aseprite JSON with tags, so a person can fix a hand or a face and re-import without touching the game.</li>
+  </ul>
+
+  <h2>What stays out</h2>
+  <table>
+    <tr><th>Out</th><th>Why</th></tr>
+    <tr><td>An editor or inspector UI</td><td>Games are generated; the CLI, the reports and the strips are the editor.</td></tr>
+    <tr><td>Mesh skinning and deformation</td><td>Cutout covers the games in the plan; skinning is a later proposal if a game needs bending cloth.</td></tr>
+    <tr><td>Generating images inside the engine</td><td>The engine ships the brief and the importer, not a model. Which model is the studio's choice and changes yearly.</td></tr>
+    <tr><td>Vector or high-resolution art paths</td><td>Pixel density is the style of every planned game; imported high-resolution art already works through <code>smooth</code> where a UI wants it.</td></tr>
+  </table>
+
+  <h2>Milestones</h2>
+  <table>
+    <tr><th>#</th><th>Delivers</th><th>Days</th></tr>
+    <tr><td>1</td><td>Sprite set manifests; facings, mirror, frame events and hitboxes on <code>AnimatedSprite</code>; importer writes and reads the manifest; the knight example uses facings instead of hand-named animations</td><td>2</td></tr>
+    <tr><td>2</td><td><code>Rig2D</code>, the humanoid template, the procedural clip library, keyframed clips, parts import; the knight rebuilt as a rig with smooth walk, attack and hurt next to its sheet version</td><td>5</td></tr>
+    <tr><td>3</td><td>Tileset import with seam check and mask derivation; terrain manifests on <code>TileMap</code></td><td>2</td></tr>
+    <tr><td>4</td><td><code>kiln art check</code> with pitch and cast height in the style bible, wired into <code>kiln verify</code>; <code>kiln art brief</code></td><td>1</td></tr>
+    <tr><td>5</td><td><code>kiln art strip</code> goldens; Aseprite export; the quadruped, flyer and blob templates</td><td>2</td></tr>
+  </table>
+  <p>Twelve days. After milestone 2, a consumer game can regenerate its cast from briefs: humanoid characters as parts sheets, enemies as sprite sets with four facings, and rigged bosses. The game's art comes from the pipeline end to end while its character roster remains separate from the engine.</p>
+
+  <div class="note">Status, 5 September 2026: milestones 1 and 2 shipped in 0.11.0. Sprite sets with facings, mirroring, events, holds and hitboxes; <code>Rig2D</code> with the humanoid, quadruped, flyer and blob templates, nine procedural clips, keyframed clips and layers; <code>kiln art parts</code>, <code>check</code> and <code>brief</code>. The knight runs as a sheet and as a rig in <code>examples/knight</code>, and the rig is Wisp Hollow's hero. Milestones 3 to 5 (tilesets, strips as goldens, Aseprite export) are next.</div>
+</main>
+</body>
+</html>

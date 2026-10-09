@@ -1,0 +1,287 @@
+{
+  "frames": [
+    {
+      "filename": "0",
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "1",
+      "frame": {
+        "x": 75,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "2",
+      "frame": {
+        "x": 150,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "3",
+      "frame": {
+        "x": 225,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "4",
+      "frame": {
+        "x": 300,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "5",
+      "frame": {
+        "x": 375,
+        "y": 0,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "6",
+      "frame": {
+        "x": 0,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "7",
+      "frame": {
+        "x": 75,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "8",
+      "frame": {
+        "x": 150,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "9",
+      "frame": {
+        "x": 225,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "10",
+      "frame": {
+        "x": 300,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "11",
+      "frame": {
+        "x": 375,
+        "y": 78,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 143
+    },
+    {
+      "filename": "12",
+      "frame": {
+        "x": 0,
+        "y": 156,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 100
+    },
+    {
+      "filename": "13",
+      "frame": {
+        "x": 75,
+        "y": 156,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 143
+    },
+    {
+      "filename": "14",
+      "frame": {
+        "x": 150,
+        "y": 156,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 143
+    },
+    {
+      "filename": "15",
+      "frame": {
+        "x": 225,
+        "y": 156,
+        "w": 75,
+        "h": 78
+      },
+      "duration": 143
+    }
+  ],
+  "meta": {
+    "image": "knight.png",
+    "size": {
+      "w": 450,
+      "h": 234
+    },
+    "frameTags": [
+      {
+        "name": "hurt",
+        "from": 13,
+        "to": 13,
+        "direction": "forward"
+      },
+      {
+        "name": "victory",
+        "from": 14,
+        "to": 14,
+        "direction": "forward"
+      },
+      {
+        "name": "pickup",
+        "from": 15,
+        "to": 15,
+        "direction": "forward"
+      },
+      {
+        "name": "guard",
+        "from": 11,
+        "to": 11,
+        "direction": "forward"
+      }
+    ],
+    "pitch": 4,
+    "height": 76,
+    "anchor": [
+      0.5,
+      1
+    ],
+    "animations": {
+      "idle": {
+        "fps": 7,
+        "facings": {
+          "down": [
+            0
+          ],
+          "up": [
+            1
+          ],
+          "left": [
+            2
+          ],
+          "right": [
+            3
+          ]
+        },
+        "loop": true
+      },
+      "walk": {
+        "fps": 7,
+        "facings": {
+          "down": [
+            4,
+            5
+          ],
+          "up": [
+            1
+          ],
+          "left": [
+            2,
+            6
+          ],
+          "right": [
+            3,
+            7
+          ]
+        },
+        "loop": true
+      },
+      "attack": {
+        "fps": 7,
+        "facings": {
+          "right": [
+            8,
+            9
+          ]
+        },
+        "mirror": true,
+        "events": {
+          "9": "hit"
+        },
+        "loop": false
+      },
+      "hurt": {
+        "fps": 7,
+        "frames": [
+          13
+        ],
+        "hold": 0.4,
+        "loop": false
+      },
+      "victory": {
+        "fps": 7,
+        "frames": [
+          14
+        ],
+        "loop": false
+      },
+      "pickup": {
+        "fps": 7,
+        "frames": [
+          15
+        ],
+        "loop": false
+      },
+      "guard": {
+        "fps": 7,
+        "frames": [
+          11
+        ],
+        "loop": true
+      }
+    }
+  }
+}

@@ -1,0 +1,150 @@
+{
+  "recordedAt": "2026-09-09T16:02:04.693Z",
+  "tests": {
+    "passed": 372,
+    "failed": 0,
+    "assertions": 18179
+  },
+  "typecheck": "PASS",
+  "embeddedBrowser": {
+    "capture": "UNAVAILABLE (observed)",
+    "quickClick": "PASS: ammo changed from 28 to 27 after a single click",
+    "rightDrag": "Automated in isolated Chrome with capture API removed; not manually dragged in embedded preview"
+  },
+  "strictBrowser": {
+    "status": "FAIL",
+    "trustedInput": {
+      "escapePause": true,
+      "noStuckFire": true,
+      "settings": true,
+      "rebind": true,
+      "persistence": true,
+      "capture": "PASS",
+      "mouseLook": "PASS",
+      "mouseFire": "PASS",
+      "fallbackSimulated": false,
+      "recapture": "PASS"
+    },
+    "performance": {
+      "seconds": 20,
+      "frames": 1200,
+      "cpuP95Ms": 2,
+      "frameP95Ms": 16.700000000000728,
+      "gpu": {
+        "supported": true,
+        "samples": 240,
+        "pending": 1,
+        "medianMs": 5.415708,
+        "p95Ms": 10.447333
+      },
+      "estimatedGpuBytes": 61907928,
+      "device": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "checks": {
+        "cpu": true,
+        "framePacing": true,
+        "gpu": false,
+        "memory": true,
+        "realGPU": true
+      }
+    },
+    "diagnostics": {
+      "phase": "playing",
+      "health": 100,
+      "wave": 0,
+      "kills": 1,
+      "relays": 0,
+      "player": {
+        "x": 5.956205101683736,
+        "y": 0.009804148766852427,
+        "z": 18.96733062765253
+      },
+      "grounded": true,
+      "ammo": [
+        18,
+        6
+      ],
+      "enemies": 2,
+      "projectiles": 0,
+      "physics": {
+        "bodies": 54,
+        "colliders": 54,
+        "joints": 0
+      },
+      "targets": 3,
+      "locked": true
+    },
+    "glError": 0,
+    "captureError": [],
+    "scope": "Isolated Chrome input and 20-second rAF-paced gameplay; unavailable capture is explicitly reported and is not a passing capture test."
+  },
+  "fallbackBrowser": {
+    "status": "FAIL",
+    "trustedInput": {
+      "escapePause": true,
+      "noStuckFire": true,
+      "settings": true,
+      "rebind": true,
+      "persistence": true,
+      "capture": "UNAVAILABLE",
+      "mouseLook": "PASS (right-drag fallback)",
+      "mouseFire": "PASS",
+      "fallbackSimulated": true,
+      "recapture": "UNAVAILABLE"
+    },
+    "performance": {
+      "seconds": 20,
+      "frames": 1200,
+      "cpuP95Ms": 3.5999999940395355,
+      "frameP95Ms": 16.799999999999272,
+      "gpu": {
+        "supported": true,
+        "samples": 240,
+        "pending": 1,
+        "medianMs": 4.357541,
+        "p95Ms": 11.549374
+      },
+      "estimatedGpuBytes": 61907928,
+      "device": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "checks": {
+        "cpu": true,
+        "framePacing": true,
+        "gpu": false,
+        "memory": true,
+        "realGPU": true
+      }
+    },
+    "diagnostics": {
+      "phase": "playing",
+      "health": 100,
+      "wave": 0,
+      "kills": 1,
+      "relays": 0,
+      "player": {
+        "x": 5.956205101683736,
+        "y": 0.009804148766852427,
+        "z": 18.96733062765253
+      },
+      "grounded": true,
+      "ammo": [
+        18,
+        6
+      ],
+      "enemies": 2,
+      "projectiles": 0,
+      "physics": {
+        "bodies": 54,
+        "colliders": 54,
+        "joints": 0
+      },
+      "targets": 3,
+      "locked": false
+    },
+    "glError": 0,
+    "captureError": [
+      "This browser does not support mouse capture."
+    ],
+    "scope": "Isolated Chrome input and 20-second rAF-paced gameplay; unavailable capture is explicitly reported and is not a passing capture test."
+  },
+  "chordedButtons": "PASS: actual trusted left click while right mouse held consumed ammo",
+  "scope": "Input checks passed. Overall browser runner status is FAIL because these GPU p95 samples exceeded the 8.3 ms budget; no new performance pass is claimed. Rendering code was unchanged by this fix."
+}

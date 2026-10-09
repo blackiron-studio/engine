@@ -1,0 +1,9 @@
+{
+  "profile": "Desktop baseline, 1280x720, 10000 2D quads or 1000 lit shadow-casting mesh instances",
+  "targetFps": 60,
+  "cpuP95Ms": 8.3,
+  "gpuP95Ms": 8.3,
+  "estimatedGpuBytes": 268435456,
+  "minimumRestarts": 100,
+  "notes": "CPU and GPU budgets are separate. rAF pacing is reported separately; GPU timing can be unavailable. This profile is not a mobile certification."
+}

@@ -1,0 +1,70 @@
+{
+  "name": "@blackiron-studio/engine",
+  "version": "0.16.0",
+  "description": "Blackiron Engine: TypeScript 2D, projected 2.5D and basic 3D game engine with web and native hosts.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "bin": {
+    "blackiron": "./cli/blackiron.ts",
+    "kiln": "./cli/kiln.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/core/index.ts",
+    "./art": "./src/art/index.ts",
+    "./render": "./src/render/index.ts",
+    "./kernel": "./src/kernel/index.ts",
+    "./physics": "./src/physics/index.ts",
+    "./scene": "./src/scene/index.ts",
+    "./scene/ui": "./src/scene/ui.ts",
+    "./audio": "./src/audio/index.ts",
+    "./input": "./src/input/index.ts",
+    "./save": "./src/save/index.ts",
+    "./app": "./src/app/index.ts",
+    "./testkit": "./src/testkit/index.ts",
+    "./platform": "./src/platform/index.ts",
+    "./shell": "./src/shell/index.ts",
+    "./three": "./src/three/index.ts",
+    "./content": "./src/content/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit",
+    "demo": "cd examples/demo && bun run dev",
+    "gallery": "bun cli/kiln.ts gallery",
+    "check:showcases": "bun scripts/check-showcases.ts",
+    "check:3d": "bun scripts/check-webgl3d.ts",
+    "check:neon": "bun scripts/check-neon-reference.ts",
+    "check:reliability": "bun scripts/check-reliability.ts",
+    "check:reproducible": "bun scripts/check-reproducible.ts",
+    "check:ci": "bun scripts/check-ci.ts",
+    "check:native-content": "bun scripts/check-native-content.ts",
+    "check:native-fps": "bun scripts/check-native-fps.ts",
+    "check:fps": "bun scripts/check-fps.ts",
+    "check:fps-input": "bun scripts/check-fps-input.ts",
+    "check:exports": "bun scripts/check-exports.ts",
+    "check:ios-export": "bun scripts/check-ios-export.ts",
+    "check:lowline": "bun scripts/check-lowline.ts",
+    "check:licenses": "python3 scripts/collect-licenses.py"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "0.19.3"
+  },
+  "packageManager": "bun@1.3.13",
+  "engines": {
+    "bun": "1.3.13"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blackiron-studio/engine.git"
+  },
+  "homepage": "https://github.com/blackiron-studio/engine#readme",
+  "bugs": {
+    "url": "https://github.com/blackiron-studio/engine/issues"
+  }
+}

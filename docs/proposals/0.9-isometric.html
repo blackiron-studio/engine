@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiln 0.9: isometric and 2.5D worlds</title>
+<style>
+  :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fc28f; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, "Inter", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 2rem; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); margin-bottom: 20px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; }
+  h3 { font-size: 1rem; margin: 24px 0 8px; }
+  p { max-width: 68ch; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  td.num { text-align: right; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; }
+  .good { color: var(--ok); font-weight: 600; }
+  .note { border-left: 3px solid var(--accent); padding: 4px 14px; color: var(--muted); }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+  figure { margin: 20px 0; }
+  figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+  svg text { font: 12px ui-monospace, Menlo, monospace; fill: var(--ink); }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Kiln engine · proposal 0.9 · 2026-09-03 · milestones 1 to 3 implemented in 0.9.0</div>
+  <h1>Isometric and 2.5D worlds</h1>
+  <p>Kiln draws a flat plane. Many of the games worth making are not flat: isometric tactics and builders, action RPGs seen from three quarters above, top-down games where the hero jumps over a fence. All of them are still sprite games. What they need is a third axis for height, a projection that decides where a point at a height lands on screen, and draw ordering that follows that projection. This proposal adds those three things to the kernel and the scene tree without adding meshes, perspective or a free camera. It is the step 1 of 3D from the roadmap discussion: cheap, covers a lot of games, and leaves every existing tool working.</p>
+
+  <h2>What it covers and what it does not</h2>
+  <table>
+    <tr><th>Covered</th><th>Not covered</th></tr>
+    <tr><td>Isometric grids (2:1 diamonds) with elevation, cliffs and stacked blocks</td><td>Meshes, materials, glTF</td></tr>
+    <tr><td>Three-quarter views with a tilt, where height reads as a vertical offset</td><td>A camera that rotates continuously (only 90° steps, with directional art)</td></tr>
+    <tr><td>Height on any node: jumping, flying, thrown things, floating UI in the world</td><td>Perspective foreshortening</td></tr>
+    <tr><td>Correct draw order for all of it, including sprites among tiles</td><td>3D physics; bodies stay on the ground plane</td></tr>
+    <tr><td>Blob shadows, height-aware lights, picking under the pointer</td><td>Normal-mapped lighting</td></tr>
+  </table>
+
+  <h2>Shape</h2>
+  <p>World space becomes three numbers: <code>x</code> and <code>y</code> on the ground, <code>z</code> up. A <em>projection</em> is an affine map from (x, y, z) to the screen plus a <em>depth key</em>, a single number that says what draws over what. Every current game is the identity projection with depth = y, which is what Y-sort does today.</p>
+  <figure>
+    <svg viewBox="0 0 760 210" width="100%" role="img" aria-label="Three projections of the same block: top-down, isometric, three-quarter">
+      <g transform="translate(40,30)">
+        <rect x="40" y="40" width="80" height="80" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <text x="20" y="150">top-down</text>
+        <text x="20" y="168" fill="var(--muted)">sx = x, sy = y − z</text>
+        <text x="20" y="186" fill="var(--muted)">depth = y</text>
+      </g>
+      <g transform="translate(290,30)">
+        <polygon points="80,20 140,50 80,80 20,50" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <polygon points="20,50 80,80 80,130 20,100" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <polygon points="80,80 140,50 140,100 80,130" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <text x="0" y="150">isometric 2:1</text>
+        <text x="0" y="168" fill="var(--muted)">sx = (x − y)·w/2, sy = (x + y)·h/2 − z</text>
+        <text x="0" y="186" fill="var(--muted)">depth = x + y, then z</text>
+      </g>
+      <g transform="translate(560,30)">
+        <polygon points="30,30 110,30 110,58 30,58" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <polygon points="30,58 110,58 110,130 30,130" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <text x="0" y="150">three-quarter (tilt)</text>
+        <text x="0" y="168" fill="var(--muted)">sx = x, sy = y·cos t − z·sin t</text>
+        <text x="0" y="186" fill="var(--muted)">depth = y</text>
+      </g>
+    </svg>
+    <figcaption>The same block under the three projections. The kernel applies one matrix and one depth formula; the game writes world coordinates.</figcaption>
+  </figure>
+  <p>The kernel gets a <code>PROJECTION</code> op that sets the 3×2 matrix and the depth coefficients for the current pass, and the sprite record gains a <code>z</code>. When a pass has a projection with sorting on, the kernel stops emitting quads in stream order: it collects them with their depth keys, sorts once at the end of the pass, then writes the vertex buffer. Ten thousand quads sort in well under a millisecond in Rust; the same sort in script is what Y-sort costs today for a few hundred nodes.</p>
+  <p class="note">A depth buffer was the alternative. It orders for free but breaks alpha blending, and pixel art has soft edges only where it is scaled or lit. Sorting keeps blending correct, works on WebGL2 unchanged, and the cost is bounded by quads on screen. A depth buffer stays an option for scenes with hundreds of thousands of quads.</p>
+
+  <h2>The pieces</h2>
+  <h3>Nodes with height</h3>
+  <p><code>Node2D</code> gains <code>z</code>, inherited down the tree like x and y. A sprite at height draws where the projection says and sorts by its ground position, so a hero jumping over a fence passes in front of the fence he is in front of and behind the one behind him, at every point of the arc. <code>shadow = true</code> makes the kernel emit a blob shadow on the ground under the node, shrinking and fading with height, using the atlas's shadow region. <code>depthBias</code> nudges the key for the few cases the rule gets wrong (a rug that must stay under the table).</p>
+
+  <h3>Node tables</h3>
+  <p>The record gains <code>Z</code>, <code>VZ</code> and a <code>SHADOW</code> flag; the table gets a z gravity and a floor (<code>z ≥ 0</code>, with bounce or stop). A spawn like <code>pool.spawn({ x, y, z: 2, vz: 6, sprite: "coin" })</code> arcs and lands with no script per frame, and the kernel sorts it among everything else. Physics binding keeps x, y and rotation from the body; z stays the table's.</p>
+
+  <h3>Isometric tile maps</h3>
+  <p>A new retained batch kind carries world instances (x, y, z, size, region) instead of prebaked screen quads, so the kernel projects and sorts tiles with the sprites. <code>IsoTileMap</code> takes a <code>TileMapData</code> plus an elevation grid: each cell draws its floor at its height and cliff faces down to its lower neighbours, chosen by autotile rules the same way path edges are today. Stacked blocks are cells with height above one. <code>heightAt(x, y)</code> returns the walkable height, which characters snap to and which picking uses.</p>
+
+  <h3>Camera</h3>
+  <p><code>Camera2D</code> gains <code>projection</code>: <code>"topDown"</code> (today), <code>"isometric"</code> with the diamond size, or <code>"tilt"</code> with an angle. Follow targets can carry z. Isometric maps can be rotated in 90° steps; the projection swaps axes and sprites with four-direction variants pick the matching one, sprites without variants stay as they are. Zoom, bounds, shake and snapping work unchanged; snapping rounds after projection so 2:1 diamonds keep whole-pixel edges.</p>
+
+  <h3>Picking</h3>
+  <p><code>camera.unproject(sx, sy, z)</code> inverts the projection at a given height; <code>scene.pick(sx, sy)</code> asks the kernel for the topmost quad under a point by depth key, so clicking a unit standing on a cliff selects the unit, not the cliff behind it. The UI layer keeps the identity projection and its own hit testing.</p>
+
+  <h3>Lights</h3>
+  <p><code>Light2D</code> takes an optional z. The light pass projects the light's position like any node, so a torch on a wall lights the wall's top and the floor below it plausibly. The bloom and composite chain is untouched.</p>
+
+  <h3>Generated art</h3>
+  <p>Everything Kiln draws is painted by code, so the isometric art helpers matter as much as the runtime. The painter gains <code>isoDiamond</code>, <code>isoBlock(top, left, right)</code> with the three shaded faces, cliff-edge autotiles with grass overhang, and <code>defineIsoSprite</code> with a footprint in cells so origins land on the diamond's centre. Billboard sprites (characters, props) are drawn front-on as they are today; the projection only moves them.</p>
+
+  <h2>Reference games</h2>
+  <p>Two games define the target. Walking through what each needs shows where the proposal already fits and where it grows three small pieces.</p>
+  <table>
+    <tr><th>Need</th><th>X-COM (1994)</th><th>Fallout (1997)</th><th>In the proposal</th></tr>
+    <tr><td>Projection</td><td>2:1 isometric diamonds</td><td>A dimetric angle that is not quite 2:1</td><td>Any matrix; the tile art fixes the angle, the engine does not care</td></tr>
+    <tr><td>Floors and levels</td><td>Four stacked levels with rooms under roofs, cutaway to the level you are looking at</td><td>One level, roofs that hide</td><td class="good">Added: stacked map layers at fixed heights, each with its own visibility</td></tr>
+    <tr><td>Walls</td><td>Thin walls on cell edges, destructible</td><td>Thick walls as props</td><td>Edge tiles with a sort origin at their base; <code>set</code> rebuilds a cell like <code>TileMap</code> today</td></tr>
+    <tr><td>Fog of war, seen and unseen</td><td>Unseen tiles dark, seen-once tiles dim</td><td>Dim outside the explored area</td><td class="good">Added: tint and alpha per tile instance in the world batch</td></tr>
+    <tr><td>Seeing past walls</td><td>Level cutaway</td><td>The transparent "egg" around the player</td><td>Layer visibility, plus per-instance alpha for the egg</td></tr>
+    <tr><td>Movement grid</td><td>Square cells</td><td>Hex cells on isometric floors</td><td class="good">Added: a <code>HexGrid</code> helper next to <code>TileMapData</code>; rendering already takes any world position</td></tr>
+    <tr><td>Units</td><td>Eight directions, few frames</td><td>Six directions, many frames</td><td>Directional sprites and frame lists, in nodes or pools</td></tr>
+    <tr><td>Selecting a unit or a cell</td><td>Click on levels</td><td>Click through the egg</td><td>Picking by depth key, at the level's height</td></tr>
+    <tr><td>Everything else</td><td colspan="2">Turn order, line of sight, inventories, the base, saves</td><td>Game rules in script, the 0.7 widgets, the save store: unchanged</td></tr>
+  </table>
+  <p>The three additions are small: stacked layers are several isometric maps at set heights sharing one sort, per-instance tint and alpha are two more floats in the world batch, and the hex helper is a coordinate file. They are folded into milestone 2. With them, both games are sprite games this engine can hold; the generated-art question is theirs to answer, since neither is made of painter primitives.</p>
+
+  <h2>Staying simple, and the road to 3D</h2>
+  <p>The proposal adds one concept to the engine, a projection with a depth key, and everything else falls out of it: height is a coordinate, ordering is a sort, shadows and picking read the same numbers. There is no second scene graph, no new renderer and no new asset type, and a game that never sets a projection runs exactly as today. That is the "generic and simple" test, and it holds.</p>
+  <p>It is not 3D, and it does not pretend to be. What it does is put the data in 3D shape before 3D exists, so that the later step is additive rather than a rewrite. Four choices in this proposal are made for that reason, and cost nothing now:</p>
+  <ul>
+    <li><strong>World coordinates are (x, y, z) from the start.</strong> Node transforms, node tables, lights, the camera and picking all speak three axes. A mesh pass later reads the same transforms.</li>
+    <li><strong>The projection is stored as a 4×4 matrix in the protocol</strong>, even though the isometric and tilt cases only fill an affine 3×2 of it. A perspective camera is a different matrix, not a different op.</li>
+    <li><strong>Every vertex carries its depth.</strong> The vertex format grows by one float, the projected depth, which the sorted 2D path ignores and a depth-tested path uses unchanged. Renderers gain a depth buffer later without a protocol break, and the sort-versus-depth-buffer choice becomes a per-pass flag.</li>
+    <li><strong>Elevation is a height field.</strong> The isometric map's elevation grid is exactly the data a mesh would be generated from; the cliff autotiles are a 2D rendering of it, a heightfield mesh is the 3D one.</li>
+  </ul>
+  <p>What true 3D would still add, in its own proposal: meshes and materials (glTF as the interchange, since there is no editor), a depth-tested opaque pass with a sorted transparent pass after it, a lighting model with shadow maps, 3D physics, and a WebGPU renderer for the web. Because the kernel now owns the renderer on every native host, that mesh pass is one implementation. The painter has no 3D equivalent, so a 3D asset source is the real decision, not the renderer.</p>
+
+  <h2>Kernel changes</h2>
+  <table>
+    <tr><th>Piece</th><th>Change</th></tr>
+    <tr><td>Stream</td><td><code>PROJECTION</code> op: a 4×4 matrix (affine in this release), depth coefficients, sort flag. <code>SPRITE3</code>: the sprite record plus z, shadow flag and depth bias.</td></tr>
+    <tr><td>Passes</td><td>Sorted passes collect quads with depth keys and emit after a sort; unsorted passes are unchanged, so current games take the same path as before.</td></tr>
+    <tr><td>Vertices</td><td>Eleven floats instead of ten: the projected depth rides along, unused by the 2D renderers until a depth-tested pass exists.</td></tr>
+    <tr><td>Node tables</td><td>Words 26 to 28: <code>Z</code>, <code>VZ</code>, <code>DEPTH_BIAS</code>; a shadow flag; table z gravity and floor mode.</td></tr>
+    <tr><td>Retained batches</td><td>A world-space batch (14 floats per instance: position with height, size, region, tint, alpha) the kernel projects; the screen-space batch stays for flat tile maps.</td></tr>
+    <tr><td>Picking</td><td><code>kiln_pick(x, y)</code> returns the id of the topmost quad from the last sorted pass (ids come from a per-quad tag the script sets).</td></tr>
+    <tr><td>Reference kernel</td><td>Every piece mirrored in <code>src/kernel/ts.ts</code>; the parity test grows a projected frame.</td></tr>
+    <tr><td>Size</td><td>Roughly 6 KB more WebAssembly; no new dependencies.</td></tr>
+  </table>
+
+  <h2>What game code looks like</h2>
+  <pre>scene.camera.projection = { kind: "isometric", tile: { w: 64, h: 32, rise: 16 } };
+
+const map = scene.world.add(new IsoTileMap({
+  data, elevation,                       // TileMapData and a grid of heights in blocks
+  tiles: { 1: "grass", 2: { autotile: "cliff" }, 3: "water" },
+}));
+
+const hero = scene.world.add(new Sprite("hero.south", 4, 6));
+hero.shadow = true;
+hero.z = map.heightAt(hero.x, hero.y);
+
+// A jump: z and vz are ordinary numbers on the node.
+if (input.justPressed("jump") &amp;&amp; hero.z <= floor) vz = 9;
+vz -= 24 * dt;
+hero.z = Math.max(map.heightAt(hero.x, hero.y), hero.z + vz * dt);
+
+// Thousands of arcing coins with no script per frame.
+const coins = scene.world.add(new SpritePool({ capacity: 2000, sprite: "coin", gravityZ: -24, floor: "stop", shadow: true }));
+coins.spawn({ x: 4, y: 6, z: 1, vz: 8, vx: 2 });
+
+// Pointer to cell, at ground height.
+const [wx, wy] = scene.camera.unproject(pointer.x, pointer.y, 0);
+const cell = map.cellAt(wx, wy);</pre>
+
+  <h2>Plan</h2>
+  <table>
+    <tr><th>Milestone</th><th>Contents</th><th class="num">Days</th></tr>
+    <tr><td>1. Projection and order</td><td><code>PROJECTION</code>, <code>SPRITE3</code>, sorted passes in both kernels, <code>Node2D.z</code>, shadows, camera projections, unproject; parity and headless tests</td><td class="num">3</td></tr>
+    <tr><td>2. Isometric maps</td><td>World-space batch with per-tile tint and alpha, <code>IsoTileMap</code> with elevation and cliff autotiles, stacked layers at fixed heights with visibility, <code>heightAt</code>, picking, <code>HexGrid</code>, the isometric painter helpers; the Tactics starter becomes isometric</td><td class="num">4</td></tr>
+    <tr><td>3. Motion and pools</td><td>Node table z, vz, gravity and floor, pool shadows, lights with height, 90° camera steps with directional sprites; a new starter ("Ridge", an action RPG from three quarters)</td><td class="num">2</td></tr>
+    <tr><td>4. Verification</td><td>Goldens for the two starters on desktop, iOS and Android; bench with 10,000 projected sprites; docs</td><td class="num">1</td></tr>
+  </table>
+  <p>Ten working days. Milestone 1 alone is useful: any current game can turn on a tilt and give its hero a jump.</p>
+
+  <h2>Decisions</h2>
+  <ul>
+    <li><strong>Sorting over a depth buffer, for now.</strong> Blending stays right and WebGL2 needs nothing new; the sort is bounded by visible quads and runs in the kernel. Vertices carry depth anyway, so a depth-tested pass is a flag later, not a format change.</li>
+    <li><strong>Physics stays on the ground plane.</strong> Height is gameplay and presentation, not collision. Games that need "over" and "under" use height bands in their collision layers, which rapier2d already has. rapier3d would double the physics module for little.</li>
+    <li><strong>No continuous rotation.</strong> Sprite games rotate in 90° steps or not at all; continuous rotation needs meshes or eight-direction art for everything.</li>
+    <li><strong>Projection per pass, not per node.</strong> The UI stays flat, the world is projected once; mixing projections inside one layer is not supported.</li>
+    <li><strong>Flat maps keep the fast path.</strong> <code>TileMap</code> and unsorted passes are untouched, so 0.8 games render exactly as before.</li>
+  </ul>
+
+  <h2>Risks</h2>
+  <ul>
+    <li>Sorting stability: equal depth keys must keep stream order, or things flicker. The sort is stable and ties break by stream index.</li>
+    <li>Seams: 2:1 diamonds with fractional camera positions show hairlines. Snapping after projection and integer diamond sizes address it; the goldens will catch regressions.</li>
+    <li>Large sorted passes: a full-screen isometric map at high zoom-out is tens of thousands of quads. Tile culling happens before the sort, and the depth-buffer option remains if a game outgrows that.</li>
+    <li>Art volume: four-direction characters quadruple sprite definitions. Directional variants are optional; a single front-facing sprite is still correct, just not rotating with the camera.</li>
+  </ul>
+
+  <h2>Not in this proposal</h2>
+  <p>Meshes and glTF, perspective, a free 3D camera, 3D physics, normal-mapped lighting, WebGPU on the web. Each is a separate proposal if a game needs it; the kernel renderer being shared by all native hosts is what would make a mesh pass one implementation later.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "Native FPS acceptance",
+  "entry": "main.ts",
+  "art": "../../../examples/breach/src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "renderer": "webgl2",
+  "fallback": false,
+  "render": {
+    "scale": 1,
+    "snap": "none"
+  },
+  "seed": 27,
+  "targets": [
+    "native"
+  ],
+  "fonts": []
+}

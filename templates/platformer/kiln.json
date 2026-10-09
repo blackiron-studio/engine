@@ -1,0 +1,27 @@
+{
+  "name": "Platformer",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "render": {
+    "scale": "native",
+    "snap": "world"
+  },
+  "renderer": "auto",
+  "fps": true,
+  "background": "#2b2d5c",
+  "fonts": [
+    "https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@700&family=Instrument+Sans:wght@500;700&display=swap"
+  ],
+  "post": {
+    "bloom": 0.7,
+    "bloomThreshold": 0.6,
+    "vignette": 0.28,
+    "saturation": 1.08,
+    "lut": "dusk"
+  }
+}

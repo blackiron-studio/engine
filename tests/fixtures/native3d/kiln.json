@@ -1,0 +1,27 @@
+{
+  "name": "Kiln 3D content acceptance",
+  "entry": "main.ts",
+  "viewport": {
+    "width": 800,
+    "height": 600,
+    "scale": "fit"
+  },
+  "renderer": "webgl2",
+  "fallback": false,
+  "render": {
+    "scale": 1,
+    "snap": "none"
+  },
+  "seed": 1,
+  "fps": false,
+  "targets": [
+    "web",
+    "native"
+  ],
+  "snapshots": [
+    {
+      "name": "content",
+      "frame": 100
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "Signal Breach",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "renderer": "webgl2",
+  "fallback": false,
+  "targets": [
+    "web",
+    "macos",
+    "windows",
+    "linux"
+  ],
+  "render": {
+    "scale": 1,
+    "snap": "none"
+  },
+  "pixelSnap": false,
+  "fps": false,
+  "seed": 27,
+  "background": "#b6c9c8",
+  "post": {
+    "bloom": 0.24,
+    "bloomThreshold": 0.9,
+    "bloomPasses": 2,
+    "vignette": 0.15,
+    "saturation": 0.96,
+    "contrast": 1.03
+  },
+  "snapshots": [
+    {
+      "name": "station",
+      "frame": 40
+    }
+  ]
+}

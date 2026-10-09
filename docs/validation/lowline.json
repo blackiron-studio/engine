@@ -1,0 +1,275 @@
+{
+  "recordedAt": "2026-09-09T16:32:37.360Z",
+  "scope": "Local engine validation and a desktop WebGL2 city demo. Hosted CI is configured but has not been executed for this change.",
+  "tests": {
+    "passed": 380,
+    "failed": 0,
+    "assertions": 18217,
+    "files": 57
+  },
+  "ci": {
+    "execution": "local CI jobs on this host; hosted OS matrix is separate",
+    "bun": "1.3.13",
+    "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "date": "2026-09-09T16:31:51.401Z",
+    "results": [
+      {
+        "name": "install",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "install",
+          "--frozen-lockfile"
+        ],
+        "exitCode": 0,
+        "seconds": 0.026338707999999995
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "seconds": 2.566108667
+      },
+      {
+        "name": "tests",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "test"
+        ],
+        "exitCode": 0,
+        "seconds": 1.4539551250000005
+      },
+      {
+        "name": "kernel",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--features",
+          "physics,physics3d,render,codecs",
+          "--manifest-path",
+          "kernel/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 0.869347667
+      },
+      {
+        "name": "host",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--manifest-path",
+          "host/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 0.6878435420000005
+      },
+      {
+        "name": "gpu",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:3d"
+        ],
+        "exitCode": 0,
+        "seconds": 3.1896883339999995
+      },
+      {
+        "name": "native-content",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:native-content"
+        ],
+        "exitCode": 0,
+        "seconds": 3.536767833
+      },
+      {
+        "name": "games",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:showcases"
+        ],
+        "exitCode": 0,
+        "seconds": 3.8273757920000007
+      },
+      {
+        "name": "fps",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:fps"
+        ],
+        "exitCode": 0,
+        "seconds": 3.882329958999999
+      },
+      {
+        "name": "lowline",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:lowline"
+        ],
+        "exitCode": 0,
+        "seconds": 5.518169875000003
+      },
+      {
+        "name": "reproducible",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:reproducible"
+        ],
+        "exitCode": 0,
+        "seconds": 1.8526318339999999
+      },
+      {
+        "name": "native",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "cli/kiln.ts",
+          "verify",
+          "--host",
+          "desktop",
+          "--js",
+          "quickjs"
+        ],
+        "exitCode": 0,
+        "seconds": 51.221170541999996
+      }
+    ]
+  },
+  "browser": {
+    "status": "PASS",
+    "checks": [
+      "WebGL2 startup",
+      "walk and enter vehicle",
+      "driving and turn to archive",
+      "actual road pursuit and escape",
+      "delivery and free roam",
+      "pause",
+      "defeat and restart"
+    ],
+    "diagnostics": {
+      "phase": "title",
+      "mission": 0,
+      "vehicle": false,
+      "x": 664,
+      "y": 1300,
+      "speed": 0,
+      "health": 100,
+      "heat": 0,
+      "cars": 15,
+      "marks": 0,
+      "time": 0
+    },
+    "renderer": {
+      "drawCalls": 13,
+      "sprites": 2353,
+      "frameMs": 0.29999998211860657,
+      "targetWidth": 1280,
+      "targetHeight": 720
+    },
+    "errors": []
+  },
+  "reproducible": {
+    "bun": "1.3.13",
+    "checkedAt": "2026-09-09T16:32:37.279Z",
+    "scope": "Two clean web builds on this host, SHA-256 of every output. Does not certify cross-host native binary reproducibility or remote font stability.",
+    "reports": [
+      {
+        "project": "examples/demo",
+        "files": {
+          "assets/game.js": "8160d9e8e7c1e39dc01a85ca011043a966a8e44ec8adde8eb14b4f0305a22633",
+          "assets/game.js.map": "778093fab9a434d929bea2fdeba148a288a9d8558d409e0ec382a8ef223f1440",
+          "assets/knight-rig.json": "21397a64ae2d4bd9092817aa44fc754104011258d470360df777c905426b1736",
+          "assets/knight-rig.png": "b0b2f9e2b57dc54490b4cd3cd123c7308495d296d8dde47eaafebf4dda53b122",
+          "assets/knight.json": "51f41dc0590ea475c4ed3a2eb05eb97ab48bc4155e0be13f3e87f437ded124e4",
+          "assets/knight.png": "4165a0d2c7436c7e32a2225a966099b23dba295a2877f62dc2070ec7abecf65b",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "f168b65138f8a629452e47ca0e4211b23b278782f47b6f37e189b1273141c336",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "templates/isometric",
+        "files": {
+          "assets/game.js": "56669e8cee3b1f83a3b021fbd263f5f19f4f1fd80d5e3ce692762d1971b8223f",
+          "assets/game.js.map": "0c60c78c85259fa761d234ad83a8e938019793bdd58aa9f89817d8c0989c5963",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "d7443dcd34527ebe8f648733d26bf6a8e9f878ef228b6e725b144c0a859c6bd0",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "examples/lumen",
+        "files": {
+          "assets/game.js": "8fef7b8e3adbcea3589f770adac400645441083af48a97117cf9f0748bfcc821",
+          "assets/game.js.map": "080b1b9ed06e9a2b102b0e51cc69114b2b46be0961f804a99012e99fb1409038",
+          "assets/scenes/main.kiln.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "7f1edba3fad3d4528146a5ba7f378cdea351a7ed050a0122b6ba6234bb22fd24",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "examples/breach",
+        "files": {
+          "assets/game.js": "e10c0b031ac7ea56c61f1d831f3d9a5938b13e91be536f34c9aad5a1e4fd32dd",
+          "assets/game.js.map": "20034fbd2ed5f073c8cd815b50e05761c80a9c53d68085bb99868975cf09312e",
+          "assets/preview.png": "f2a6ec77203af72cddf7c90f213dcb0e664143a45d8c79eb3aa36acf8a8af71e",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "3493cc7cd79570340a1867ee5affa3b10e082d0d3b9107374b682233575c6d56",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "examples/lowline",
+        "files": {
+          "assets/game.js": "932b067f80a0f53a8e17e9a964f0de84c90ace922afd969de12909744e385b5c",
+          "assets/game.js.map": "b7f1b2518a908ed060b8d413b3c0db0b25ce39f1d790af9eceb83a97fb006134",
+          "assets/preview.png": "07d1a889f8bbf50e2667503a1dfc6db1ec09e308bdd30eb32dd71d53e2ebf38a",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "6cb599c91790bfc81a28c07c801a60da823f8a64575a6ba4d17ae3419a48e567",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      }
+    ]
+  },
+  "native": {
+    "passed": 16,
+    "failed": 0,
+    "expectedWebOnlySkips": [
+      "Signal Breach",
+      "Lowline"
+    ]
+  },
+  "interactive": {
+    "browser": "Codex embedded browser",
+    "verified": [
+      "start button",
+      "interaction prompt",
+      "keyboard pause",
+      "visual title/gameplay/pause"
+    ],
+    "note": "Complete walking, driving, pursuit and delivery are validated by the automated browser simulation."
+  },
+  "limits": [
+    "Single authored city and courier mission; no full open-world production parity claim.",
+    "Desktop keyboard controls; native export and physical mobile/gamepad validation not provided.",
+    "Circle vehicle colliders and authored road routes; no full rigid-body vehicle physics, navmesh or traffic signal simulation.",
+    "No long-duration GPU benchmark or device performance certification performed for this demo."
+  ]
+}

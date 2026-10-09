@@ -1,0 +1,20 @@
+{
+  "name": "Highground",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": { "width": 1280, "height": 720, "scale": "fit" },
+  "render": { "scale": "native", "snap": "world" },
+  "renderer": "auto",
+  "fps": false,
+  "seed": 5,
+  "background": "#1b666b",
+  "fonts": ["https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@500;600;700&display=swap"],
+  "post": { "bloom": 0.16, "bloomThreshold": 0.86, "vignette": 0.14 },
+  "ios": { "bundleId": "com.kiln.highground", "orientation": "landscape" },
+  "android": { "applicationId": "com.kiln.highground" },
+  "snapshots": [
+    { "name": "title", "frame": 30 },
+    { "name": "play", "frame": 75, "taps": ["640,380:5"] },
+    { "name": "jump", "frame": 120, "taps": ["640,380:5", "760,300:60"] }
+  ]
+}

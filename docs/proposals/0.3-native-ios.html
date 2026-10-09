@@ -1,0 +1,467 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0"><title>Kiln 0.3</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500&display=swap">
+<style>
+  :root {
+    --paper: #f4f4f9; --paper-2: #e9e9f2; --paper-3: #dfdfeb;
+    --ink: #191633; --ink-2: #4c4968; --ink-3: #7b789a;
+    --line: #d0cfe0; --line-strong: #b4b2c9;
+    --accent: #a5720e; --accent-fill: #e3b341; --link: #4b3fa3;
+    --ok: #2f7d4f; --warn: #b25a1b;
+    --mast-bg: #0f0d1a; --mast-bg-2: #1b1730; --mast-ink: #ebe9f5; --mast-ink-2: #a7a3c2; --glow: #f5cf70;
+    --code-bg: #e9e9f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0f0d1a; --paper-2: #1a1729; --paper-3: #242038;
+      --ink: #ebe9f5; --ink-2: #b3afcc; --ink-3: #807c9e;
+      --line: #2c2942; --line-strong: #3f3b5c;
+      --accent: #e3b341; --accent-fill: #e3b341; --link: #b7aef5;
+      --ok: #6cc08d; --warn: #e6925a; --code-bg: #1a1729;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f0d1a; --paper-2: #1a1729; --paper-3: #242038;
+    --ink: #ebe9f5; --ink-2: #b3afcc; --ink-3: #807c9e;
+    --line: #2c2942; --line-strong: #3f3b5c;
+    --accent: #e3b341; --accent-fill: #e3b341; --link: #b7aef5;
+    --ok: #6cc08d; --warn: #e6925a; --code-bg: #1a1729;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Source Serif 4", Georgia, serif; font-size: 17px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+  h1, h2, h3 { font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif; font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  h2 { font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  h3 { font-size: 1.25rem; margin: 1.6rem 0 0.5rem; }
+  p { margin: 0 0 1rem; max-width: 66ch; }
+  ul, ol { margin: 0 0 1rem; padding-left: 1.2rem; max-width: 66ch; }
+  li { margin: 0.25rem 0; }
+  li::marker { color: var(--ink-3); }
+  strong { font-weight: 600; }
+  code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+  code { font-size: 0.86em; background: var(--code-bg); padding: 0.05em 0.35em; border-radius: 3px; }
+  pre { background: var(--code-bg); border: 1px solid var(--line); padding: 1rem 1.1rem; overflow-x: auto; font-size: 0.8rem; line-height: 1.55; margin: 0 0 1rem; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  .c { color: var(--ink-3); } .k { color: var(--link); } .s { color: var(--accent); }
+  .masthead { background: radial-gradient(60rem 18rem at 78% 110%, rgba(245,207,112,0.22), transparent 60%), radial-gradient(34rem 12rem at 12% -20%, rgba(120,100,220,0.25), transparent 65%), linear-gradient(180deg, var(--mast-bg-2), var(--mast-bg)); color: var(--mast-ink); position: relative; overflow: hidden; }
+  .masthead .wrap { position: relative; padding: 3rem 1.5rem 2.4rem; }
+  .motes { position: absolute; inset: 0; pointer-events: none; }
+  .motes i { position: absolute; width: 3px; height: 3px; background: var(--glow); opacity: 0.55; animation: drift 14s linear infinite; }
+  .motes i:nth-child(1) { left: 8%; top: 70%; animation-delay: -2s; }
+  .motes i:nth-child(2) { left: 22%; top: 40%; animation-delay: -6s; width: 2px; height: 2px; }
+  .motes i:nth-child(3) { left: 41%; top: 82%; animation-delay: -9s; }
+  .motes i:nth-child(4) { left: 63%; top: 30%; animation-delay: -4s; width: 2px; height: 2px; }
+  .motes i:nth-child(5) { left: 74%; top: 64%; animation-delay: -11s; }
+  .motes i:nth-child(6) { left: 88%; top: 48%; animation-delay: -1s; width: 4px; height: 4px; opacity: 0.4; }
+  @keyframes drift { 0% { transform: translate(0,0); opacity: 0.15; } 30% { opacity: 0.6; } 100% { transform: translate(18px,-42px); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .motes i { animation: none; opacity: 0.35; } }
+  .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mast-ink-2); margin-bottom: 1rem; }
+  .masthead h1 { font-size: clamp(2.6rem, 6vw, 4.4rem); font-weight: 800; font-variation-settings: "opsz" 96; letter-spacing: -0.02em; display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; }
+  .ver { font-family: "Pixelify Sans", monospace; font-weight: 500; font-size: 0.42em; color: var(--mast-bg); background: var(--glow); padding: 0.1em 0.45em 0.05em; border-radius: 2px; position: relative; top: -0.35em; }
+  .thesis { font-size: 1.22rem; line-height: 1.45; max-width: 46ch; margin: 1.2rem 0 1.6rem; color: var(--mast-ink); font-variation-settings: "opsz" 60; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.9rem 1.5rem; margin: 0; max-width: 60rem; border-top: 1px solid rgba(235,233,245,0.18); padding-top: 1.1rem; }
+  .facts div { display: grid; gap: 0.15rem; }
+  .facts dt { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mast-ink-2); }
+  .facts dd { margin: 0; font-size: 0.95rem; color: var(--mast-ink); line-height: 1.35; }
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+  nav.toc { border-bottom: 1px solid var(--line); background: var(--paper); }
+  nav.toc .wrap { display: flex; flex-wrap: wrap; gap: 0.2rem 1.4rem; padding-top: 0.75rem; padding-bottom: 0.75rem; font-family: "JetBrains Mono", monospace; font-size: 0.76rem; }
+  nav.toc a { color: var(--ink-2); text-decoration: none; }
+  nav.toc a:hover { color: var(--ink); text-decoration: underline; }
+  main { padding: 1rem 0 4rem; }
+  section { display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 1rem 2.5rem; padding: 2.4rem 0; border-bottom: 1px solid var(--line); }
+  section:last-of-type { border-bottom: 0; }
+  section > h2 { padding-top: 0.35rem; }
+  .body { min-width: 0; }
+  .lede { font-size: 1.12rem; font-variation-settings: "opsz" 40; }
+  @media (max-width: 760px) { section { grid-template-columns: 1fr; gap: 0.6rem; padding: 1.8rem 0; } body { font-size: 16px; } }
+  .tablewrap { overflow-x: auto; margin: 0.6rem 0 1.2rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-family: "JetBrains Mono", monospace; font-weight: 600; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); padding: 0.5rem 0.8rem 0.5rem 0; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+  td { padding: 0.55rem 0.8rem 0.55rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { font-weight: 600; }
+  td.mono { font-family: "JetBrains Mono", monospace; font-size: 0.82rem; font-weight: 400; }
+  .num { text-align: right; white-space: nowrap; }
+  .pill { display: inline-block; font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.06em; padding: 0.12em 0.5em; border-radius: 2px; border: 1px solid var(--line-strong); color: var(--ink-2); white-space: nowrap; }
+  .pill.s { color: var(--ok); border-color: var(--ok); } .pill.m { color: var(--accent); border-color: var(--accent); } .pill.l { color: var(--warn); border-color: var(--warn); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.5rem 2.5rem; }
+  .two h3 { margin-top: 0; font-size: 1rem; }
+  .two ul { margin-bottom: 0; }
+
+  /* Host diagram */
+  .hosts { display: grid; gap: 4px; margin: 0.6rem 0 1.2rem; }
+  .layer { display: grid; grid-template-columns: 8rem 1fr; gap: 0.5rem 1rem; align-items: start; background: var(--paper-2); border: 1px solid var(--line); padding: 0.65rem 0.9rem; }
+  .layer.shared { border-left: 3px solid var(--accent-fill); }
+  .layer .name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 0.95rem; }
+  .layer .name small { display: block; font-family: "JetBrains Mono", monospace; font-weight: 400; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-top: 0.15rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .chip { font-family: "JetBrains Mono", monospace; font-size: 0.74rem; background: var(--paper); border: 1px solid var(--line-strong); padding: 0.18em 0.5em; border-radius: 2px; color: var(--ink); }
+  .chip.iface { border-style: dashed; color: var(--ink-2); }
+  .split { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 4px; }
+  .host { background: var(--paper-3); border: 1px solid var(--line-strong); padding: 0.65rem 0.9rem; }
+  .host .name { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.4rem; }
+  .host .name small { font-family: "JetBrains Mono", monospace; font-weight: 400; font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); margin-left: 0.5rem; }
+  .host.new .name::after { content: "new"; font-family: "JetBrains Mono", monospace; font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-left: 0.6rem; }
+  @media (max-width: 560px) { .layer { grid-template-columns: 1fr; } }
+
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 1rem; margin-top: 0.4rem; }
+  .decision { border: 1px solid var(--line); background: var(--paper-2); padding: 1rem 1.1rem 1.05rem; display: grid; gap: 0.45rem; align-content: start; }
+  .decision .q { font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-3); }
+  .decision h3 { margin: 0; font-size: 1.05rem; }
+  .decision p { margin: 0; font-size: 0.93rem; }
+  .decision .alt { font-size: 0.85rem; color: var(--ink-2); border-top: 1px solid var(--line); padding-top: 0.5rem; margin-top: 0.2rem; }
+  .decision .alt b { font-weight: 600; color: var(--ink-3); font-family: "JetBrains Mono", monospace; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; margin-right: 0.4rem; }
+  .check { list-style: none; padding: 0; }
+  .check li { position: relative; padding-left: 1.6rem; }
+  .check li::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.8em; height: 0.8em; border: 2px solid var(--accent-fill); }
+  .callout { border-left: 3px solid var(--accent-fill); background: var(--paper-2); padding: 0.8rem 1rem; margin: 0 0 1.2rem; max-width: 66ch; }
+  .callout p { margin: 0; }
+  footer { border-top: 1px solid var(--line); padding: 1.6rem 0 3rem; color: var(--ink-2); font-size: 0.9rem; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 2rem; justify-content: space-between; }
+</style>
+
+<header class="masthead">
+  <div class="motes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="wrap">
+    <div class="eyebrow">Engine proposal · follows Kiln 0.2</div>
+    <h1>Kiln <span class="ver">v0.3</span></h1>
+    <p class="thesis">
+      Native iOS export. <code>kiln export ios</code> produces an Xcode project that builds a real iOS app:
+      the engine and the game in TypeScript inside the system's JavaScript runtime, rendering through
+      Metal, with no web view anywhere. The same way Godot exports, with our scripting language.
+    </p>
+    <dl class="facts">
+      <div><dt>Scope</dt><dd>iOS and macOS host, the host protocol, the export command</dd></div>
+      <div><dt>Proof of done</dt><dd>Wisp Hollow and the four starters on an iPhone at 60 fps, from one command</dd></div>
+      <div><dt>Effort</dt><dd>Six milestones, 24 to 37 working days</dd></div>
+      <div><dt>Sets up</dt><dd>Android, Windows and Linux hosts speaking the same protocol in 0.4</dd></div>
+    </dl>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <div class="wrap">
+    <a href="#how">How Godot does it</a>
+    <a href="#shape">The shape for Kiln</a>
+    <a href="#protocol">The host protocol</a>
+    <a href="#export">What the export produces</a>
+    <a href="#scope">Scope</a>
+    <a href="#milestones">Milestones</a>
+    <a href="#done">Definition of done</a>
+    <a href="#decisions">Decisions</a>
+    <a href="#risks">Risks</a>
+    <a href="#after">After 0.3</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <section id="how">
+    <h2>How Godot does it</h2>
+    <div class="body">
+      <p class="lede">
+        Godot is a C++ core that renders and talks to the operating system, and a scripting layer where
+        the game lives. Exporting to iOS means compiling that core for the phone once, as an export
+        template, and pairing it with the game's data and scripts inside an Xcode project.
+      </p>
+      <p>
+        Kiln has the same two halves already. The engine and the games are TypeScript; the host is
+        whatever runs them and draws for them. On the web that host is the browser, and 0.2 pushed
+        every host-specific thing behind a <code>Platform</code> interface and a <code>Renderer</code>
+        contract. 0.3 writes a second host, in Swift with Metal, and an export command that packages
+        it with a game. The scripting layer stays TypeScript, unchanged.
+      </p>
+      <div class="callout">
+        <p>
+          <strong>Why not a web view.</strong> A wrapper like Capacitor would ship in days, but it puts a
+          browser between the game and the GPU and makes the engine depend on WebKit's schedule and
+          quirks. A native host is the engine on every platform, and it is the only path to Metal,
+          GameController, the audio session and the app lifecycle without an intermediary.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="shape">
+    <h2>The shape for Kiln</h2>
+    <div class="body">
+      <p>Everything above the dotted line is shared and already exists. The web host is the browser. The iOS host is new.</p>
+      <div class="hosts" role="img" aria-label="Shared TypeScript stack over two hosts: the browser for the web, and a Swift and Metal host for iOS">
+        <div class="layer shared"><div class="name">Game<small>TypeScript</small></div><div class="chips"><span class="chip">rules</span><span class="chip">scenes</span><span class="chip">art</span><span class="chip">tests</span></div></div>
+        <div class="layer shared"><div class="name">Engine<small>TypeScript</small></div><div class="chips"><span class="chip">app</span><span class="chip">scene</span><span class="chip">art</span><span class="chip">audio logic</span><span class="chip">input</span><span class="chip">save</span><span class="chip">core</span></div></div>
+        <div class="layer shared"><div class="name">Seams<small>contracts</small></div><div class="chips"><span class="chip iface">Renderer</span><span class="chip iface">Platform</span><span class="chip iface">AudioBackend</span><span class="chip">NativeRenderer: frames as one vertex buffer and a command list</span></div></div>
+        <div class="split">
+          <div class="host"><div class="name">Web host<small>exists</small></div><div class="chips"><span class="chip">browser</span><span class="chip">WebGL2Renderer</span><span class="chip">WebPlatform</span><span class="chip">WebAudio</span><span class="chip">pointer + keyboard + Gamepad API</span></div></div>
+          <div class="host new"><div class="name">iOS host<small>Swift package: KilnHost</small></div><div class="chips"><span class="chip">JavaScriptCore</span><span class="chip">MetalRenderer</span><span class="chip">IosPlatform</span><span class="chip">AVAudioEngine voices</span><span class="chip">UITouch + GameController + keyboard</span><span class="chip">CADisplayLink</span></div></div>
+        </div>
+      </div>
+      <h3>The four pieces of the host</h3>
+      <ul>
+        <li><strong>Runtime.</strong> JavaScriptCore, which ships in every iOS and needs no dependency. Inside an app it runs as an interpreter, since Apple allows just-in-time compilation only in WebKit. That is fine for per-frame scene work and is the main thing to measure early; boot-time art painting is avoided entirely by shipping the atlas prebaked with <code>kiln atlas</code>.</li>
+        <li><strong>Renderer.</strong> A Metal implementation of the same passes the WebGL2 backend runs: the scene target at native resolution, the light target, the overlay target, the bloom chain and the composite. The five GLSL shaders become five Metal functions. On the TypeScript side a new <code>NativeRenderer</code> backend builds each frame as one vertex buffer and a short command list, which the host reads without copying.</li>
+        <li><strong>Platform.</strong> The 0.2 seam implemented with the app bundle for assets, the Documents folder for saves, <code>CADisplayLink</code> for frames, <code>UIScreen</code> scale for the pixel ratio, plus two additions the browser used to provide for free: glyph rasterisation through CoreText for the text cache, and safe-area insets for anchors.</li>
+        <li><strong>Audio.</strong> The synth's musical logic (moods, sequencing, envelopes) stays in TypeScript. What moves behind an <code>AudioBackend</code> interface is voice synthesis and sample playback, implemented on iOS with <code>AVAudioEngine</code> source nodes. The web keeps WebAudio behind the same interface.</li>
+      </ul>
+      <p>
+        Input arrives from the host the same way pointer and key events arrive from the DOM today, so
+        the action map, the touch controls, focus groups and gamepad bindings from 0.2 work unchanged.
+      </p>
+    </div>
+  </section>
+
+  <section id="protocol">
+    <h2>The host protocol</h2>
+    <div class="body">
+      <p>
+        The protocol is the deliverable that outlives the Swift code. Any language that can run
+        JavaScript and draw triangles can implement it, which is how Android and desktop get their
+        hosts in 0.4 without touching the engine.
+      </p>
+<pre><code><span class="c">// Host → engine (called by the host each display refresh and on events)</span>
+__kiln.frame(timeMs)
+__kiln.pointer(kind, id, x, y, type)      <span class="c">// down | move | up | cancel, in points</span>
+__kiln.key(code, down)                    <span class="c">// the same KeyboardEvent.code names as the web</span>
+__kiln.pad(index, buttons, axes)
+__kiln.resize(width, height, scale, safeInsets)
+__kiln.visibility(visible)
+
+<span class="c">// Engine → host (a small object the host installs on the global before loading game.js)</span>
+host.now()
+host.loadBytes(path) / host.loadImage(path)         <span class="c">// from the app bundle; RGBA out</span>
+host.storage.get(key) / set(key, value) / remove(key)
+host.rasterizeGlyph(font, ch) → { bitmap, w, h, left, top, advance }
+host.uploadAtlas(w, h, rgba) / host.uploadGlyphs(w, h, rgba)
+host.submit(vertices: Float32Array, commands: Uint32Array, post: Float32Array)   <span class="c">// one call per frame</span>
+host.audio.voice(spec, atSeconds) / host.audio.sample(name, opts) / host.audio.setMuted(m)
+
+<span class="c">// The frame the engine submits</span>
+vertices: 10 floats per vertex, identical to the WebGL2 batch layout
+commands: BEGIN rgb | PASS world|light|overlay rgb | DRAW first count | END
+post:     bloom, threshold, passes, vignette, tint, saturation, contrast, brightness, lut id, grain, scanlines, offset</code></pre>
+      <p>
+        Two consequences fall out of this. The engine's per-sprite cost on a phone is a few array
+        writes, the same as on the web. And the whole TypeScript side can be tested headlessly against a
+        fake host that decodes the command list, before any Swift exists.
+      </p>
+    </div>
+  </section>
+
+  <section id="export">
+    <h2>What the export produces</h2>
+    <div class="body">
+<pre><code>$ kiln export ios
+  bundled Wisp Hollow for native (game.js, 138 KB)
+  baked 58 sprites into atlas.png
+  wrote dist/ios/WispHollow/
+
+dist/ios/WispHollow/
+  WispHollow.xcodeproj          <span class="c">// generated; open, sign, run</span>
+  WispHollow/
+    Info.plist                  <span class="c">// bundle id, orientation, min iOS from kiln.json</span>
+    Assets.xcassets/            <span class="c">// icon painted by the engine at 1024 px</span>
+    Resources/
+      game.js                   <span class="c">// engine + game, one file, no DOM references</span>
+      atlas.png  atlas.json     <span class="c">// prebaked art; no painting at boot</span>
+      fonts/                    <span class="c">// bundled TTFs named in kiln.json</span>
+      sounds/                   <span class="c">// samples, if any</span>
+  Packages/KilnHost             <span class="c">// the Swift package: runtime, Metal, platform, audio</span></code></pre>
+      <p>
+        Three small conventions make this work. A game's entry exports a <code>main</code> function
+        instead of running at the top level, so one bundle serves both the web page and the native
+        host. <code>fonts</code> in <code>kiln.json</code> may name local TTF files, which the web build
+        also serves. And an <code>ios</code> block carries the bundle identifier, orientation and
+        minimum version.
+      </p>
+<pre><code><span class="c">// kiln.json</span>
+{
+  <span class="s">"ios"</span>: { <span class="s">"bundleId"</span>: <span class="s">"com.example.wisphollow"</span>, <span class="s">"orientation"</span>: <span class="s">"landscape"</span>, <span class="s">"minVersion"</span>: <span class="s">"16.0"</span>, <span class="s">"icon"</span>: <span class="s">"icon"</span> },
+  <span class="s">"fonts"</span>: [<span class="s">"fonts/PixelifySans.ttf"</span>, <span class="s">"fonts/InstrumentSans.ttf"</span>]
+}
+
+<span class="c">// src/main.ts</span>
+<span class="k">export default async function</span> main(app: App) {
+  app.input.map({ ... });
+  app.scenes.change(<span class="k">new</span> TitleScene());
+}</code></pre>
+      <p>
+        <code>kiln run ios</code> builds and launches on the booted simulator; the Metal renderer runs
+        there too. Real-device builds go through Xcode's signing like any other app.
+      </p>
+    </div>
+  </section>
+
+  <section id="scope">
+    <h2>Scope</h2>
+    <div class="body">
+      <div class="two">
+        <div>
+          <h3>0.3 is</h3>
+          <ul>
+            <li>The host protocol, versioned and documented</li>
+            <li><code>NativeRenderer</code>, the <code>AudioBackend</code> seam, glyph rasterisation and safe insets on <code>Platform</code></li>
+            <li>The <code>main</code> entry convention and local font files</li>
+            <li><code>KilnHost</code>, a Swift package: JavaScriptCore runtime, Metal renderer, iOS platform, audio voices, input, lifecycle</li>
+            <li>The same package on macOS, used to iterate quickly and as a desktop build for free</li>
+            <li><code>kiln export ios</code> and <code>kiln run ios</code></li>
+            <li>The demo and starters exported and running on device</li>
+          </ul>
+        </div>
+        <div>
+          <h3>0.3 is not</h3>
+          <ul>
+            <li>Android, Windows or Linux hosts. They implement the same protocol in 0.4</li>
+            <li>App Store submission tooling beyond a signed archive</li>
+            <li>In-app purchases, Game Center, push notifications</li>
+            <li>A new renderer feature set; native draws exactly what 0.2 draws</li>
+            <li>Bit-identical audio; the synth's timbres are re-created, not ported</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="milestones">
+    <h2>Milestones</h2>
+    <div class="body">
+      <p>
+        Engine work first, because it is testable without a device. Then macOS, because Metal plus a
+        keyboard is the fastest place to make the host work. Then the phone.
+      </p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>#</th><th>Milestone</th><th>Delivers</th><th>Proof</th><th>Size</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">M0</td><td>Engine side</td><td>Host protocol spec, <code>NativeRenderer</code>, <code>AudioBackend</code> seam, glyph and safe-inset additions to <code>Platform</code>, <code>main</code> entry, local fonts, <code>kiln build --target native</code></td><td>The demo runs headlessly against a fake host that decodes every frame; tests green; the web build is unchanged</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M1</td><td>KilnHost on macOS</td><td>Swift package: JavaScriptCore bridge with zero-copy typed arrays, Metal renderer with the five passes, macOS platform, keyboard and mouse</td><td>Wisp Hollow plays in a Mac window at 60 fps with lights, bloom and HD text</td><td><span class="pill l">L · 6–9 d</span></td></tr>
+            <tr><td class="mono">M2</td><td>KilnHost on iOS</td><td>Touch, GameController, keyboard, <code>CADisplayLink</code>, safe areas, backgrounding, audio session, orientation</td><td>The demo and starters play on an iPhone; the frame budget below holds</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+            <tr><td class="mono">M3</td><td>Native audio</td><td><code>AVAudioEngine</code> source nodes for synth voices, sample playback, the mixer buses, mute</td><td>Music moods and effects play on device and sound like the web</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M4</td><td>Export</td><td><code>kiln export ios</code> generating the Xcode project, icon, plist, resources; <code>kiln run ios</code> on the simulator</td><td>A fresh clone exports, opens in Xcode, builds and runs on simulator and device</td><td><span class="pill m">M · 3–5 d</span></td></tr>
+            <tr><td class="mono">M5</td><td>Budgets and release</td><td>Device measurements, the runtime decision confirmed or revised, docs, starters exported, tag <code>v0.3.0</code></td><td>Every budget passes on an iPhone 12-class device</td><td><span class="pill m">M · 4–6 d</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        The day counts assume one developer pairing with Claude Code and a Mac with Xcode and a test
+        iPhone. M1 is the risk; if the JavaScriptCore interpreter cannot hold the frame budget, the
+        runtime decision below switches and M1 grows by about a week.
+      </p>
+    </div>
+  </section>
+
+  <section id="done">
+    <h2>Definition of done</h2>
+    <div class="body">
+      <ul class="check">
+        <li><code>kiln export ios</code> on the demo and each starter produces an Xcode project that builds without edits.</li>
+        <li>Every game plays on an iPhone with touch, and with a paired gamepad, with no web view in the process.</li>
+        <li>Lights, bloom, LUT grading, HD text and the overlay match the web build on the same scene, judged by side-by-side captures.</li>
+        <li>Saves persist across launches; backgrounding pauses and resuming restores cleanly.</li>
+        <li>The web build still runs from the same source with no native code in the bundle.</li>
+        <li>The host protocol is documented well enough that a second host could be written from it alone.</li>
+        <li>The engine's tests cover the native renderer's command stream and the fake host.</li>
+      </ul>
+      <h3>Budgets</h3>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Budget</th><th class="num">Target</th><th>Measured by</th></tr></thead>
+          <tbody>
+            <tr><td>Frame rate, demo on an iPhone 12-class device at native resolution</td><td class="num">60 fps</td><td>Overlay graph over 60 seconds of play</td></tr>
+            <tr><td>Script time per frame in the interpreter</td><td class="num">≤ 6 ms</td><td>Host timer around <code>__kiln.frame</code></td></tr>
+            <tr><td>GPU time per frame with lights and bloom</td><td class="num">≤ 5 ms</td><td>Xcode GPU capture</td></tr>
+            <tr><td>Cold launch to title</td><td class="num">≤ 1.5 s</td><td>Host log from launch to first submit</td></tr>
+            <tr><td>App size on device</td><td class="num">≤ 15 MB</td><td>Xcode archive report</td></tr>
+            <tr><td>Memory during play</td><td class="num">≤ 150 MB</td><td>Xcode memory gauge</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="decisions">
+    <h2>Decisions</h2>
+    <div class="body">
+      <p>Each needs a yes before M0. A recommendation is given for all of them.</p>
+      <div class="decisions">
+        <div class="decision">
+          <div class="q">JavaScript runtime</div>
+          <h3>JavaScriptCore, the system one</h3>
+          <p>Zero dependencies, zero binary size, a Swift API, and Apple maintains it. Runs as an interpreter in apps, which is the thing M1 measures first.</p>
+          <div class="alt"><b>Alternative</b>Hermes, Meta's bytecode interpreter, is faster in the no-JIT case and adds a compile step and a large dependency. Kept as the fallback if the frame budget fails.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Host language</div>
+          <h3>Swift and Metal for Apple platforms</h3>
+          <p>The native toolchain, direct Metal, GameController and AVAudioEngine, and nothing to justify to App Review. The protocol, not the Swift, is the portable part.</p>
+          <div class="alt"><b>Alternative</b>One Rust host on wgpu for every platform at once. Attractive for 0.4; starting there would delay the first iPhone build by weeks.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Frame transport</div>
+          <h3>One vertex buffer, one command list</h3>
+          <p>The engine already builds frames this way for WebGL2. The host reads the typed arrays in place through the JavaScriptCore C API, so a 1,300-sprite frame costs one bridge call.</p>
+          <div class="alt"><b>Alternative</b>A draw call per sprite across the bridge. Simpler to write, thousands of crossings per frame.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Boot</div>
+          <h3>Prebaked atlas, no painting on device</h3>
+          <p><code>kiln export</code> bakes the atlas with the existing headless painter and ships the PNG. The interpreter never runs the pixel loops.</p>
+          <div class="alt"><b>Alternative</b>Paint at boot as the web does. Seconds of launch time in an interpreter.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Entry convention</div>
+          <h3>Games export a <span class="mono" style="font-weight:400">main</span> function</h3>
+          <p>The only source change games need. The web page and the native host both call it after the host is ready, which also removes top-level await from bundles.</p>
+          <div class="alt"><b>Alternative</b>Keep top-level scripts and build two bundles. Two entry paths to keep in sync forever.</div>
+        </div>
+        <div class="decision">
+          <div class="q">Audio</div>
+          <h3>Voices native, music logic in TypeScript</h3>
+          <p>Sequencing and moods stay where they are and are tested there. The host only synthesises a voice from a spec at a time and plays samples.</p>
+          <div class="alt"><b>Alternative</b>Reimplement WebAudio's graph in Swift. Far more surface than the synth uses.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>Risks</h2>
+    <div class="body">
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Early signal</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>The interpreter cannot hold 60 fps</td><td>Script time over 6 ms in M1 on a Mac, which is generous compared with a phone</td><td>Profile the hot loops (particles, tile culling, node traversal) and move them onto typed arrays; then switch to Hermes</td></tr>
+            <tr><td>Zero-copy typed arrays through the JavaScriptCore C API</td><td>M1 bridge work runs past three days</td><td>A small Objective-C shim around <code>JSObjectGetTypedArrayBytesPtr</code>; fall back to one copy per frame, which is still cheap</td></tr>
+            <tr><td>Text metrics differ between CoreText and the browser</td><td>HUD layouts shift on device</td><td>The glyph cache already measures through the host; layouts use those measurements, not constants</td></tr>
+            <tr><td>Audio sounds different</td><td>Comparison on device in M3</td><td>Voices are simple oscillator envelopes; tune by ear, accept small differences, document them</td></tr>
+            <tr><td>App Review and interpreted code</td><td>Rejection on submission</td><td>Bundled scripts run by JavaScriptCore are explicitly allowed by guideline 2.5.2; nothing is downloaded or executed from outside the bundle</td></tr>
+            <tr><td>Xcode, signing and provisioning friction</td><td>Export works, device build does not</td><td>The generated project uses automatic signing with the team id from <code>kiln.json</code>; the docs walk through the one-time setup</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="after">
+    <h2>After 0.3</h2>
+    <div class="body">
+      <ul>
+        <li><strong>0.4 Every platform.</strong> A second host speaking the same protocol for Android, Windows and Linux, most likely one Rust codebase on wgpu with an embedded interpreter, plus <code>kiln export android</code>, <code>windows</code>, <code>linux</code>. The macOS build from 0.3 becomes <code>kiln export macos</code>.</li>
+        <li><strong>0.5 Store tooling.</strong> Archives and uploads, icons and screenshots generated by the engine, Game Center and achievements behind a platform seam.</li>
+        <li><strong>Later.</strong> A compiled path for the engine itself if the interpreter ever becomes the limit, which the protocol keeps open.</li>
+      </ul>
+      <p>
+        <strong>Next step.</strong> Settle the six decisions. M0 starts on the engine side and needs no
+        Xcode; the first Mac window with the demo in it comes at the end of M1.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Kiln 0.3 · engine proposal · draft of 3 September 2026</span>
+    <span>Builds on the 0.2 platform seam and renderer contract</span>
+  </div>
+</footer>
+</body></html>

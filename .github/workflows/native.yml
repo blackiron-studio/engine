@@ -1,0 +1,190 @@
+# Kiln CI: engine tests on Linux, the kernel's tests, and native host builds with release
+# artifacts and the visual harness on Linux (lavapipe), Windows (WARP) and macOS (Metal).
+name: Native and GPU validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  engine:
+    name: Engine tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            kernel
+            host
+      - run: bun install --frozen-lockfile
+      - name: Typecheck
+        run: ./node_modules/.bin/tsc --noEmit -p tsconfig.json
+      - name: Engine tests
+        run: bun test
+      - name: Browser GPU regressions
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: bun run check:3d
+      - name: FPS mission and viewmodel regressions
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: bun run check:fps
+      - name: Lowline city mission regression
+        run: bun run check:lowline
+      - name: Reproducible web builds
+        run: bun run check:reproducible
+      - name: Kernel tests
+        run: cargo test --locked --release --features physics,physics3d,render,codecs
+        working-directory: kernel
+      - name: The committed Wasm kernel matches the source
+        run: |
+          bun kernel/build.ts --web-only
+          git diff --exit-code -- src/kernel/kernel.wasm.ts src/kernel/physics.wasm
+
+  host-linux:
+    name: Host (Linux, V8, lavapipe)
+    runs-on: ubuntu-latest
+    needs: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+      - name: System libraries (audio, controllers, software Vulkan, a virtual display)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev pkg-config mesa-vulkan-drivers xvfb
+      - run: bun install --frozen-lockfile
+      - name: Host tests
+        run: cargo test --locked --release --features v8
+        working-directory: host
+      - name: Build the demo for Linux
+        run: bun ../../cli/kiln.ts export desktop --platform linux
+        working-directory: examples/demo
+      - name: Visual harness (lavapipe)
+        run: xvfb-run -a bun cli/kiln.ts verify --host desktop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots-linux
+          path: |
+            examples/*/snapshots/desktop
+            templates/*/snapshots/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-linux
+          path: examples/demo/dist/desktop/linux
+
+  host-windows:
+    name: Host (Windows, V8, WARP)
+    runs-on: windows-latest
+    needs: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - uses: dtolnay/rust-toolchain@1.98.1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host
+      - run: bun install --frozen-lockfile
+      - name: Host tests
+        run: cargo test --locked --release --features v8
+        working-directory: host
+      - name: Build the demo for Windows
+        run: bun ../../cli/kiln.ts export desktop --platform windows
+        working-directory: examples/demo
+      - name: Visual harness (WARP)
+        run: bun cli/kiln.ts verify --host desktop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots-windows
+          path: |
+            examples/*/snapshots/desktop
+            templates/*/snapshots/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-windows
+          path: examples/demo/dist/desktop/windows
+
+  host-macos:
+    name: Host (macOS, V8, Metal) and iOS build
+    runs-on: macos-14
+    needs: engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - uses: dtolnay/rust-toolchain@1.98.1
+        with:
+          targets: aarch64-apple-ios-sim,aarch64-apple-ios
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            kernel
+            host
+      - run: bun install --frozen-lockfile
+      - run: brew install xcodegen
+      - name: Browser/native 3D content
+        if: runner.os == 'macOS'
+        run: bun run check:native-content
+      - name: Host tests
+        run: cargo test --locked --release --features v8
+        working-directory: host
+      - name: Build the demo for macOS
+        run: bun ../../cli/kiln.ts export desktop --platform macos
+        working-directory: examples/demo
+      - name: Visual harness (Metal)
+        run: bun cli/kiln.ts verify --host desktop
+      - name: Kernel framework and an iOS simulator build of the demo
+        run: |
+          bun kernel/build.ts
+          cd examples/demo && bun ../../cli/kiln.ts export ios
+          xcodebuild -project dist/ios/WispHollow/WispHollow.xcodeproj -scheme WispHollow -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots-macos
+          path: |
+            examples/*/snapshots/desktop
+            templates/*/snapshots/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: demo-macos
+          path: examples/demo/dist/desktop/macos
+
+  hardware-soak:
+    name: Manual hardware budgets (dedicated GPU runner)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, kiln-gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - run: bun install --frozen-lockfile
+      - run: bun run check:reliability
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hardware-reliability
+          path: .kiln/verification/reliability

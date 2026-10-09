@@ -1,0 +1,46 @@
+{
+  "name": "Wisp Hollow",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": {
+    "width": 1280,
+    "height": 720,
+    "scale": "fit"
+  },
+  "render": {
+    "scale": "native",
+    "snap": "none"
+  },
+  "renderer": "auto",
+  "fps": true,
+  "fallback": true,
+  "background": "#0b0a14",
+  "fonts": [
+    "https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Instrument+Sans:wght@500;600;700&display=swap"
+  ],
+  "post": {
+    "bloom": 0.45,
+    "bloomThreshold": 0.55,
+    "bloomPasses": 2,
+    "vignette": 0.25,
+    "tint": "#8fa0ff",
+    "tintAmount": 0.06,
+    "saturation": 1.1,
+    "contrast": 1.02,
+    "grain": 0.015
+  },
+  "pixelSnap": false,
+  "snapshots": [
+    {
+      "name": "title",
+      "frame": 40
+    },
+    {
+      "name": "play",
+      "frame": 120,
+      "taps": [
+        "640,400:30"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,509 @@
+{
+  "version": "0.14.0",
+  "recordedAt": "2026-09-09T14:36:40.496Z",
+  "ci": {
+    "execution": "local CI jobs on this host; hosted OS matrix is separate",
+    "bun": "1.3.13",
+    "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "date": "2026-09-09T14:31:39.209Z",
+    "results": [
+      {
+        "name": "install",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "install",
+          "--frozen-lockfile"
+        ],
+        "exitCode": 0,
+        "seconds": 0.025612999999999973
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "seconds": 2.724745958
+      },
+      {
+        "name": "tests",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "test"
+        ],
+        "exitCode": 0,
+        "seconds": 1.185367667
+      },
+      {
+        "name": "kernel",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--features",
+          "physics,physics3d,render,codecs",
+          "--manifest-path",
+          "kernel/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 46.966312333000005
+      },
+      {
+        "name": "host",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--manifest-path",
+          "host/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 25.052741457999996
+      },
+      {
+        "name": "gpu",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:3d"
+        ],
+        "exitCode": 0,
+        "seconds": 2.20275
+      },
+      {
+        "name": "native-content",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:native-content"
+        ],
+        "exitCode": 0,
+        "seconds": 16.172515916000005
+      },
+      {
+        "name": "games",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:showcases"
+        ],
+        "exitCode": 0,
+        "seconds": 3.2556262089999946
+      },
+      {
+        "name": "reproducible",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:reproducible"
+        ],
+        "exitCode": 0,
+        "seconds": 0.5754848750000092
+      },
+      {
+        "name": "native",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "cli/kiln.ts",
+          "verify",
+          "--host",
+          "desktop",
+          "--js",
+          "quickjs"
+        ],
+        "exitCode": 0,
+        "seconds": 42.06614895799999
+      }
+    ]
+  },
+  "tests": {
+    "typescript": 359,
+    "assertions": 17846,
+    "kernel": 18,
+    "host": 5,
+    "nativeGoldens": 16
+  },
+  "nativeContent": {
+    "status": "PASS",
+    "differingFraction": 0.0012604166666666666,
+    "tolerance": 0.02,
+    "webColoredPixels": 11025,
+    "nativeColoredPixels": 43951,
+    "physics": {
+      "bodies": 2,
+      "colliders": 2,
+      "joints": 0
+    },
+    "normalizedResolution": [
+      800,
+      600
+    ],
+    "captureResolution": {
+      "web": [
+        800,
+        600
+      ],
+      "native": [
+        1600,
+        1200
+      ]
+    },
+    "scope": "Embedded GLB PNG, texture UVs, CPU skin pose, Rapier gravity/contact, native depth and browser/native interior pixels"
+  },
+  "reproducible": {
+    "bun": "1.3.13",
+    "checkedAt": "2026-09-09T14:30:57.140Z",
+    "scope": "Two clean web builds on this host, SHA-256 of every output. Does not certify cross-host native binary reproducibility or remote font stability.",
+    "reports": [
+      {
+        "project": "examples/demo",
+        "files": {
+          "assets/game.js": "4aa98de71bd654a6b12b777f6cb9258cf2fea45e900195b8ce46a1947d0b3f3c",
+          "assets/game.js.map": "ad1b19291111eadecbe8015edbdd9de42273826dea12f0fd5c0ee98ca97ef967",
+          "assets/knight-rig.json": "21397a64ae2d4bd9092817aa44fc754104011258d470360df777c905426b1736",
+          "assets/knight-rig.png": "b0b2f9e2b57dc54490b4cd3cd123c7308495d296d8dde47eaafebf4dda53b122",
+          "assets/knight.json": "51f41dc0590ea475c4ed3a2eb05eb97ab48bc4155e0be13f3e87f437ded124e4",
+          "assets/knight.png": "4165a0d2c7436c7e32a2225a966099b23dba295a2877f62dc2070ec7abecf65b",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "f168b65138f8a629452e47ca0e4211b23b278782f47b6f37e189b1273141c336",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "templates/isometric",
+        "files": {
+          "assets/game.js": "1a375ac476f0b96c9804d3d5388ad196f6cb5b3accf812230b947f0ef2c13da9",
+          "assets/game.js.map": "77f3e1146e98db57d5acec0d235bacfeac69d5b373e89e29da96012780a7fae4",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "d7443dcd34527ebe8f648733d26bf6a8e9f878ef228b6e725b144c0a859c6bd0",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      },
+      {
+        "project": "examples/lumen",
+        "files": {
+          "assets/game.js": "bef00872153ffc1ff64b8d840568bf0ee000ddc1f7ce33d93dd18b286366d8f9",
+          "assets/game.js.map": "9ab784bd9e540049df9e74a6af43fc1f3376e36598020b21f61973cb764ac4d0",
+          "assets/scenes/main.kiln.json": "4d5db60796e3cf8a965f64a79eff00f9a59a1e3f64d72c5f812c200ff9139120",
+          "audio.wasm": "c2148e535c625fc1e6875370d4b5eb6e9afbd9a37762d32c16a53d3ba4089f94",
+          "index.html": "7f1edba3fad3d4528146a5ba7f378cdea351a7ed050a0122b6ba6234bb22fd24",
+          "physics.wasm": "9932ea4794d45aeca96f42d8f2af1623f2ab38c56ba83209563e547f9f343d16"
+        },
+        "status": "PASS"
+      }
+    ]
+  },
+  "showcases": [
+    {
+      "name": "Wisp Hollow",
+      "status": "PASS",
+      "pauseStable": true,
+      "resumed": true,
+      "glError": 0,
+      "scene": "play",
+      "frameCpuMs": {
+        "median": 0.9000000059604645,
+        "p95": 1.2999999821186066
+      },
+      "stats": {
+        "drawCalls": 16,
+        "sprites": 12803,
+        "frameMs": 0.800000011920929,
+        "targetWidth": 1280,
+        "targetHeight": 720
+      },
+      "three": {
+        "meshes": 0,
+        "culled": 0,
+        "triangles": 0,
+        "drawCalls": 0,
+        "shadowDrawCalls": 0
+      }
+    },
+    {
+      "name": "Highground",
+      "status": "PASS",
+      "pauseStable": true,
+      "resumed": true,
+      "glError": 0,
+      "scene": "play",
+      "frameCpuMs": {
+        "median": 0.30000001192092896,
+        "p95": 0.800000011920929
+      },
+      "stats": {
+        "drawCalls": 13,
+        "sprites": 1638,
+        "frameMs": 0.7000000178813934,
+        "targetWidth": 1280,
+        "targetHeight": 720
+      },
+      "three": {
+        "meshes": 0,
+        "culled": 0,
+        "triangles": 0,
+        "drawCalls": 0,
+        "shadowDrawCalls": 0
+      }
+    },
+    {
+      "name": "Lumen Salvage",
+      "status": "PASS",
+      "pauseStable": true,
+      "resumed": true,
+      "glError": 0,
+      "scene": "SalvageScene",
+      "frameCpuMs": {
+        "median": 1.5999999940395355,
+        "p95": 7.699999988079071
+      },
+      "stats": {
+        "drawCalls": 69,
+        "sprites": 290,
+        "frameMs": 1.5,
+        "targetWidth": 1280,
+        "targetHeight": 720
+      },
+      "three": {
+        "meshes": 319,
+        "culled": 0,
+        "triangles": 30660,
+        "drawCalls": 30,
+        "shadowDrawCalls": 27
+      }
+    }
+  ],
+  "soak30Minutes": {
+    "status": "PASS",
+    "device": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "resolution": [
+      1280,
+      720
+    ],
+    "elapsedSeconds": 1800.0258999999762,
+    "frames": 108005,
+    "restarts": 901,
+    "loads": 901,
+    "disposals": 901,
+    "errors": [],
+    "mode2D": {
+      "samples": 54001,
+      "cpuMedianMs": 0.7999999821186066,
+      "cpuP95Ms": 2.699999988079071,
+      "frameP95Ms": 16.700000000186265
+    },
+    "mode3D": {
+      "samples": 53883,
+      "cpuMedianMs": 1.0999999940395355,
+      "cpuP95Ms": 3.2000000178813934,
+      "frameP95Ms": 16.700000000186265
+    },
+    "gpu": {
+      "supported": true,
+      "samples": 240,
+      "pending": 1,
+      "medianMs": 0.951291,
+      "p95Ms": 4.330875
+    },
+    "estimatedGpuBytes": {
+      "steadyMin": 43732496,
+      "max": 43733408
+    },
+    "checks": {
+      "cpu2D": true,
+      "cpu3D": true,
+      "gpu": true,
+      "memory": true,
+      "restarts": true,
+      "realGPU": true
+    },
+    "budgets": {
+      "profile": "Desktop baseline, 1280x720, 10000 2D quads or 1000 lit shadow-casting mesh instances",
+      "targetFps": 60,
+      "cpuP95Ms": 8.3,
+      "gpuP95Ms": 8.3,
+      "estimatedGpuBytes": 268435456,
+      "minimumRestarts": 100,
+      "notes": "CPU and GPU budgets are separate. rAF pacing is reported separately; GPU timing can be unavailable. This profile is not a mobile certification."
+    },
+    "bundleHash": "88278994487bc3300f88059be1b5cf33f3f42db7c72479d65ef21f407f729893",
+    "host": {
+      "cpu": "Apple M1 Pro",
+      "ramBytes": 17179869184,
+      "os": "darwin",
+      "release": "25.5.0"
+    },
+    "requestedSeconds": 1800,
+    "measuredAt": "2026-09-09T14:21:10.243Z",
+    "resourceSummary": {
+      "snapshots": 119,
+      "first": {
+        "seconds": 15.0122,
+        "geometries": 2,
+        "textures": 0,
+        "geometryBytes": 1824,
+        "textureBytes": 0,
+        "instanceBytes": 77824,
+        "targetBytes": 33685504,
+        "cache": {
+          "entries": 1,
+          "references": 1,
+          "pending": 0,
+          "bytes": 64
+        }
+      },
+      "last": {
+        "seconds": 1786.908,
+        "geometries": 1,
+        "textures": 0,
+        "geometryBytes": 912,
+        "textureBytes": 0,
+        "instanceBytes": 77824,
+        "targetBytes": 33685504,
+        "cache": {
+          "entries": 1,
+          "references": 1,
+          "pending": 0,
+          "bytes": 64
+        }
+      }
+    },
+    "scope": "30-minute engine renderer/content workload. Earlier tested bundle, before final cleanup changes. GPU p95 is final rolling window only, not full-duration per-workload GPU coverage."
+  },
+  "ios": {
+    "xcframework": "built for device and simulator",
+    "swift": "all host Swift sources typechecked for arm64 iOS 16 simulator",
+    "physicalDevice": "not tested; iPad unavailable"
+  },
+  "limitations": [
+    "Hosted CI not executed; no remote configured.",
+    "Local native visual/runtime checks use macOS QuickJS/Metal, not the full hosted OS/JS-engine matrix.",
+    "GPU memory is estimated allocation, not measured driver residency or total process heap.",
+    "No 30-minute playthrough of each flagship game.",
+    "Native GPU timer unavailable; native renderer remains unbatched and single-sample."
+  ],
+  "finalSourceSoak": {
+    "status": "PASS",
+    "device": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36",
+    "resolution": [
+      1280,
+      720
+    ],
+    "elapsedSeconds": 240.02240000000597,
+    "frames": 14399,
+    "restarts": 120,
+    "loads": 120,
+    "disposals": 120,
+    "errors": [],
+    "mode2D": {
+      "samples": 7200,
+      "cpuMedianMs": 0.9000000059604645,
+      "cpuP95Ms": 2.7000000178813934,
+      "frameP95Ms": 16.70000000001164
+    },
+    "mode3D": {
+      "samples": 7078,
+      "cpuMedianMs": 1.2000000178813934,
+      "cpuP95Ms": 3.5999999940395355,
+      "frameP95Ms": 16.70000000001164
+    },
+    "gpu": {
+      "supported": true,
+      "samples": 240,
+      "pending": 1,
+      "medianMs": 0.606999,
+      "p95Ms": 1.408541
+    },
+    "gpuWindows": {
+      "2d": {
+        "samples": 72,
+        "maxP95Ms": 1.56025
+      },
+      "3d": {
+        "samples": 72,
+        "maxP95Ms": 2.381166
+      }
+    },
+    "estimatedGpuBytes": {
+      "steadyMin": 43732496,
+      "max": 43733408
+    },
+    "checks": {
+      "frame2D": true,
+      "frame3D": true,
+      "cpu2D": true,
+      "cpu3D": true,
+      "gpu": true,
+      "memory": true,
+      "stableAllocation": true,
+      "gpuWorkloads": true,
+      "restarts": true,
+      "realGPU": true
+    },
+    "budgets": {
+      "profile": "Desktop baseline, 1280x720, 10000 2D quads or 1000 lit shadow-casting mesh instances",
+      "targetFps": 60,
+      "cpuP95Ms": 8.3,
+      "gpuP95Ms": 8.3,
+      "estimatedGpuBytes": 268435456,
+      "minimumRestarts": 100,
+      "notes": "CPU and GPU budgets are separate. rAF pacing is reported separately; GPU timing can be unavailable. This profile is not a mobile certification."
+    },
+    "bundleHash": "855a62237e47ca77f7747275565ecc19c9708cea1aeded937fb2e7644bde0c30",
+    "host": {
+      "cpu": "Apple M1 Pro",
+      "ramBytes": 17179869184,
+      "os": "darwin",
+      "release": "25.5.0"
+    },
+    "requestedSeconds": 240,
+    "measuredAt": "2026-09-09T14:36:04.020Z",
+    "resourceSummary": {
+      "snapshots": 15,
+      "first": {
+        "seconds": 15.014200000017881,
+        "geometries": 2,
+        "textures": 0,
+        "geometryBytes": 1824,
+        "textureBytes": 0,
+        "instanceBytes": 77824,
+        "targetBytes": 33685504,
+        "cache": {
+          "entries": 1,
+          "references": 1,
+          "pending": 0,
+          "bytes": 64
+        }
+      },
+      "last": {
+        "seconds": 225.23910000001788,
+        "geometries": 2,
+        "textures": 0,
+        "geometryBytes": 1824,
+        "textureBytes": 0,
+        "instanceBytes": 77824,
+        "targetBytes": 33685504,
+        "cache": {
+          "entries": 1,
+          "references": 1,
+          "pending": 0,
+          "bytes": 64
+        }
+      }
+    },
+    "scope": "Four-minute final-source regression with per-workload worst rolling GPU p95 and awaited asynchronous shutdown cleanup; not a replacement for the separately recorded 30-minute run."
+  },
+  "harnessCorrection": {
+    "initialAttempt": ".kiln/verification/reliability-final-first-attempt/result.json",
+    "status": "FAIL",
+    "reason": "Final-frame acquisition was still pending when the harness checked resource counts; corrected to await acquisition/late disposal. All performance gates in that attempt passed. The corrected run is recorded separately."
+  }
+}

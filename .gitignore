@@ -1,0 +1,20 @@
+node_modules/
+dist/
+atlas/
+screenshots/
+*.log
+.DS_Store
+.kiln/
+target/
+kernel/dist/
+*.actual.png
+*.diff.png
+
+# Local credentials and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.mobileprovision
+*.keystore

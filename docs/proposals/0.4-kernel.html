@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiln 0.4: the compiled kernel</title>
+<style>
+  :root { color-scheme: light dark; --ink: #1d1b19; --muted: #6b665f; --line: #d9d4cc; --bg: #f7f5f1; --panel: #ffffff; --accent: #b0532a; --ok: #2f7d4f; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #ece7df; --muted: #a09a90; --line: #3a3733; --bg: #171614; --panel: #1f1d1a; --accent: #e08a5c; --ok: #6fc28f; } }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 -apple-system, "Inter", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 48px 24px 96px; }
+  h1 { font-size: 2rem; letter-spacing: -0.01em; margin: 0 0 4px; text-wrap: balance; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; color: var(--muted); margin-bottom: 20px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; }
+  p { max-width: 68ch; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 8px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  td.num { text-align: right; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; }
+  pre { background: var(--panel); border: 1px solid var(--line); padding: 14px 16px; overflow-x: auto; }
+  .good { color: var(--ok); font-weight: 600; }
+  .note { border-left: 3px solid var(--accent); padding: 4px 14px; color: var(--muted); }
+  ul { padding-left: 20px; }
+  li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Kiln engine · proposal 0.4 · 2026-09-03 · implemented</div>
+  <h1>The compiled kernel</h1>
+  <p>0.3 put the engine on iOS natively, but the whole engine still ran in the JavaScript interpreter. iOS does not allow a JIT for third-party apps, so tight per-frame loops there run several times slower than in a browser. 0.4 moves those loops into a small Rust library that is compiled to machine code on every native platform and to WebAssembly on the web, behind the same scene API. The script keeps the tree, the UI and the game rules; the kernel does the work that scales with sprite, tile and particle counts.</p>
+
+  <h2>Shape</h2>
+  <p>Godot's split, applied to Kiln: a compiled core, scripted games, one thin host per platform.</p>
+  <pre>game code (TypeScript)            ─ scenes, rules, UI, input
+scene tree (TypeScript)           ─ nodes, transforms, draw order, culling of big things
+    │  one command stream per frame: sprite, rect, glyph, batch, particles, pass
+    ▼
+kernel (Rust)                     ─ expands the stream into vertices and draw commands,
+                                    owns retained batches (tile maps) and particle emitters
+    │  vertex buffer + BEGIN/PASS/DRAW/END
+    ▼
+host renderer                     ─ Metal (iOS), WebGL2 (browser)</pre>
+
+  <h2>What the kernel owns</h2>
+  <table>
+    <tr><th>Piece</th><th>Before 0.4</th><th>In 0.4</th></tr>
+    <tr><td>Sprite, rect and glyph quads</td><td>Script computed every corner and wrote 40 floats per quad</td><td>Script writes one 17-word record; the kernel applies the transform and writes the vertices</td></tr>
+    <tr><td>Tile maps</td><td>Script resolved and drew every visible tile every frame, building autotile names as strings</td><td>A retained batch written once; one command per frame culls and draws it natively. Animated tiles are a second, small batch rebuilt only when a frame changes</td></tr>
+    <tr><td>Particles</td><td>Script stepped and drew each particle</td><td>Emitters live in the kernel; one command per frame steps and draws them</td></tr>
+    <tr><td>Draw calls</td><td>Script tracked pass boundaries</td><td>The kernel emits the command list; hosts play it back unchanged</td></tr>
+  </table>
+  <p class="note">Sprite nodes still walk the tree in script, so a scene with thousands of individually moving sprites still pays for them there. That is the next step (a retained node table), not this one.</p>
+
+  <h2>Results</h2>
+  <p>The bench project (<code>examples/bench</code>): 120×80 autotiled tiles under a panning camera, 2000 moving sprites, three emitters at about 4500 live particles, three lights, bloom and HD text. iPhone 17 Pro simulator; "JIT off" launches JavaScriptCore the way it runs on a real device.</p>
+  <table>
+    <tr><th>Configuration</th><th class="num">FPS</th><th class="num">CPU per frame</th></tr>
+    <tr><td>0.3, script only, JIT on</td><td class="num">60</td><td class="num">4.0 ms</td></tr>
+    <tr><td>0.3, script only, JIT off (device conditions)</td><td class="num">40</td><td class="num">20.8 ms</td></tr>
+    <tr><td>0.4, kernel, JIT on</td><td class="num">60</td><td class="num">4.1 ms</td></tr>
+    <tr><td class="good">0.4, kernel, JIT off (device conditions)</td><td class="num good">60</td><td class="num good">6.1 ms</td></tr>
+    <tr><td>Wisp Hollow title, 0.4 kernel</td><td class="num">60</td><td class="num">0.6 ms</td></tr>
+  </table>
+  <p>Under device conditions the frame went from 20.8 ms to 6.1 ms and the bench holds 60 FPS. With a JIT available the kernel neither helps nor hurts, which is expected: the compiled JavaScript was already close to native for this work. On the web the same Wasm build is active in every project; the browser pane in the desktop app throttles hidden tabs, so no web timings were recorded.</p>
+
+  <h2>Protocol</h2>
+  <p>The stream is a <code>Float32Array</code> the renderer fills each frame. Op codes and layouts live in <code>src/kernel/protocol.ts</code> and <code>kernel/src/lib.rs</code>, and a test checks that the Wasm build and the TypeScript reference produce identical vertices for the same stream.</p>
+  <table>
+    <tr><th>Op</th><th>Words</th><th>Meaning</th></tr>
+    <tr><td>BEGIN</td><td>clear, viewW, viewH</td><td>Start a frame; the view size drives culling</td></tr>
+    <tr><td>PASS</td><td>id, clear</td><td>Switch to world, light or overlay</td></tr>
+    <tr><td>TRANSFORM</td><td>a b c d e f</td><td>Current local-to-screen transform</td></tr>
+    <tr><td>SPRITE</td><td>x y sx sy rot ox oy w h u0 v0 u1 v1 tint alpha flags</td><td>One quad</td></tr>
+    <tr><td>RECT</td><td>x y w h color alpha additive</td><td>A solid quad from the atlas's white pixel</td></tr>
+    <tr><td>GLYPH</td><td>x y w h u0 v0 u1 v1 color alpha additive</td><td>A glyph from the glyph cache</td></tr>
+    <tr><td>BATCH</td><td>id alpha tint cullX cullY cullW cullH flags</td><td>Draw a retained batch, culled in its own space</td></tr>
+    <tr><td>PARTICLES</td><td>id dt emitting ex ey alpha snap</td><td>Step an emitter and draw it</td></tr>
+    <tr><td>END</td><td></td><td>Flush the last draw</td></tr>
+  </table>
+  <p>Batches and emitters are created through direct calls (<code>createBatch</code>, <code>batchData</code>, <code>createEmitter</code>, <code>burst</code>). Batch memory is a typed array over kernel memory, so a tile map is written once with no copies. The kernel's output is the same vertex format and command list 0.3 hosts already consumed, so the Metal renderer only changed where it reads them from.</p>
+
+  <h2>Where it runs</h2>
+  <ul>
+    <li><strong>iOS:</strong> <code>KilnKernel.xcframework</code> (static libraries for the simulator and devices) linked into every exported project. The JavaScript side sees kernel memory directly through no-copy typed arrays, and the Metal renderer reads vertices straight from the kernel.</li>
+    <li><strong>Web:</strong> 40 KB of WebAssembly embedded in the bundle, instantiated at startup. <code>?kernel=ts</code> switches to the reference kernel for comparison.</li>
+    <li><strong>Tests and headless:</strong> the TypeScript reference, so <code>bun test</code> needs no Rust toolchain. The generated <code>src/kernel/kernel.wasm.ts</code> is committed.</li>
+  </ul>
+  <pre>bun kernel/build.ts        # cargo: Wasm → src/kernel/kernel.wasm.ts, static libs → kernel/dist/
+kiln export ios / run ios  # copies the XCFramework into the project</pre>
+
+  <h2>What changed for game code</h2>
+  <p>Nothing that existing projects call. <code>TileMap</code> and <code>ParticleEmitter</code> use the kernel when the renderer has one and fall back to their 0.3 behaviour otherwise (Canvas 2D, the fake renderer). <code>TileMap.set</code> marks the batch dirty; editing <code>data</code> directly needs <code>invalidate()</code>. The FPS pill now shows total CPU time per frame, not only the draw phase.</p>
+
+  <h2>Next</h2>
+  <ul>
+    <li><strong>Retained node table.</strong> Move <code>Node2D</code> transforms into kernel-owned arrays so static scenery and y-sorted actors cost nothing in script. This is what makes thousands of individual sprites free.</li>
+    <li><strong>Collision and paths.</strong> Tile collision and grid pathfinding on kernel-owned grids, for games with many moving bodies.</li>
+    <li><strong>Rendering in the kernel with wgpu.</strong> One renderer for Metal, Vulkan, DirectX and WebGPU. The Swift host shrinks to window, input and lifecycle, and the Android host becomes a thin shell instead of a second renderer.</li>
+    <li><strong>Android.</strong> The same kernel as a shared library plus a JavaScript engine with a JIT (V8), which makes the interpreter question moot there.</li>
+  </ul>
+</main>
+</body>
+</html>

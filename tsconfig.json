@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "@kiln/engine": [
+        "./src/index.ts"
+      ],
+      "@kiln/engine/*": [
+        "./src/*/index.ts"
+      ],
+      "@kiln/engine/scene/ui": [
+        "./src/scene/ui.ts"
+      ],
+      "@blackiron-studio/engine": [
+        "./src/index.ts"
+      ],
+      "@blackiron-studio/engine/*": [
+        "./src/*/index.ts"
+      ],
+      "@blackiron-studio/engine/scene/ui": [
+        "./src/scene/ui.ts"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "cli",
+    "tests",
+    "examples/*/src",
+    "examples/*/tests",
+    "templates/*/src",
+    "templates/*/tests"
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "version": "0.15.0",
+  "recordedAt": "2026-09-09T15:49:33.471Z",
+  "scope": "Local Apple M1 Pro validation. Hosted CI and physical mobile/gamepad coverage are not claimed.",
+  "tests": {
+    "passed": 370,
+    "failed": 0,
+    "assertions": 18164,
+    "files": 55
+  },
+  "localCI": {
+    "execution": "local CI jobs on this host; hosted OS matrix is separate",
+    "bun": "1.3.13",
+    "rust": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "date": "2026-09-09T15:42:04.900Z",
+    "results": [
+      {
+        "name": "install",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "install",
+          "--frozen-lockfile"
+        ],
+        "exitCode": 0,
+        "seconds": 0.020144791999999995
+      },
+      {
+        "name": "typecheck",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "typecheck"
+        ],
+        "exitCode": 0,
+        "seconds": 2.565660208
+      },
+      {
+        "name": "tests",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "test"
+        ],
+        "exitCode": 0,
+        "seconds": 1.5704986250000001
+      },
+      {
+        "name": "kernel",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--features",
+          "physics,physics3d,render,codecs",
+          "--manifest-path",
+          "kernel/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 1.1885446249999996
+      },
+      {
+        "name": "host",
+        "command": [
+          "cargo",
+          "test",
+          "--locked",
+          "--release",
+          "--manifest-path",
+          "host/Cargo.toml"
+        ],
+        "exitCode": 0,
+        "seconds": 0.775335583
+      },
+      {
+        "name": "gpu",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:3d"
+        ],
+        "exitCode": 0,
+        "seconds": 2.3558195000000004
+      },
+      {
+        "name": "native-content",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:native-content"
+        ],
+        "exitCode": 0,
+        "seconds": 3.7131696670000003
+      },
+      {
+        "name": "games",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:showcases"
+        ],
+        "exitCode": 0,
+        "seconds": 3.421334791000001
+      },
+      {
+        "name": "fps",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:fps"
+        ],
+        "exitCode": 0,
+        "seconds": 3.067714750000001
+      },
+      {
+        "name": "reproducible",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "run",
+          "check:reproducible"
+        ],
+        "exitCode": 0,
+        "seconds": 1.0293971669999993
+      },
+      {
+        "name": "native",
+        "command": [
+          "/opt/homebrew/Cellar/bun/1.3.9/bin/bun",
+          "cli/kiln.ts",
+          "verify",
+          "--host",
+          "desktop",
+          "--js",
+          "quickjs"
+        ],
+        "exitCode": 0,
+        "seconds": 43.919668542
+      }
+    ]
+  },
+  "mission": {
+    "status": "PASS",
+    "checks": [
+      "startup",
+      "movement",
+      "jump",
+      "pause/resume",
+      "weapons/reload",
+      "authored staircase",
+      "all three combat waves",
+      "three relays/victory",
+      "defeat",
+      "restart resource release",
+      "GPU submission",
+      "viewmodel depth layer with world-depth control"
+    ],
+    "diagnostics": {
+      "phase": "playing",
+      "health": 100,
+      "wave": 0,
+      "kills": 0,
+      "relays": 0,
+      "player": {
+        "x": -0.000002060113956758869,
+        "y": 0.015099961850501109,
+        "z": 19
+      },
+      "grounded": true,
+      "ammo": [
+        28,
+        6
+      ],
+      "enemies": 3,
+      "projectiles": 0,
+      "physics": {
+        "bodies": 55,
+        "colliders": 55,
+        "joints": 0
+      },
+      "targets": 4,
+      "locked": false
+    },
+    "renderer": {
+      "gpu": {
+        "supported": true,
+        "samples": 33,
+        "pending": 8,
+        "medianMs": 2.867541,
+        "p95Ms": 4.684375
+      },
+      "mesh": {
+        "geometries": 11,
+        "textures": 7,
+        "geometryBytes": 25432,
+        "textureBytes": 1441792,
+        "instanceBytes": 9728,
+        "targetBytes": 46268416
+      },
+      "estimatedGpuBytes": 61907928,
+      "stats": {
+        "drawCalls": 65,
+        "sprites": 298,
+        "frameMs": 1.300000011920929,
+        "targetWidth": 1280,
+        "targetHeight": 720
+      },
+      "stats3D": {
+        "meshes": 360,
+        "culled": 32,
+        "triangles": 20502,
+        "drawCalls": 34,
+        "shadowDrawCalls": 19
+      }
+    },
+    "frameCpuMs": {
+      "median": 1.7000000178813934,
+      "p95": 2.7999999821186066
+    },
+    "errors": [],
+    "scope": "Real WebGL2 and game simulation; mouse pointer lock requires a separate user-gesture test."
+  },
+  "browserInputAndPerformance": {
+    "status": "PASS",
+    "trustedInput": {
+      "escapePause": true,
+      "noStuckFire": true,
+      "settings": true,
+      "rebind": true,
+      "persistence": true,
+      "capture": "PASS",
+      "mouseLook": "PASS",
+      "mouseFire": "PASS",
+      "keyboardFallback": "not exercised",
+      "recapture": "PASS"
+    },
+    "performance": {
+      "seconds": 20,
+      "frames": 1200,
+      "cpuP95Ms": 2.800000011920929,
+      "frameP95Ms": 16.799999999999272,
+      "gpu": {
+        "supported": true,
+        "samples": 240,
+        "pending": 1,
+        "medianMs": 3.015208,
+        "p95Ms": 4.218999
+      },
+      "estimatedGpuBytes": 61907928,
+      "device": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+      "checks": {
+        "cpu": true,
+        "framePacing": true,
+        "gpu": true,
+        "memory": true,
+        "realGPU": true
+      }
+    },
+    "diagnostics": {
+      "phase": "playing",
+      "health": 100,
+      "wave": 0,
+      "kills": 1,
+      "relays": 0,
+      "player": {
+        "x": 5.956205101683736,
+        "y": 0.009804148766852427,
+        "z": 18.96733062765253
+      },
+      "grounded": true,
+      "ammo": [
+        18,
+        6
+      ],
+      "enemies": 2,
+      "projectiles": 0,
+      "physics": {
+        "bodies": 54,
+        "colliders": 54,
+        "joints": 0
+      },
+      "targets": 3,
+      "locked": true
+    },
+    "glError": 0,
+    "captureError": [],
+    "scope": "Isolated Chrome input and 20-second rAF-paced gameplay; unavailable capture is explicitly reported and is not a passing capture test."
+  },
+  "native": {
+    "goldensPassed": 16,
+    "expectedSkipped": 1,
+    "skipReason": "Signal Breach targets web only"
+  },
+  "reproducibleWebBuilds": [
+    "demo",
+    "isometric",
+    "lumen",
+    "breach"
+  ],
+  "lifecycle": {
+    "sceneReplacements": 15,
+    "scope": "Unit-test physics and combat resource cleanup; not a long real-device memory soak"
+  },
+  "investigation": {
+    "capture": "Early WrongDocumentError resolved by explicit navigation after attaching Chrome test protocol; final strict capture and recapture passed.",
+    "gpu": "Initial paced GPU sample missed the 8.3 ms budget. Replaced mid-pass MSAA depth clear with reserved world/viewmodel depth bands; final paced sample passed.",
+    "previousArtifacts": [
+      ".kiln/verification/breach-input/performance-first-attempt.json",
+      ".kiln/verification/breach-input/capture-unavailable.json"
+    ]
+  },
+  "limits": [
+    "Single-device 20-second paced sample; GPU percentile is final rolling 240 queries.",
+    "Estimated GPU allocations are engine accounting, not total driver/process memory.",
+    "Visible-browser hands-on playthrough unavailable while Mac locked.",
+    "FPS requires desktop WebGL2; no native FPS or touch UI.",
+    "Physical gamepad and cross-device certification not performed.",
+    "Navigation uses one sampled height surface, not a general navmesh."
+  ]
+}
