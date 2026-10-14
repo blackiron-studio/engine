@@ -115,6 +115,10 @@ export interface IosConfig {
   minVersion?: string;
   /** Sprite name painted into the app icon. */
   icon?: string;
+  /** Dedicated PNG relative to the project root; fits the full icon without entering the atlas. Shared by native exports. */
+  iconFile?: string;
+  /** Explicit Apple export-compliance declaration; omitted when unspecified. */
+  usesNonExemptEncryption?: boolean;
   /** Apple developer team id used by the generated Xcode project. */
   team?: string;
   /** External build settings, Xcode automatic signing, or an explicitly unsigned export. */

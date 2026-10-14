@@ -39,7 +39,7 @@ async function kernelFramework(out: string): Promise<void> {
     );
 }
 
-/** App icon from a sprite over the background colour, plus a launch-screen colour. */
+/** Opaque app icon and launch-screen colour. */
 async function writeAssets(
   project: Project,
   dir: string,
@@ -51,7 +51,8 @@ async function writeAssets(
   );
   const size = 1024;
   const { rgba: icon, sprite } = await renderIcon(project, nativeDir, size);
-  if (sprite) console.log(`  app icon from sprite "${sprite}"`);
+  if (project.config.ios?.iconFile) console.log(`  app icon from file "${project.config.ios.iconFile}"`);
+  else if (sprite) console.log(`  app icon from sprite "${sprite}"`);
   const assets = join(dir, "Assets.xcassets");
   await mkdir(join(assets, "AppIcon.appiconset"), { recursive: true });
   await mkdir(join(assets, "LaunchBackground.colorset"), { recursive: true });
@@ -280,7 +281,7 @@ targets:
         CFBundleDisplayName: ${JSON.stringify(project.config.name)}
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        UILaunchScreen:
+${project.config.ios?.usesNonExemptEncryption === undefined ? "" : `        ITSAppUsesNonExemptEncryption: ${project.config.ios.usesNonExemptEncryption}\n`}        UILaunchScreen:
           UIColorName: LaunchBackground
         UIRequiresFullScreen: true
         UIStatusBarHidden: true

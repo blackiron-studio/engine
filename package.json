@@ -1,6 +1,6 @@
 {
   "name": "@blackiron-studio/engine",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "Blackiron Engine: TypeScript 2D, projected 2.5D and basic 3D game engine with web and native hosts.",
   "type": "module",
   "private": true,

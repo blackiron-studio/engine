@@ -499,7 +499,17 @@ it does not validate distribution credentials or store submission.
 
 Also native on iOS: sound (the kernel synthesiser on `AVAudioEngine`), the project's fonts
 (bundled by `blackiron export ios` and registered with CoreText), game controllers, haptics
-(`app.haptic("light")`), and an app icon generated from a sprite (`ios.icon`).
+(`app.haptic("light")`), and an opaque app icon. Set `ios.iconFile` to a PNG
+path relative to the project root (for example `assets/app-icon.png`) to fit
+dedicated artwork smoothly into the full icon. Non-square files are centered over
+`background`. This setting is shared by the iOS, Android and desktop exporters and
+does not add the image to the gameplay atlas. Alternatively, `ios.icon` names an
+atlas sprite fitted within 72% of the icon with crisp integer enlargement; larger sprites shrink
+to fit. Configure only one source; a missing explicit source fails the export.
+
+Set `ios.usesNonExemptEncryption` explicitly when your app’s export-compliance
+declaration is known. The exporter writes `ITSAppUsesNonExemptEncryption` into
+Info.plist only when supplied; it does not infer a declaration for other games.
 
 ## Decisions taken in 0.10
 
