@@ -178,7 +178,8 @@ async function buildAndroidExport(
     join(main, "res", "mipmap-xxxhdpi", "ic_launcher.png"),
     encodePNG(512, 512, rgba),
   );
-  if (sprite) console.log(`  app icon from sprite "${sprite}"`);
+  if (project.config.ios?.iconFile) console.log(`  app icon from file "${project.config.ios.iconFile}"`);
+  else if (sprite) console.log(`  app icon from sprite "${sprite}"`);
 
   const screen =
     orientation === "landscape"

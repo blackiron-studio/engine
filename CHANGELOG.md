@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.1 (2026-10-14)
+
+- Fix oversized native icon sprites wrapping into adjacent rows; safely downscale to fit while preserving pixel-art enlargement.
+- Support dedicated native PNG artwork through `ios.iconFile`, with smooth resizing and opaque compositing outside the gameplay atlas.
+- Fail on missing explicit icon sources and support an explicit iOS export-compliance declaration.
+
 ## 0.17.0 — Blackiron Engine (2026-10-09)
 
 - Rename the CLI, configuration, imports, scene schemas, generated directories, runtime globals, native hosts, Swift framework, Android JNI and C/Wasm ABI together.
