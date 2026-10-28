@@ -39,7 +39,8 @@ export const POST = {
   BLOOM: 0, THRESHOLD: 1, PASSES: 2, VIGNETTE: 3, TINT_R: 4, TINT_G: 5, TINT_B: 6, TINT_AMOUNT: 7,
   SATURATION: 8, CONTRAST: 9, BRIGHTNESS: 10, USE_LUT: 11, GRAIN: 12, SCANLINES: 13, OFFSET_X: 14, OFFSET_Y: 15,
   LIGHTING: 16, VIEW_X: 17, VIEW_Y: 18, VIEW_W: 19, VIEW_H: 20, TARGET_W: 21, TARGET_H: 22, TIME: 23, LOGICAL_W: 24, LOGICAL_H: 25,
-  SIZE: 26,
+  FOCUS: 26, FOCUS_BAND: 27, FOCUS_Y: 28,
+  SIZE: 29,
 } as const;
 export const PROTOCOL_VERSION = 1;
 
@@ -466,6 +467,9 @@ export class NativeRenderer implements Renderer {
     p[POST.TIME] = ((this.host.now() - this.t0) % 100000) / 1000;
     p[POST.LOGICAL_W] = this.width;
     p[POST.LOGICAL_H] = this.height;
+    p[POST.FOCUS] = Math.min(1, Math.max(0, post.focus));
+    p[POST.FOCUS_BAND] = post.focusBand;
+    p[POST.FOCUS_Y] = post.focusY;
     if (this.meshFrame || this.hadMeshes) this.host.submit3D?.(this.meshEncoder.encode(this.meshFrame));
     this.hadMeshes = !!this.meshFrame;
     this.host.submit(p, st[STAT.VERTICES], st[STAT.COMMANDS]);

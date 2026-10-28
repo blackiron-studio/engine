@@ -10,7 +10,7 @@ afterEach(() => {
 function serve(files: Record<string, Uint8Array | string>): void {
   globalThis.fetch = (async (url: string) => {
     const body = files[String(url)];
-    return body === undefined ? new Response("missing", { status: 404 }) : new Response(body);
+    return body === undefined ? new Response("missing", { status: 404 }) : new Response(body as BodyInit);
   }) as typeof fetch;
 }
 

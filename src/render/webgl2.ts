@@ -13,7 +13,7 @@ import { StreamWriter } from "../kernel/stream.ts";
 import { CMD, TsKernel } from "../kernel/ts.ts";
 import { GlyphCache } from "./glyphs.ts";
 import { resolveLut } from "./lut.ts";
-import { BLUR_FRAG, BRIGHT_FRAG, COMPOSITE_FRAG, COPY_FRAG, QUAD_VERT, SPRITE_FRAG, SPRITE_VERT } from "./shaders.ts";
+import { BLUR_FRAG, BRIGHT_FRAG, COMPOSITE_FRAG, COPY_FRAG, DOF_FRAG, QUAD_VERT, SPRITE_FRAG, SPRITE_VERT } from "./shaders.ts";
 import {
   type FontSpec,
   type LightDraw,
@@ -55,7 +55,7 @@ export class WebGL2Renderer implements Renderer {
   profiling = false;
   get diagnostics() {
     const mesh = this.stage3D?.resources ?? { geometries: 0, textures: 0, geometryBytes: 0, textureBytes: 0, instanceBytes: 0, targetBytes: 0 };
-    const targets = [this.scene, this.overlay, this.light, this.scratch, this.bloomA, this.bloomB, this.bloomC, this.bloomD];
+    const targets = [this.scene, this.overlay, this.light, this.scratch, this.bloomA, this.bloomB, this.bloomC, this.bloomD, this.dofA, this.dofB, this.dofOut];
     const targetBytes = targets.reduce((sum, t) => sum + (t ? t.w * t.h * 4 : 0), 0);
     const atlasBytes = this.atlas ? this.atlas.width * this.atlas.height * 4 * (this.hasNormals ? 2 : 1) : 0;
     return { gpu: this.gpuProfiler?.report ?? { supported: false, samples: 0, pending: 0, medianMs: null, p95Ms: null }, mesh,
@@ -77,6 +77,7 @@ export class WebGL2Renderer implements Renderer {
   private blurProg!: Program;
   private copyProg!: Program;
   private compositeProg!: Program;
+  private dofProg!: Program;
   private vao!: WebGLVertexArrayObject;
   private vbo!: WebGLBuffer;
   private quadVao!: WebGLVertexArrayObject;
@@ -96,6 +97,10 @@ export class WebGL2Renderer implements Renderer {
   private bloomB: Target | null = null;
   private bloomC: Target | null = null;
   private bloomD: Target | null = null;
+  /** Half-size blur of the scene and the focused result, for depth of field. */
+  private dofA: Target | null = null;
+  private dofB: Target | null = null;
+  private dofOut: Target | null = null;
   private atlasTex: WebGLTexture | null = null;
   private atlas: Atlas | null = null;
   private glyphTex: WebGLTexture | null = null;
@@ -158,6 +163,7 @@ export class WebGL2Renderer implements Renderer {
     this.brightProg = this.program(QUAD_VERT, BRIGHT_FRAG, ["uTex", "uThreshold"]);
     this.blurProg = this.program(QUAD_VERT, BLUR_FRAG, ["uTex", "uDir"]);
     this.copyProg = this.program(QUAD_VERT, COPY_FRAG, ["uTex"]);
+    this.dofProg = this.program(QUAD_VERT, DOF_FRAG, ["uScene", "uBlur", "uFocus"]);
     this.compositeProg = this.program(QUAD_VERT, COMPOSITE_FRAG, [
       "uScene", "uBloomA", "uBloomB", "uLight", "uOverlay", "uLut",
       "uBloomStrength", "uLighting", "uUseLut", "uVignette", "uTint", "uTintAmount",
@@ -323,6 +329,9 @@ export class WebGL2Renderer implements Renderer {
     this.bloomB = this.target(qw, qh, this.bloomB);
     this.bloomC = this.target(Math.max(1, Math.round(w / 8)), Math.max(1, Math.round(h / 8)), this.bloomC);
     this.bloomD = this.target(Math.max(1, Math.round(w / 8)), Math.max(1, Math.round(h / 8)), this.bloomD);
+    this.dofA = this.target(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)), this.dofA);
+    this.dofB = this.target(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)), this.dofB);
+    this.dofOut = this.target(w, h, this.dofOut);
     this.stats.targetWidth = w;
     this.stats.targetHeight = h;
     this.glyphs?.setPixelRatio(w / this.width);
@@ -761,6 +770,31 @@ export class WebGL2Renderer implements Renderer {
       }
     }
 
+    // Depth of field: blur a half-size copy of the scene, then mix it in away from the focus band.
+    let sceneTex = this.scene.tex;
+    if (post.focus > 0 && this.dofA && this.dofB && this.dofOut) {
+      this.fullscreen(this.copyProg, this.dofA, this.scene.tex, this.samplerLinear);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      for (let i = 0; i < 2; i++) {
+        this.fullscreen(this.blurProg, this.dofB, this.dofA.tex, this.samplerLinear);
+        gl.uniform2f(this.blurProg.u.uDir, 1.5 / this.dofA.w, 0);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        this.fullscreen(this.blurProg, this.dofA, this.dofB.tex, this.samplerLinear);
+        gl.uniform2f(this.blurProg.u.uDir, 0, 1.5 / this.dofA.h);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      this.fullscreen(this.dofProg, this.dofOut, this.scene.tex, this.samplerNearest);
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, this.dofA.tex);
+      gl.bindSampler(1, this.samplerLinear);
+      gl.uniform1i(this.dofProg.u.uScene, 0);
+      gl.uniform1i(this.dofProg.u.uBlur, 1);
+      gl.uniform3f(this.dofProg.u.uFocus, Math.min(1, post.focus), post.focusBand, post.focusY);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      sceneTex = this.dofOut.tex;
+      this.stats.drawCalls += 6;
+    }
+
     const useLut = this.uploadLut(post.lut);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.backingW, this.backingH);
@@ -772,7 +806,7 @@ export class WebGL2Renderer implements Renderer {
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.bindSampler(unit, sampler);
     };
-    bind(0, this.scene.tex, exact || integer ? this.samplerNearest : this.samplerLinear);
+    bind(0, sceneTex, exact || integer ? this.samplerNearest : this.samplerLinear);
     bind(1, this.bloomA.tex, this.samplerLinear);
     bind(2, this.bloomC.tex, this.samplerLinear);
     bind(3, this.light.tex, this.samplerLinear);

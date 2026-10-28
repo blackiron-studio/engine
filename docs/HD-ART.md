@@ -56,6 +56,11 @@ defineSprite("ui.coin", { w: 24, h: 24, density: 3 }, (p) => {
   lights toward warm.
 - Ground and large surfaces need texture: `shade` with `fbm` and `worley`, not flat fills.
 - Use 2D lights, bloom and the colour grade (`post`) for mood; keep UI crisp and legible.
+- Depth of field: `post.focus` (0-1) blurs the world above and below a sharp horizontal band,
+  a tilt shift that makes a top-down scene read as a lit diorama. `focusBand` sets the band's
+  half-height (fraction of half the screen, 0.35 by default) and `focusY` its centre from the
+  top (0.5). The UI layer is never blurred. Pixel art lit this way, with bloom and soft lights,
+  gives the "HD-2D" look.
 
 ## 3D: surfaces, sky and shapes
 

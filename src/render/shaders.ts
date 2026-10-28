@@ -153,6 +153,25 @@ uniform sampler2D uTex;
 out vec4 outColor;
 void main() { outColor = vec4(texture(uTex, vUV).rgb, 1.0); }`;
 
+/**
+ * Depth of field: mix the sharp scene with a blurred copy by distance from a horizontal focus
+ * band. uFocus is (strength, band, centre from the top).
+ */
+export const DOF_FRAG = `#version 300 es
+precision mediump float;
+in vec2 vUV;
+uniform sampler2D uScene;
+uniform sampler2D uBlur;
+uniform vec3 uFocus;
+out vec4 outColor;
+void main() {
+  vec3 sharp = texture(uScene, vUV).rgb;
+  vec3 soft = texture(uBlur, vUV).rgb;
+  float d = abs((1.0 - vUV.y) - uFocus.z) * 2.0;
+  float k = smoothstep(uFocus.y, uFocus.y + 0.45, d) * uFocus.x;
+  outColor = vec4(mix(sharp, soft, k), 1.0);
+}`;
+
 export const COMPOSITE_FRAG = `#version 300 es
 precision mediump float;
 in vec2 vUV;

@@ -164,6 +164,15 @@ export interface PostSettings {
   grain: number;
   /** Scanline darkening in [0, 1]. */
   scanlines: number;
+  /**
+   * Depth of field as a tilt shift: how far the screen above and below the focus band blurs,
+   * in [0, 1]. 0 disables the passes.
+   */
+  focus: number;
+  /** Half-height of the sharp band as a fraction of half the screen, in [0, 1]. */
+  focusBand: number;
+  /** Where the band is centred, from the top of the screen (0) to the bottom (1). */
+  focusY: number;
 }
 
 export const defaultPost = (): PostSettings => ({
@@ -179,6 +188,9 @@ export const defaultPost = (): PostSettings => ({
   lut: null,
   grain: 0,
   scanlines: 0,
+  focus: 0,
+  focusBand: 0.35,
+  focusY: 0.5,
 });
 
 export interface RenderStats {

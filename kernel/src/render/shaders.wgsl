@@ -191,6 +191,15 @@ struct PostUniforms {
   return vec4<f32>(textureSampleLevel(t0, s0, in.uv, 0.0).rgb, 1.0);
 }
 
+// Depth of field: pu.a is (strength, band, centre from the top); t0 sharp, t1 blurred.
+@fragment fn dof_fragment(in: QuadOut) -> @location(0) vec4<f32> {
+  let sharp = textureSampleLevel(t0, s0, in.uv, 0.0).rgb;
+  let soft = textureSampleLevel(t1, s1, in.uv, 0.0).rgb;
+  let d = abs(in.uv.y - pu.a.z) * 2.0;
+  let k = smoothstep(pu.a.y, pu.a.y + 0.45, d) * pu.a.x;
+  return vec4<f32>(mix(sharp, soft, k), 1.0);
+}
+
 fn hash21(p: vec2<f32>) -> f32 { return fract(sin(dot(p, vec2<f32>(12.9898, 78.233))) * 43758.5453); }
 
 @fragment fn composite_fragment(in: QuadOut) -> @location(0) vec4<f32> {

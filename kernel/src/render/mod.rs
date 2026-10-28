@@ -65,7 +65,10 @@ pub mod p {
     pub const TIME: usize = 23;
     pub const LOGICAL_W: usize = 24;
     pub const LOGICAL_H: usize = 25;
-    pub const SIZE: usize = 26;
+    pub const FOCUS: usize = 26;
+    pub const FOCUS_BAND: usize = 27;
+    pub const FOCUS_Y: usize = 28;
+    pub const SIZE: usize = 29;
 }
 
 const CMD_BEGIN: u32 = 1;
@@ -100,6 +103,10 @@ struct Targets {
     bloom_b: Target,
     bloom_c: Target,
     bloom_d: Target,
+    /// Half-size blur of the scene and the focused result, for depth of field.
+    dof_a: Target,
+    dof_b: Target,
+    dof_out: Target,
     present: Target,
     w: u32,
     h: u32,
@@ -120,6 +127,7 @@ pub struct Renderer {
     blur_pipeline: wgpu::RenderPipeline,
     copy_pipeline: wgpu::RenderPipeline,
     composite_pipeline: wgpu::RenderPipeline,
+    dof_pipeline: wgpu::RenderPipeline,
     blit_pipeline: wgpu::RenderPipeline,
     sprite_layout: wgpu::BindGroupLayout,
     quad_layout: wgpu::BindGroupLayout,
@@ -281,6 +289,7 @@ impl Renderer {
         let blur_pipeline = make("blur", &quad_pl, "quad_vertex", "blur_fragment", &[], TARGET_FORMAT, None, strip);
         let copy_pipeline = make("copy", &quad_pl, "quad_vertex", "copy_fragment", &[], TARGET_FORMAT, None, strip);
         let composite_pipeline = make("composite", &quad_pl, "quad_vertex", "composite_fragment", &[], TARGET_FORMAT, None, strip);
+        let dof_pipeline = make("dof", &quad_pl, "quad_vertex", "dof_fragment", &[], TARGET_FORMAT, None, strip);
         let blit_pipeline = make("blit", &quad_pl, "quad_vertex", "copy_fragment", &[], format, None, strip);
 
         let sampler = |filter: wgpu::FilterMode| {
@@ -322,6 +331,7 @@ impl Renderer {
             blur_pipeline,
             copy_pipeline,
             composite_pipeline,
+            dof_pipeline,
             blit_pipeline,
             sprite_layout,
             quad_layout,
@@ -426,6 +436,9 @@ impl Renderer {
             bloom_b: self.make_target(w / 4, h / 4, false),
             bloom_c: self.make_target(w / 8, h / 8, false),
             bloom_d: self.make_target(w / 8, h / 8, false),
+            dof_a: self.make_target((w / 2).max(1), (h / 2).max(1), false),
+            dof_b: self.make_target((w / 2).max(1), (h / 2).max(1), false),
+            dof_out: self.make_target(w, h, false),
             present: self.make_target(sw, sh, true),
             w,
             h,
@@ -688,6 +701,26 @@ impl Renderer {
                 list.push((&self.copy_pipeline, &t.bloom_a.view, six(blank, blank), lins, vec![0.0; 4], None));
                 list.push((&self.copy_pipeline, &t.bloom_c.view, six(blank, blank), lins, vec![0.0; 4], None));
             }
+            // Depth of field: blur a half-size copy of the scene, then mix it in away from the focus band.
+            let focus = post[p::FOCUS].clamp(0.0, 1.0);
+            let scene_view = if focus > 0.0 {
+                list.push((&self.copy_pipeline, &t.dof_a.view, six(&t.scene.view, blank), lins, vec![0.0; 4], None));
+                for _ in 0..2 {
+                    list.push((&self.blur_pipeline, &t.dof_b.view, six(&t.dof_a.view, blank), lins, vec![1.5 / t.dof_a.w as f32, 0.0, 0.0, 0.0], None));
+                    list.push((&self.blur_pipeline, &t.dof_a.view, six(&t.dof_b.view, blank), lins, vec![0.0, 1.5 / t.dof_a.h as f32, 0.0, 0.0], None));
+                }
+                list.push((
+                    &self.dof_pipeline,
+                    &t.dof_out.view,
+                    [&t.scene.view, &t.dof_a.view, blank, blank, blank, blank],
+                    [&self.nearest, lin, lin, lin, lin, lin],
+                    vec![focus, post[p::FOCUS_BAND], post[p::FOCUS_Y], 0.0],
+                    None,
+                ));
+                &t.dof_out.view
+            } else {
+                &t.scene.view
+            };
             let exact = post[p::VIEW_W] as u32 == t.w && post[p::VIEW_H] as u32 == t.h;
             let edge = if exact { &self.nearest } else { lin };
             let comp = vec![
@@ -700,7 +733,7 @@ impl Renderer {
             list.push((
                 &self.composite_pipeline,
                 &t.present.view,
-                [&t.scene.view, &t.bloom_a.view, &t.bloom_c.view, &t.light.view, &t.overlay.view, lut],
+                [scene_view, &t.bloom_a.view, &t.bloom_c.view, &t.light.view, &t.overlay.view, lut],
                 [edge, lin, lin, lin, edge, lin],
                 comp,
                 Some([post[p::VIEW_X], post[p::VIEW_Y], post[p::VIEW_W], post[p::VIEW_H]]),
