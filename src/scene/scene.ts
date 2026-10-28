@@ -246,6 +246,8 @@ export class Scene extends Node {
     const kids = this.childSnapshot();
     const app = this._app;
     this.tweens.update(dt);
+    // A tween may change scenes (a game-over fade, say); a detached scene must not update.
+    if (app && this._app !== app) return;
     this.update(sdt);
     if (app && this._app !== app) return;
     for (let i = 0; i < kids.length; i++) {

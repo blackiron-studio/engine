@@ -1,7 +1,7 @@
 // Canvas-drawn UI: panels, nine-slice frames, buttons and bars that live on the scene's
 // `ui` layer and receive pointer routing from the Scene.
 
-import type { Atlas, Region } from "../art/atlas.ts";
+import { type Atlas, type Region, sliceNine } from "../art/atlas.ts";
 import { measureText } from "../art/font.ts";
 import type { FontSpec } from "../render/types.ts";
 import type { DrawContext } from "./draw.ts";
@@ -137,22 +137,7 @@ export class NineSlice extends Node2D {
 
   private slices(ctx: DrawContext): Region[] {
     if (this.parts && this.forSprite === this.sprite && this.forInset === this.inset && this.forAtlas === ctx.atlas) return this.parts;
-    const r = ctx.region(this.sprite);
-    const i = Math.max(0, Math.min(this.inset, Math.floor(r.w / 2), Math.floor(r.h / 2)));
-    const aw = ctx.atlas.width;
-    const ah = ctx.atlas.height;
-    const xs = [r.x, r.x + i, r.x + r.w - i, r.x + r.w];
-    const ys = [r.y, r.y + i, r.y + r.h - i, r.y + r.h];
-    const parts: Region[] = [];
-    for (let row = 0; row < 3; row++) {
-      for (let col = 0; col < 3; col++) {
-        const x0 = xs[col];
-        const x1 = xs[col + 1];
-        const y0 = ys[row];
-        const y1 = ys[row + 1];
-        parts.push({ name: `${r.name}#${row}${col}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0, u0: x0 / aw, v0: y0 / ah, u1: x1 / aw, v1: y1 / ah, ox: 0, oy: 0 });
-      }
-    }
+    const parts = sliceNine(ctx.region(this.sprite), this.inset, ctx.atlas.width, ctx.atlas.height);
     this.parts = parts;
     this.forSprite = this.sprite;
     this.forInset = this.inset;
@@ -168,10 +153,13 @@ export class NineSlice extends Node2D {
     const edgeH = Math.min(j, Math.max(0, this.h) / 2);
     const mw = Math.max(0, this.w - edgeW * 2);
     const mh = Math.max(0, this.h - edgeH * 2);
-    const cols = [0, edgeW, edgeW + mw];
-    const rows = [0, edgeH, edgeH + mh];
-    const ws = [edgeW, mw, edgeW];
-    const hs = [edgeH, mh, edgeH];
+    // Whole-unit edges: pieces at fractional sizes would otherwise leave hairline gaps.
+    const W = Math.round(Math.max(0, this.w));
+    const H = Math.round(Math.max(0, this.h));
+    const cols = [0, Math.round(edgeW), W - Math.round(edgeW)];
+    const rows = [0, Math.round(edgeH), H - Math.round(edgeH)];
+    const ws = [cols[1], Math.max(0, cols[2] - cols[1]), W - cols[2]];
+    const hs = [rows[1], Math.max(0, rows[2] - rows[1]), H - rows[2]];
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 3; c++) {
         const part = p[r * 3 + c];
@@ -190,22 +178,15 @@ function drawButtonSkin(ctx: DrawContext, name: string, width: number, height: n
   const key = `${name}:${inset}`;
   let parts = byName.get(key);
   if (!parts) {
-    const r = ctx.region(name);
-    const i = Math.max(0, Math.min(inset, Math.floor(r.w / 2), Math.floor(r.h / 2)));
-    const xs = [r.x, r.x + i, r.x + r.w - i, r.x + r.w];
-    const ys = [r.y, r.y + i, r.y + r.h - i, r.y + r.h];
-    parts = [];
-    for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
-      const x0 = xs[col], x1 = xs[col + 1], y0 = ys[row], y1 = ys[row + 1];
-      parts.push({ name: `${name}#${row}${col}`, x: x0, y: y0, w: x1 - x0, h: y1 - y0, u0: x0 / ctx.atlas.width, v0: y0 / ctx.atlas.height, u1: x1 / ctx.atlas.width, v1: y1 / ctx.atlas.height, ox: 0, oy: 0 });
-    }
+    parts = sliceNine(ctx.region(name), inset, ctx.atlas.width, ctx.atlas.height);
     byName.set(key, parts);
   }
   const i = Math.min(parts[0].w, Math.max(0, width) / 2);
   const j = Math.min(parts[0].h, Math.max(0, height) / 2);
-  const ws = [i, Math.max(0, width - i * 2), i];
-  const hs = [j, Math.max(0, height - j * 2), j];
-  const xs = [0, i, i + ws[1]], ys = [0, j, j + hs[1]];
+  const W = Math.round(Math.max(0, width)), H = Math.round(Math.max(0, height)), ri = Math.round(i), rj = Math.round(j);
+  const xs = [0, ri, W - ri], ys = [0, rj, H - rj];
+  const ws = [ri, Math.max(0, xs[2] - ri), W - xs[2]];
+  const hs = [rj, Math.max(0, ys[2] - rj), H - ys[2]];
   for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
     const part = parts[row * 3 + col];
     if (part.w && part.h && ws[col] && hs[row]) ctx.sprite(part, xs[col], ys[row], { sx: ws[col] / part.w, sy: hs[row] / part.h });

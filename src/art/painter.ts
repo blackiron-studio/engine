@@ -4,6 +4,7 @@
 
 import type { Rng } from "../core/rng.ts";
 import { type ColorInput, type RGBA, type Ramp, parseColor, toHex } from "./color.ts";
+import { type BlendMode, type GradientStops, blendInto } from "./vector.ts";
 
 const BAYER4 = [
   [0, 8, 2, 10],
@@ -42,9 +43,36 @@ export interface EdgeSides {
   right?: boolean;
 }
 
+export interface ShadowOptions {
+  /** Offset in logical units. */
+  dx?: number;
+  dy?: number;
+  /** Blur radius in logical units. */
+  blur?: number;
+  color?: ColorInput;
+  opacity?: number;
+  /** Grow (positive) or shrink the shadow's shape before blurring, in logical units. */
+  spread?: number;
+}
+
+export interface BevelOptions {
+  /** Light direction in screen space; the default lights from the top left. */
+  lx?: number;
+  ly?: number;
+  /** Width of the bevel in logical units. */
+  size?: number;
+  highlight?: ColorInput;
+  shadow?: ColorInput;
+  /** Strength of the shading, 0..1. */
+  strength?: number;
+}
+
 export class Painter {
   readonly data: Uint8ClampedArray;
-  private maskData: Uint8ClampedArray | null = null;
+  /** The active mask's pixels, or null; vector drawing honours it too. */
+  maskData: Uint8ClampedArray | null = null;
+  /** Texels per logical unit. Vector pens and effects measure in logical units through it. */
+  density = 1;
 
   constructor(
     readonly width: number,
@@ -608,6 +636,274 @@ export class Painter {
   }
 
   /** ASCII dump for debugging and snapshot tests: '#' opaque, '.' transparent. */
+  /** A transparent painter of the same size and density. */
+  blank(): Painter {
+    const p = new Painter(this.width, this.height);
+    p.density = this.density;
+    return p;
+  }
+
+  /** A copy of this painter. */
+  copy(): Painter {
+    const p = new Painter(this.width, this.height, new Uint8ClampedArray(this.data));
+    p.density = this.density;
+    return p;
+  }
+
+  /** Composite `src` (same size, or placed at dx, dy texels) onto this with a blend mode. */
+  composite(src: Painter, o: { mode?: BlendMode; opacity?: number; dx?: number; dy?: number } = {}): void {
+    const mode = o.mode ?? "normal";
+    const opacity = o.opacity ?? 1;
+    const dx = Math.round(o.dx ?? 0);
+    const dy = Math.round(o.dy ?? 0);
+    const d = this.data;
+    const s = src.data;
+    const mask = this.maskData;
+    for (let y = 0; y < src.height; y++) {
+      const ty = y + dy;
+      if (ty < 0 || ty >= this.height) continue;
+      for (let x = 0; x < src.width; x++) {
+        const tx = x + dx;
+        if (tx < 0 || tx >= this.width) continue;
+        const si = (y * src.width + x) * 4;
+        if (s[si + 3] === 0) continue;
+        const di = (ty * this.width + tx) * 4;
+        if (mask && mask[di + 3] === 0) continue;
+        blendInto(d, di, s[si], s[si + 1], s[si + 2], (s[si + 3] / 255) * opacity * (mask ? mask[di + 3] / 255 : 1), mode);
+      }
+    }
+  }
+
+  /** Paint into a fresh layer with `fn`, then composite it with a blend mode and opacity. */
+  layer(fn: (layer: Painter) => void, o: { mode?: BlendMode; opacity?: number } = {}): Painter {
+    const l = this.blank();
+    fn(l);
+    this.composite(l, o);
+    return l;
+  }
+
+  /** Gaussian-like blur (three box passes) of radius `r` logical units, premultiplied so edges do not darken. */
+  blur(r: number): void {
+    const rad = Math.round(r * this.density);
+    if (rad <= 0) return;
+    const w = this.width;
+    const h = this.height;
+    const n = w * h;
+    const buf = [new Float32Array(n), new Float32Array(n), new Float32Array(n), new Float32Array(n)];
+    const d = this.data;
+    for (let i = 0; i < n; i++) {
+      const a = d[i * 4 + 3] / 255;
+      buf[0][i] = d[i * 4] * a;
+      buf[1][i] = d[i * 4 + 1] * a;
+      buf[2][i] = d[i * 4 + 2] * a;
+      buf[3][i] = a;
+    }
+    const tmp = new Float32Array(Math.max(w, h));
+    const box = Math.max(1, Math.round(rad / 1.73));
+    for (const ch of buf) {
+      for (let pass = 0; pass < 3; pass++) {
+        for (let y = 0; y < h; y++) boxLine(ch, y * w, 1, w, box, tmp);
+        for (let x = 0; x < w; x++) boxLine(ch, x, w, h, box, tmp);
+      }
+    }
+    for (let i = 0; i < n; i++) {
+      const a = buf[3][i];
+      d[i * 4 + 3] = a * 255;
+      if (a > 0.0001) {
+        d[i * 4] = buf[0][i] / a;
+        d[i * 4 + 1] = buf[1][i] / a;
+        d[i * 4 + 2] = buf[2][i] / a;
+      }
+    }
+  }
+
+  /** A silhouette of this painter's alpha filled with one colour. */
+  private alphaShape(color: ColorInput, opacity = 1): Painter {
+    const c = parseColor(color);
+    const s = this.blank();
+    for (let i = 0; i < this.data.length; i += 4) {
+      const a = this.data[i + 3];
+      if (a === 0) continue;
+      s.data[i] = c.r;
+      s.data[i + 1] = c.g;
+      s.data[i + 2] = c.b;
+      s.data[i + 3] = a * (c.a / 255) * opacity;
+    }
+    return s;
+  }
+
+  private grow(texels: number): void {
+    if (texels === 0) return;
+    const src = new Uint8ClampedArray(this.data);
+    const w = this.width;
+    const h = this.height;
+    const r = Math.abs(texels);
+    const r2 = r * r;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let best = texels > 0 ? 0 : 255;
+        for (let j = -r; j <= r; j++) {
+          const yy = y + j;
+          if (yy < 0 || yy >= h) continue;
+          for (let i = -r; i <= r; i++) {
+            if (i * i + j * j > r2) continue;
+            const xx = x + i;
+            if (xx < 0 || xx >= w) continue;
+            const a = src[(yy * w + xx) * 4 + 3];
+            best = texels > 0 ? Math.max(best, a) : Math.min(best, a);
+          }
+        }
+        this.data[(y * w + x) * 4 + 3] = best;
+      }
+    }
+  }
+
+  /** A soft shadow of the current shape drawn underneath it. */
+  dropShadow(o: ShadowOptions = {}): void {
+    const s = this.alphaShape(o.color ?? "#000000", o.opacity ?? 0.45);
+    if (o.spread) s.grow(Math.round(o.spread * this.density));
+    s.blur(o.blur ?? 4);
+    this.composite(s, { mode: "behind", dx: (o.dx ?? 0) * this.density, dy: (o.dy ?? 3) * this.density });
+  }
+
+  /** A soft outer glow around the current shape. */
+  glowOutside(color: ColorInput, blur = 6, opacity = 0.8, spread = 0): void {
+    this.dropShadow({ dx: 0, dy: 0, blur, color, opacity, spread });
+  }
+
+  /** A shadow cast inward from the shape's edges, offset by dx, dy. */
+  innerShadow(o: ShadowOptions = {}): void {
+    const c = parseColor(o.color ?? "#000000");
+    const inv = this.blank();
+    for (let i = 0; i < this.data.length; i += 4) {
+      inv.data[i] = c.r;
+      inv.data[i + 1] = c.g;
+      inv.data[i + 2] = c.b;
+      inv.data[i + 3] = 255 - this.data[i + 3];
+    }
+    if (o.spread) inv.grow(Math.round(o.spread * this.density));
+    inv.blur(o.blur ?? 4);
+    const shifted = this.blank();
+    shifted.composite(inv, { dx: (o.dx ?? 0) * this.density, dy: (o.dy ?? 2) * this.density });
+    this.composite(shifted, { mode: "inside", opacity: (o.opacity ?? 0.5) * (c.a / 255) });
+  }
+
+  /** Light and shade along the shape's edges as if it were raised: highlight toward the light. */
+  bevel(o: BevelOptions = {}): void {
+    const size = Math.max(1, (o.size ?? 3) * this.density);
+    const lx = o.lx ?? -0.6;
+    const ly = o.ly ?? -0.8;
+    const ll = Math.hypot(lx, ly) || 1;
+    const height = this.alphaShape("#ffffff");
+    height.blur(size / this.density);
+    const w = this.width;
+    const hi = parseColor(o.highlight ?? "#ffffff");
+    const sh = parseColor(o.shadow ?? "#000000");
+    const k = o.strength ?? 0.6;
+    const lit = this.blank();
+    const hd = height.data;
+    for (let y = 1; y < this.height - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = (y * w + x) * 4;
+        if (this.data[i + 3] === 0) continue;
+        const gx = (hd[i + 7] - hd[i - 1]) / 255;
+        const gy = (hd[i + w * 4 + 3] - hd[i - w * 4 + 3]) / 255;
+        const dot = -(gx * lx + gy * ly) / ll;
+        const v = Math.max(-1, Math.min(1, dot * size * 0.5));
+        const c = v > 0 ? hi : sh;
+        lit.data[i] = c.r;
+        lit.data[i + 1] = c.g;
+        lit.data[i + 2] = c.b;
+        lit.data[i + 3] = Math.abs(v) * 255 * k;
+      }
+    }
+    this.composite(lit, { mode: "inside" });
+  }
+
+  /** Recolour by luminance through gradient stops (a gradient map), keeping alpha. */
+  gradientMap(stops: GradientStops, amount = 1): void {
+    const s = [...stops].sort((a, b) => a[0] - b[0]).map(([t, c]) => [t, parseColor(c)] as const);
+    const d = this.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] === 0) continue;
+      const l = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
+      let k = 0;
+      while (k < s.length - 1 && s[k + 1][0] < l) k++;
+      const [ta, ca] = s[k];
+      const [tb, cb] = s[Math.min(k + 1, s.length - 1)];
+      const f = tb > ta ? Math.min(1, Math.max(0, (l - ta) / (tb - ta))) : 0;
+      d[i] += (ca.r + (cb.r - ca.r) * f - d[i]) * amount;
+      d[i + 1] += (ca.g + (cb.g - ca.g) * f - d[i + 1]) * amount;
+      d[i + 2] += (ca.b + (cb.b - ca.b) * f - d[i + 2]) * amount;
+    }
+  }
+
+  /**
+   * Run a per-pixel shader over the painter. `fn` gets texel x, y and u, v in 0..1 and returns
+   * [r, g, b, a] (0..255) composited with the blend mode, or null to leave the pixel.
+   */
+  shade(fn: (x: number, y: number, u: number, v: number) => readonly [number, number, number, number] | null, o: { mode?: BlendMode; opacity?: number } = {}): void {
+    const mode = o.mode ?? "normal";
+    const opacity = o.opacity ?? 1;
+    const mask = this.maskData;
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const i = (y * this.width + x) * 4;
+        if (mask && mask[i + 3] === 0) continue;
+        const c = fn(x, y, (x + 0.5) / this.width, (y + 0.5) / this.height);
+        if (!c) continue;
+        blendInto(this.data, i, c[0], c[1], c[2], (c[3] / 255) * opacity, mode);
+      }
+    }
+  }
+
+  /**
+   * Spread edge colours into fully transparent texels (alpha stays 0), so linear filtering of a
+   * smooth sprite never pulls in black from its transparent surroundings.
+   */
+  bleed(passes = 4): void {
+    const w = this.width;
+    const h = this.height;
+    const d = this.data;
+    let filled = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) filled[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+    for (let p = 0; p < passes; p++) {
+      const next = new Uint8Array(filled);
+      let changed = false;
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const k = y * w + x;
+          if (filled[k]) continue;
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          let n = 0;
+          for (let j = -1; j <= 1; j++) {
+            for (let i = -1; i <= 1; i++) {
+              const xx = x + i;
+              const yy = y + j;
+              if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+              const q = yy * w + xx;
+              if (!filled[q]) continue;
+              r += d[q * 4];
+              g += d[q * 4 + 1];
+              b += d[q * 4 + 2];
+              n++;
+            }
+          }
+          if (n === 0) continue;
+          d[k * 4] = r / n;
+          d[k * 4 + 1] = g / n;
+          d[k * 4 + 2] = b / n;
+          next[k] = 1;
+          changed = true;
+        }
+      }
+      filled = next;
+      if (!changed) break;
+    }
+  }
+
   ascii(): string {
     const rows: string[] = [];
     for (let y = 0; y < this.height; y++) {
@@ -628,3 +924,17 @@ export class Painter {
 }
 
 export { toHex };
+
+/** One box-filter pass of radius r along a line of n samples starting at `start` with `step`. */
+function boxLine(ch: Float32Array, start: number, step: number, n: number, r: number, tmp: Float32Array): void {
+  const inv = 1 / (r * 2 + 1);
+  let acc = 0;
+  for (let i = -r; i <= r; i++) acc += ch[start + Math.min(n - 1, Math.max(0, i)) * step];
+  for (let i = 0; i < n; i++) {
+    tmp[i] = acc * inv;
+    const add = Math.min(n - 1, i + r + 1);
+    const sub = Math.max(0, i - r);
+    acc += ch[start + add * step] - ch[start + sub * step];
+  }
+  for (let i = 0; i < n; i++) ch[start + i * step] = tmp[i];
+}

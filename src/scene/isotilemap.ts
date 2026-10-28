@@ -58,6 +58,11 @@ export class IsoTileMap extends Node2D {
   private cellCount = new Uint8Array(0);
   private dirty = true;
   private tintsDirty = false;
+  /**
+   * Sample tiles with linear filtering. Null (the default) follows the tiles: smooth when
+   * they are high-resolution sprites (density above one).
+   */
+  smooth: boolean | null = null;
 
   constructor(opts: IsoTileMapOptions) {
     super();
@@ -252,7 +257,7 @@ export class IsoTileMap extends Node2D {
         k.setBatch3Count(this.batch, this.instances.length);
         this.tintsDirty = false;
       }
-      ctx.batch3(this.batch);
+      ctx.batch3(this.batch, { smooth: this.smooth ?? this.instances.some((i) => i.region.smooth) });
       return;
     }
     // No kernel renderer: draw the instances one by one, projected by the context.

@@ -4,9 +4,10 @@
 // projected, depth-sorted pass; the script only moves the hero and keeps score.
 
 import { Rng, TileMapData } from "@blackiron-studio/engine/core";
-import { Anchor, Button, IsoTileMap, Label, Node2D, Panel, Scene, Sprite, SpritePool, type DrawContext } from "@blackiron-studio/engine/scene";
-import { HintLayer, Hints, PauseScene, glyphFor, keyName } from "@blackiron-studio/engine/shell";
-import { TILE } from "../art.ts";
+import { Anchor, Button, IsoTileMap, Label, NineSlice, Node2D, Scene, Sprite, SpritePool, type DrawContext } from "@blackiron-studio/engine/scene";
+import { HintLayer, Hints, glyphFor, keyName } from "@blackiron-studio/engine/shell";
+import { TILE, WATER_FRAMES } from "../art.ts";
+import { BUTTON, GOLD_BUTTON, GlassPause, INK, SEA_BACKGROUND, SmoothIsoTileMap, UI_FONT, cellHash, drawNine, drawPanel, mixTint, mulTint, panel, terraceDecals } from "../look.ts";
 import { title } from "../main.ts";
 import { type Progress, shell } from "../shell.ts";
 
@@ -24,9 +25,13 @@ const SAND = 2;
 const WATER = 3;
 const STONE = 4;
 
-const FOG_HIDDEN = 0x8bada6;
-const FOG_SEEN = 0xc0d5be;
+const FOG_HIDDEN = 0x9aaeb4;
+const FOG_SEEN = 0xd2dcd2;
 const ISLAND_SEED = 5;
+/** Seconds per frame of the sea's caustic loop. */
+const WATER_FRAME_TIME = 0.14;
+/** The hero is drawn a touch larger than a cell's props so the eye finds them first. */
+const HERO_SCALE = 1.12;
 
 /** Smooth value noise on a coarse grid, for plateaus that read as terraces. */
 function noise(rng: Rng, cols: number, rows: number, period: number): number[][] {
@@ -67,6 +72,16 @@ export class PlayScene extends Scene {
   private marker!: Sprite;
   private hud!: Label;
   private crateHud!: Label;
+  private coinIcon!: Sprite;
+  /** Resting tint of each cell (sea depth, ground variation) before fog; props share it. */
+  private baseTint: number[] = [];
+  private readonly cellProps = new Map<number, Sprite[]>();
+  private readonly foam: { sprite: Sprite; phase: number }[] = [];
+  private glints!: SpritePool;
+  private readonly glintPhase: number[] = [];
+  private halos!: SpritePool;
+  private readonly coinHalos = new Map<number, number>();
+  private waterFrame = 0;
   private readonly pickupLabels: { label: Label; age: number }[] = [];
   private jumpBuffer = 0;
   private coyote = COYOTE_TIME;
@@ -112,10 +127,10 @@ export class PlayScene extends Scene {
 
   override ready(): void {
     this.name = "play";
-    this.background = 0x1b666b;
-    this.post.bloom = 0.16;
-    this.post.bloomThreshold = 0.86;
-    this.post.vignette = 0.14;
+    this.background = SEA_BACKGROUND;
+    this.post.bloom = 0.2;
+    this.post.bloomThreshold = 0.82;
+    this.post.vignette = 0.2;
     const rng = new Rng(this.mapSeed);
 
     // The island: height from noise, water round the edge, sand at the shore, stone up high.
@@ -136,8 +151,15 @@ export class PlayScene extends Scene {
       }
       elevation.push(row);
     }
-    this.map = this.world.add(new IsoTileMap({ data, elevation, tile: TILE, tiles: { [GRASS]: "grass.top", [SAND]: "sand.top", [WATER]: "water.top", [STONE]: "stone.top" }, faces: { left: "cliff.left", right: "cliff.right" } }));
-    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) this.map.setTint(c, r, this.explored.has(r * COLS + c) ? FOG_SEEN : FOG_HIDDEN);
+    this.map = this.world.add(new SmoothIsoTileMap({ data, elevation, tile: TILE, tiles: { [GRASS]: "grass.top", [SAND]: "sand.top", [WATER]: "water.0", [STONE]: { top: "stone.top", left: "stone.cliff.left", right: "stone.cliff.right" } }, faces: { left: "cliff.left", right: "cliff.right" } }));
+    // Resting tints: the sea deepens away from the shore; the ground varies a touch per cell.
+    const decals = terraceDecals(this.world, this.map, WATER);
+    this.baseTint = decals.tints;
+    for (const foam of decals.foam) {
+      this.foam.push(foam);
+      this.addCellProp(foam.key, foam.sprite);
+    }
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) this.map.setTint(c, r, mulTint(this.baseTint[r * COLS + c], this.explored.has(r * COLS + c) ? FOG_SEEN : FOG_HIDDEN));
 
     // Start on the highest cell near the middle.
     let best = -1;
@@ -174,9 +196,11 @@ export class PlayScene extends Scene {
     this.footRing.alpha = 0.85;
     this.hero = this.world.add(new Sprite("hero.s", this.gx, this.gy));
     this.hero.z = this.gz;
+    this.hero.scaleX = this.hero.scaleY = HERO_SCALE;
 
     // Every coin belongs to the same reachable component; stable cell IDs survive a save/load.
-    this.coins = this.world.add(new SpritePool({ capacity: 64, sprite: "coin" }));
+    this.halos = this.world.add(new SpritePool({ capacity: 64, sprite: "coin.halo", additive: true, smooth: true }));
+    this.coins = this.world.add(new SpritePool({ capacity: 64, sprite: "coin", smooth: true }));
     const coinRng = new Rng(this.mapSeed ^ 0xc01);
     const candidates = coinRng.shuffle([...reachable]);
     this.totalCoins = Math.min(30, candidates.length);
@@ -192,6 +216,7 @@ export class PlayScene extends Scene {
       const handle = this.coins.spawn({ x, y, z: this.map.heightAt(x, y) + 10 });
       if (handle >= 0) {
         this.coinCells.push(handle); this.coinKeys.set(handle, key);
+        this.coinHalos.set(handle, this.halos.spawn({ x, y, z: this.map.heightAt(x, y) + 12, alpha: 0.5 }));
         this.coinShadows.set(handle, this.surfaceShadow(x, y, this.map.heightAt(x, y), 0.42));
       }
     }
@@ -204,29 +229,57 @@ export class PlayScene extends Scene {
       if (id === WATER || occupied.has(key) || coinLocations.has(key) || (Math.abs(c - origin.col) <= 1 && Math.abs(r - origin.row) <= 1)) continue;
       occupied.add(key);
       const [x, y] = this.map.cellCenter(c, r);
-      const sprite = id === STONE ? "rock" : rng.chance(0.48) ? "tree" : rng.chance(0.4) ? "flowers" : "grass.tuft";
+      const kind = id === STONE ? "rock" : rng.chance(0.48) ? "tree" : rng.chance(0.4) ? "flowers" : "grass.tuft";
+      // Variants come from the cell, so the island's random stream is unchanged.
+      const h = cellHash(c, r, 3);
+      const sprite = kind === "rock" ? (h < 0.4 ? "lamp" : "rock") : kind === "tree" ? (h < 0.34 ? "tree.pine" : "tree") : kind === "grass.tuft" && h < 0.45 ? "bush" : kind;
       const prop = this.world.add(new Sprite(sprite, x + rng.range(-5, 5), y + rng.range(-5, 5)));
       prop.z = this.map.heightAt(x, y);
-      if (sprite === "tree") {
+      this.addCellProp(key, prop);
+      if (kind === "tree") {
         prop.scaleX = prop.scaleY = rng.range(0.85, 1.15);
         this.trees.push(prop);
-      }
-      if (sprite === "tree" || sprite === "rock") this.surfaceShadow(prop.x, prop.y, prop.z, sprite === "tree" ? prop.scaleX * 1.2 : 0.65);
+        this.addCellProp(key, this.surfaceShadow(prop.x, prop.y, prop.z, prop.scaleX, "shadow.cast"));
+      } else if (sprite === "rock" || sprite === "bush") this.addCellProp(key, this.surfaceShadow(prop.x, prop.y, prop.z, 0.6));
+      else if (sprite === "lamp") this.addCellProp(key, this.surfaceShadow(prop.x, prop.y, prop.z, 0.45, "shadow.cast"));
+    }
+    // Split-rail fences along some of the shore, where the sea stops the walk anyway.
+    for (let r = 1; r < ROWS - 1; r++) for (let c = 1; c < COLS - 1; c++) {
+      const id = data.get(c, r), key = r * COLS + c;
+      if (id === WATER || id === STONE || (Math.abs(c - origin.col) <= 1 && Math.abs(r - origin.row) <= 1)) continue;
+      const [x, y] = this.map.cellCenter(c, r), z = this.map.heightAt(x, y);
+      if (data.get(c, r + 1) === WATER && cellHash(c, r, 7) < 0.5) this.addCellProp(key, this.prop("fence.x", x, y + CELL / 2 - 2, z));
+      if (data.get(c + 1, r) === WATER && cellHash(c, r, 8) < 0.5) this.addCellProp(key, this.prop("fence.y", x + CELL / 2 - 2, y, z));
+    }
+    // Sun glints wink on the open sea.
+    this.glints = this.world.add(new SpritePool({ capacity: 48, sprite: "glint", additive: true, smooth: true }));
+    const glintRng = new Rng(this.mapSeed ^ 0x611e);
+    for (let i = 0, tries = 0; i < 48 && tries < 400; tries++) {
+      const c = glintRng.int(0, COLS - 1), r = glintRng.int(0, ROWS - 1);
+      if (data.get(c, r) !== WATER) continue;
+      const [x, y] = this.map.cellCenter(c, r);
+      this.glints.spawn({ x: x + glintRng.range(-12, 12), y: y + glintRng.range(-12, 12), z: 0.5, alpha: 0, scale: glintRng.range(0.5, 1) });
+      this.glintPhase.push(glintRng.range(0, Math.PI * 2) + glintRng.range(0, 0.6) * 1000);
+      i++;
+    }
+    for (const [key, props] of this.cellProps) {
+      const tint = this.explored.has(key) ? FOG_SEEN : FOG_HIDDEN;
+      for (const prop of props) prop.tint = tint;
     }
     for (const key of this.restored?.crateCells ?? []) this.addCrate(key, false);
 
     // A sparse layer of sunlit pollen moves entirely in the retained kernel pool.
-    const pollen = this.world.add(new SpritePool({ capacity: 36, sprite: "spark", additive: true, bounds: { x: 0, y: 0, w: COLS * CELL, h: ROWS * CELL }, boundsMode: "wrap" }));
+    const pollen = this.world.add(new SpritePool({ capacity: 36, sprite: "spark", additive: true, smooth: true, bounds: { x: 0, y: 0, w: COLS * CELL, h: ROWS * CELL }, boundsMode: "wrap" }));
     const breeze = new Rng(this.mapSeed ^ 0xb2ee);
     for (let i = 0; i < 36; i++) {
       const x = breeze.range(0, COLS * CELL), y = breeze.range(0, ROWS * CELL);
-      pollen.spawn({ x, y, z: this.map.heightAt(x, y) + breeze.range(22, 58), vx: breeze.range(3, 7), vy: -3, scale: breeze.range(0.3, 0.6), alpha: 0.36 });
+      pollen.spawn({ x, y, z: this.map.heightAt(x, y) + breeze.range(22, 58), vx: breeze.range(3, 7), vy: -3, scale: breeze.range(0.4, 0.75), alpha: 0.42 });
     }
     // Short rising bursts expire above the surface; a global z=0 bounce floor is wrong on terraces.
-    this.sparks = this.world.add(new SpritePool({ capacity: 192, sprite: "spark", gravityZ: -120, additive: true }));
+    this.sparks = this.world.add(new SpritePool({ capacity: 192, sprite: "spark", gravityZ: -120, additive: true, smooth: true }));
 
     this.marker = this.world.add(new Sprite("marker", 0, 0));
-    this.marker.alpha = 0.6;
+    this.marker.alpha = 0.75;
     this.marker.depthBias = -CELL / 2 + 1;
 
     this.camera.projection = { kind: "isometric", tile: { w: TILE.w, h: TILE.h } };
@@ -238,17 +291,20 @@ export class PlayScene extends Scene {
     this.camera.z = this.gz;
 
     const top = this.ui.add(new Anchor({ x: "left", y: "top", safe: 24 }));
-    top.add(new Panel(0, 0, 304, 160, { fill: 0x103a3d, fillAlpha: 0.94, border: 0x83b6a3, bevel: null }));
-    top.add(new Label("HIGHGROUND  /  SUNLIT TERRACES", 18, 15, { color: 0xbcd6c1, font: { family: "Instrument Sans", size: 12, weight: 700 } }));
-    const coinIcon = top.add(new Sprite("coin", 32, 67));
-    coinIcon.scaleX = coinIcon.scaleY = 2;
-    this.hud = top.add(new Label("", 56, 40, { color: 0xffdc80, font: { family: "Instrument Sans", size: 34, weight: 700 } }));
-    top.add(new Label("SUN COINS FOUND", 57, 83, { color: 0xe4ead3, font: { family: "Instrument Sans", size: 11, weight: 700 } }));
-    top.add(new CoinProgress(this, 18, 110));
-    this.crateHud = top.add(new Label("", 18, 129, { color: 0xabc7b9, font: { family: "Instrument Sans", size: 12, weight: 500 } }));
+    top.add(panel(0, 0, 292, 142));
+    top.add(new Label("HIGHGROUND", 20, 16, { color: 0xffd57a, font: { ...UI_FONT, size: 11, weight: 700 } }));
+    top.add(new Label("SUNLIT TERRACES", 104, 16, { color: 0x8fb8ae, font: { ...UI_FONT, size: 11, weight: 600 } }));
+    this.coinIcon = top.add(new Sprite("coin", 42, 66));
+    this.coinIcon.scaleX = this.coinIcon.scaleY = 2.7;
+    this.hud = top.add(new Label("", 70, 40, { color: 0xffe28f, shadow: INK, font: { ...UI_FONT, size: 34, weight: 700 } }));
+    top.add(new Label("SUN COINS FOUND", 72, 80, { color: 0xd9e6d6, font: { ...UI_FONT, size: 10, weight: 700 } }));
+    top.add(new CoinProgress(this, 20, 104, 252));
+    const crateIcon = top.add(new Sprite("crate", 27, 128));
+    crateIcon.scaleX = crateIcon.scaleY = 0.42;
+    this.crateHud = top.add(new Label("", 40, 118, { color: 0xa9c4bf, font: { ...UI_FONT, size: 12, weight: 500 } }));
     const chart = this.ui.add(new Anchor({ x: "right", y: "top", safe: 24 }));
     chart.add(new IslandChart(this));
-    chart.add(new Button("Pause", -162, 202, 162, 38, { onPress: () => this.pauseGame(), style: { fill: 0x103a3d, hover: 0x28575a, text: 0xe4ead3, border: 0x83b6a3, bevel: null } }));
+    chart.add(new Button("Pause", -212, 186, 212, 40, { onPress: () => this.pauseGame(), style: { ...BUTTON, font: { ...UI_FONT, size: 15, weight: 700 } } }));
     const controls = this.ui.add(new Anchor({ x: "left", y: "bottom", safe: 24 }));
     controls.add(new ControlGuide());
     // Tutorial hints from the shell: each names when it applies and what ends it.
@@ -276,23 +332,42 @@ export class PlayScene extends Scene {
         if ((c - col) ** 2 + (r - row) ** 2 > 6.5 ** 2) continue;
         const key = r * COLS + c;
         next.add(key); this.explored.add(key);
-        if (!this.visibleCells.has(key)) this.map.setTint(c, r, 0xffffff);
+        if (!this.visibleCells.has(key)) this.tintCell(key, 0xffffff);
       }
     }
-    for (const key of this.visibleCells) if (!next.has(key)) this.map.setTint(key % COLS, Math.floor(key / COLS), FOG_SEEN);
+    for (const key of this.visibleCells) if (!next.has(key)) this.tintCell(key, FOG_SEEN);
     this.visibleCells = next;
+  }
+
+  /** Fog on a cell: its tiles and everything standing on it share the light. */
+  private tintCell(key: number, fog: number): void {
+    this.map.setTint(key % COLS, Math.floor(key / COLS), mulTint(this.baseTint[key], fog));
+    const props = this.cellProps.get(key);
+    if (props) for (const prop of props) prop.tint = fog;
+  }
+
+  private addCellProp(key: number, sprite: Sprite): void {
+    const list = this.cellProps.get(key);
+    if (list) list.push(sprite);
+    else this.cellProps.set(key, [sprite]);
+  }
+
+  private prop(name: string, x: number, y: number, z: number): Sprite {
+    const sprite = this.world.add(new Sprite(name, x, y));
+    sprite.z = z;
+    return sprite;
   }
 
   private updateHud(): void {
     this.hud.text = `${String(this.score).padStart(2, "0")} / ${this.totalCoins}`;
-    this.crateHud.text = `${this.placed} crates placed  ·  Click to place a crate`;
+    this.crateHud.text = `${this.placed} ${this.placed === 1 ? "crate" : "crates"} placed  ·  click a cell to drop one`;
   }
 
   get coinProgress(): number { return this.score / Math.max(1, this.totalCoins); }
 
   /** The generic projected blob uses sea level. Terrace actors supply their real surface. */
-  private surfaceShadow(x: number, y: number, z: number, scale = 1): Sprite {
-    const shadow = this.world.add(new Sprite("contact", x, y));
+  private surfaceShadow(x: number, y: number, z: number, scale = 1, sprite = "contact"): Sprite {
+    const shadow = this.world.add(new Sprite(sprite, x, y));
     shadow.z = z; shadow.depthBias = -1;
     shadow.scaleX = shadow.scaleY = scale;
     return shadow;
@@ -315,7 +390,7 @@ export class PlayScene extends Scene {
 
   private pauseGame(): void {
     this.jumpBuffer = 0;
-    this.app.scenes.push(new PauseScene({ settings: shell.settings ?? undefined, onQuit: () => this.quit() }), { overlay: true });
+    this.app.scenes.push(new GlassPause({ settings: shell.settings ?? undefined, onQuit: () => this.quit() }), { overlay: true });
   }
 
   /** Fade only canopies in front of and covering the hero, preserving the island's depth. */
@@ -343,21 +418,46 @@ export class PlayScene extends Scene {
     }
   }
 
-  /** Small untextured map: terrain, remaining coin positions and the player's position. */
+  /**
+   * The island chart: a tiny isometric relief of the terrain seen from the game's own angle,
+   * explored cells in colour, the rest under haze, remaining coins and the player on top.
+   */
   drawChart(ctx: DrawContext): void {
+    const ox = 106, oy = 46, hw = 3.9, hh = 1.95, lift = 2.6;
+    const at = (c: number, r: number): [number, number] => [ox + (c - r) * hw, oy + (c + r) * hh];
+    const quad = this.chartQuad;
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
-      const id = this.map.get(c, r);
-      const color = id === WATER ? 0x246d70 : id === STONE ? 0xb1c2b4 : id === SAND ? 0xdbc28b : 0x8cae67;
-      ctx.rect(15 + c * 5, 44 + r * 5, 5, 5, color, this.explored.has(r * COLS + c) ? 1 : 0.48);
+      const key = r * COLS + c, id = this.map.get(c, r), e = this.map.elevationAt(c, r);
+      const seen = this.explored.has(key);
+      let top = id === WATER ? 0x2f9fae : id === STONE ? 0xe6d8bb : id === SAND ? 0xf0d9a2 : 0x94c050;
+      if (id === WATER) top = mulTint(top, this.baseTint[key]);
+      const haze = (color: number) => seen ? color : mixTint(color, 0x1a4049, 0.62);
+      const [x, y0] = at(c, r), y = y0 - e * lift;
+      if (e > 0) {
+        const drop = e * lift;
+        quad[0] = x - hw; quad[1] = y; quad[2] = x; quad[3] = y + hh; quad[4] = x; quad[5] = y + hh + drop; quad[6] = x - hw; quad[7] = y + drop;
+        ctx.quad(quad, haze(id === STONE ? 0xc2ab84 : 0xc08a58));
+        quad[0] = x; quad[1] = y + hh; quad[2] = x + hw; quad[3] = y; quad[4] = x + hw; quad[5] = y + drop; quad[6] = x; quad[7] = y + hh + drop;
+        ctx.quad(quad, haze(id === STONE ? 0x9c845f : 0x93613c));
+      }
+      quad[0] = x; quad[1] = y - hh; quad[2] = x + hw; quad[3] = y; quad[4] = x; quad[5] = y + hh; quad[6] = x - hw; quad[7] = y;
+      ctx.quad(quad, haze(top));
     }
+    const pulse = 0.6 + Math.sin(this.elapsed * 4) * 0.4;
     for (const handle of this.coinCells) {
-      const key = this.coinKeys.get(handle)!;
-      ctx.rect(16 + (key % COLS) * 5, 45 + Math.floor(key / COLS) * 5, 3, 3, 0xffdc69);
+      const key = this.coinKeys.get(handle)!, c = key % COLS, r = Math.floor(key / COLS);
+      const [x, y] = at(c, r);
+      const yy = y - this.map.elevationAt(c, r) * lift;
+      ctx.rect(x - 1.5, yy - 1.5, 3, 3, 0xffd257);
+      ctx.rect(x - 2.5, yy - 2.5, 5, 5, 0xffd257, 0.25 * pulse);
     }
-    const cell = this.map.cellAt(this.gx, this.gy);
-    ctx.rect(14 + cell.col * 5, 43 + cell.row * 5, 7, 7, 0x123c3e);
-    ctx.rect(16 + cell.col * 5, 45 + cell.row * 5, 3, 3, 0xffffff);
+    const [x, y0] = at(this.gx / CELL - 0.5, this.gy / CELL - 0.5), y = y0 - (this.gz / TILE.rise) * lift;
+    ctx.rect(x - 4, y - 4, 8, 8, 0xffffff, 0.25 * pulse);
+    ctx.rect(x - 2.5, y - 2.5, 5, 5, INK);
+    ctx.rect(x - 1.5, y - 1.5, 3, 3, 0xffffff);
   }
+
+  private readonly chartQuad = new Float32Array(8);
 
   /** The cell under a screen point, trying each level from the top so ledges pick correctly. */
   private pick(sx: number, sy: number): { col: number; row: number } | null {
@@ -385,8 +485,25 @@ export class PlayScene extends Scene {
     this.app.scenes.change(title(this.app), { transition: "fade", duration: 0.5 });
   }
 
+  /** The sea: caustic frames, breathing foam, winking glints. Runs even after the finish. */
+  private updateSea(): void {
+    const frame = Math.floor(this.elapsed / WATER_FRAME_TIME) % WATER_FRAMES;
+    if (frame !== this.waterFrame) {
+      this.waterFrame = frame;
+      this.map.tiles[WATER] = `water.${frame}`;
+      this.map.invalidate();
+    }
+    for (const f of this.foam) f.sprite.alpha = 0.72 + Math.sin(this.elapsed * 1.7 + f.phase) * 0.28;
+    for (let i = 0; i < this.glintPhase.length; i++) {
+      const s = Math.sin(this.elapsed * 1.3 + this.glintPhase[i]);
+      const a = s > 0.86 ? (s - 0.86) / 0.14 : 0;
+      this.glints.set(i, { alpha: a * 0.9, sx: 0.4 + a * 0.6, sy: 0.4 + a * 0.6 });
+    }
+  }
+
   override update(dt: number): void {
     this.elapsed += dt;
+    this.updateSea();
     this.updateFeedback(dt);
     if (this.completed) return;
     this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
@@ -436,7 +553,7 @@ export class PlayScene extends Scene {
     this.hero.setPosition(this.gx, this.gy);
     this.hero.z = this.gz + (walking ? Math.abs(Math.sin(this.stride)) * 1.2 : 0);
     const stretch = this.grounded ? -Math.sin(this.landingPulse * Math.PI) * 0.15 : Math.max(-0.05, Math.min(0.12, this.vz / 1400));
-    this.hero.scaleX = 1 - stretch * 0.5; this.hero.scaleY = 1 + stretch;
+    this.hero.scaleX = (1 - stretch * 0.5) * HERO_SCALE; this.hero.scaleY = (1 + stretch) * HERO_SCALE;
     this.contact.setPosition(this.gx, this.gy); this.contact.z = floor;
     const aboveGround = Math.max(0, this.gz - floor);
     this.contact.scaleX = this.contact.scaleY = Math.max(0.45, 0.8 - aboveGround / 110);
@@ -452,7 +569,10 @@ export class PlayScene extends Scene {
       const c = this.coins.get(h);
       if (!c.alive) continue;
       const surface = this.map.heightAt(c.x, c.y);
-      this.coins.set(h, { z: surface + 12 + Math.sin(this.elapsed * 3 + h * 1.7) * 3, sx: 0.65 + Math.abs(Math.sin(this.elapsed * 2 + h)) * 0.35 });
+      const bob = surface + 12 + Math.sin(this.elapsed * 3 + h * 1.7) * 3;
+      this.coins.set(h, { z: bob, sx: 0.65 + Math.abs(Math.sin(this.elapsed * 2 + h)) * 0.35 });
+      const halo = this.coinHalos.get(h);
+      if (halo !== undefined) this.halos.set(halo, { z: bob, alpha: 0.38 + Math.sin(this.elapsed * 2.4 + h) * 0.14, rot: this.elapsed * 0.4 + h });
       if (Math.hypot(c.x - this.gx, c.y - this.gy) < 16 && Math.abs(surface - this.gz) < 20) {
         this.coins.free(h);
         this.coinCells.splice(i, 1);
@@ -460,6 +580,8 @@ export class PlayScene extends Scene {
         this.collected.add(this.coinKeys.get(h)!);
         this.coinKeys.delete(h);
         this.coinShadows.get(h)?.destroy(); this.coinShadows.delete(h);
+        const halo = this.coinHalos.get(h);
+        if (halo !== undefined) { this.halos.free(halo); this.coinHalos.delete(h); }
         this.updateHud();
         this.scorePulse = 1;
         const label = this.world.add(new Label("+1", c.x, c.y, { color: 0xffe5a0, align: "center", shadow: 0x163f3f, font: { family: "Instrument Sans", size: 16, weight: 700 } }));
@@ -505,6 +627,7 @@ export class PlayScene extends Scene {
     const crate = this.world.add(new Sprite("crate", x, y));
     crate.z = floor + (animate ? 40 : 0); crate.depthBias = 0.5;
     this.surfaceShadow(x, y, floor, 0.9);
+    this.surfaceShadow(x, y, floor, 0.55, "shadow.cast");
     if (animate) {
       this.tweens.to(crate, { z: floor }, 0.35, { ease: "outBack" });
       this.app.audio.play("place");
@@ -516,10 +639,13 @@ export class PlayScene extends Scene {
     this.completed = true; this.marker.visible = false;
     shell.saves?.autosave(this.progress());
     const card = this.ui.add(new Anchor({ x: "center", y: "center" }));
-    card.add(new Panel(-230, -112, 460, 224, { fill: 0x123d3f, fillAlpha: 0.98, border: 0xdcc378, bevel: null }));
-    card.add(new Label("THE ISLAND IS YOURS", 0, -81, { align: "center", color: 0xffdc80, font: { family: "Instrument Sans", size: 26, weight: 700 } }));
-    card.add(new Label(`All ${this.totalCoins} sun coins found. A little higher, a little brighter.`, 0, -30, { align: "center", color: 0xe0ead2, font: { family: "Instrument Sans", size: 15, weight: 500 } }));
-    card.add(new Button("Explore again", -116, 26, 232, 48, { onPress: () => this.app.scenes.change(new PlayScene(), { transition: "fade", duration: 0.4 }), style: { fill: 0xc3d899, text: 0x173d38, hover: 0xd9e6bb, border: null, bevel: null } }));
+    card.add(panel(-240, -128, 480, 256));
+    const sun = card.add(new Sprite("ui.sun", 0, -118));
+    sun.scaleX = sun.scaleY = 1.4;
+    card.add(new Label("THE ISLAND IS YOURS", 0, -66, { align: "center", color: 0xffdc80, shadow: INK, font: { ...UI_FONT, size: 28, weight: 700 } }));
+    card.add(new Label(`All ${this.totalCoins} sun coins found.`, 0, -20, { align: "center", color: 0xf3ead2, font: { ...UI_FONT, size: 16, weight: 600 } }));
+    card.add(new Label("A little higher, a little brighter.", 0, 4, { align: "center", color: 0x9fc2b8, font: { ...UI_FONT, size: 14, weight: 500 } }));
+    card.add(new Button("Explore again", -120, 50, 240, 50, { onPress: () => this.app.scenes.change(new PlayScene(), { transition: "fade", duration: 0.4 }), style: { ...GOLD_BUTTON, font: { ...UI_FONT, size: 17, weight: 700 } } }));
   }
 
   /** Walk unless the next cell is water, off the island, or a wall too high to step onto. */
@@ -536,32 +662,54 @@ export class PlayScene extends Scene {
 }
 
 class IslandChart extends Node2D {
-  constructor(private readonly play: PlayScene) { super(-162, 0); }
+  constructor(private readonly play: PlayScene) { super(-212, 0); }
   override render(ctx: DrawContext): void {
-    ctx.rect(0, 0, 162, 190, 0x103a3d, 0.94);
-    ctx.frame(0, 0, 162, 190, 0x83b6a3);
-    ctx.text("ISLAND CHART", 16, 15, { color: 0xf6edd2, font: { family: "Instrument Sans", size: 13, weight: 700 } });
+    drawPanel(ctx, 0, 0, 212, 172);
+    ctx.text("ISLAND CHART", 18, 15, { color: 0xffd57a, font: { ...UI_FONT, size: 11, weight: 700 } });
     this.play.drawChart(ctx);
   }
 }
 
+/** A rounded gold capsule filling as coins come in. */
 class CoinProgress extends Node2D {
-  constructor(private readonly play: PlayScene, x: number, y: number) { super(x, y); }
-  override render(ctx: DrawContext): void {
-    ctx.rect(0, 0, 268, 5, 0x315b56);
-    ctx.rect(0, 0, 268 * this.play.coinProgress, 5, 0xffdc80);
+  private readonly fill: NineSlice;
+  private shown = 0;
+  constructor(private readonly play: PlayScene, x: number, y: number, private readonly w: number) {
+    super(x, y);
+    this.add(new NineSlice("ui.bar.track", 0, 0, w, 8, 4));
+    this.fill = this.add(new NineSlice("ui.bar.fill", 0, 0, 0, 8, 4));
+  }
+  override render(): void {
+    this.shown += (this.play.coinProgress - this.shown) * 0.15;
+    const w = this.w * this.shown;
+    this.fill.visible = w > 1;
+    this.fill.w = Math.max(8, w);
   }
 }
 
+/** Keycaps for the controls, in the device the player last used. */
 class ControlGuide extends Node2D {
   override render(ctx: DrawContext): void {
+    drawPanel(ctx, 0, -66, 292, 66);
     const app = this.scene!.app;
     // Pointer taps also mark the input device as touch, but this example has no virtual stick.
     // Keep the actual keyboard bindings visible after a menu tap; gamepads get their glyphs.
     const glyph = (action: string): string => app.input.lastDevice === "gamepad" ? glyphFor(app, action) : keyName(app.input.bindingsOf(action).find((code) => !code.startsWith("Gamepad")) ?? action);
-    const move = app.input.lastDevice === "gamepad" ? "Left stick / D-pad" : `${glyph("up")} ${glyph("left")} ${glyph("down")} ${glyph("right")}`;
-    ctx.rect(0, -55, 304, 55, 0x103a3d, 0.9);
-    ctx.text(`${move}  MOVE`, 15, -44, { color: 0xd5e4ca, font: { family: "Instrument Sans", size: 12, weight: 600 } });
-    ctx.text(`${glyph("jump")}  JUMP     ${glyph("pause")}  PAUSE`, 15, -22, { color: 0xffdc80, font: { family: "Instrument Sans", size: 12, weight: 600 } });
+    const keyFont = { ...UI_FONT, size: 11, weight: 700 };
+    const labelFont = { ...UI_FONT, size: 10, weight: 700 };
+    const key = (text: string, x: number, y: number): number => {
+      const w = Math.max(22, Math.ceil(ctx.measure(text, 1, 0, keyFont)) + 12);
+      drawNine(ctx, "ui.key", x, y, w, 20, 6);
+      ctx.text(text, x + w / 2, y + 4, { align: "center", color: 0xf3ead2, font: keyFont });
+      return x + w + 4;
+    };
+    let x = 16;
+    if (app.input.lastDevice === "gamepad") x = key("Left stick", x, -54);
+    else for (const action of ["up", "left", "down", "right"]) x = key(glyph(action), x, -54);
+    ctx.text("MOVE", x + 6, -50, { color: 0xa9c4bf, font: labelFont });
+    x = key(glyph("jump"), 16, -28);
+    ctx.text("JUMP", x + 6, -24, { color: 0xffd57a, font: labelFont });
+    x = key(glyph("pause"), x + 54, -28);
+    ctx.text("PAUSE", x + 6, -24, { color: 0xa9c4bf, font: labelFont });
   }
 }

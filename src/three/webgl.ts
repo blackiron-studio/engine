@@ -602,6 +602,7 @@ export class WebGL3DStage {
               : 0,
         );
         gl.uniform1f(u.uToneMapped, material.toneMapped ? 1 : 0);
+        gl.uniform1f(u.uFogDensity, material.fog === false ? 0 : Math.max(0, environment.fogDensity));
         gl.uniform1f(u.uLambertAmbient, Math.max(0, material.lambertAmbient));
         gl.uniform1f(u.uLambertDiffuse, Math.max(0, material.lambertDiffuse));
         gl.uniform1f(u.uReceiveShadow, group.receiveShadow ? 1 : 0);

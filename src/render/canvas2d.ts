@@ -3,7 +3,7 @@
 // canvas, the overlay is its own canvas drawn last, and the grade uses CSS filters.
 // Sprite tint, LUTs, grain and scanlines are not supported here.
 
-import type { Atlas } from "../art/atlas.ts";
+import { texelSize, Atlas } from "../art/atlas.ts";
 import { estimateText } from "./glyphs.ts";
 import {
   type FontSpec,
@@ -304,13 +304,14 @@ export class Canvas2DRenderer implements Renderer {
     c.setTransform(ax * L.sx, ay * L.sy, bx * L.sx, by * L.sy, tx * L.sx, ty * L.sy);
     c.globalAlpha = d.alpha ?? 1;
     c.globalCompositeOperation = d.erase ? "destination-out" : d.additive ? "lighter" : "source-over";
-    c.imageSmoothingEnabled = d.smooth ?? false;
-    c.drawImage(this.atlasCanvas, r.x, r.y, r.w, r.h, -ox, -oy, r.w, r.h);
+    c.imageSmoothingEnabled = d.smooth ?? r.smooth ?? false;
+    const [tw, th] = texelSize(r);
+    c.drawImage(this.atlasCanvas, r.x, r.y, tw, th, -ox, -oy, r.w, r.h);
     // Materials are approximated: a flash brightens the sprite; the rest draw plainly.
     if (d.material?.kind === "flash" && (d.material.p0 ?? 1) > 0) {
       c.globalCompositeOperation = "lighter";
       c.globalAlpha = (d.alpha ?? 1) * Math.min(1, d.material.p0 ?? 1) * 0.7;
-      c.drawImage(this.atlasCanvas, r.x, r.y, r.w, r.h, -ox, -oy, r.w, r.h);
+      c.drawImage(this.atlasCanvas, r.x, r.y, tw, th, -ox, -oy, r.w, r.h);
       c.globalCompositeOperation = "source-over";
     }
     this.stats.sprites++;

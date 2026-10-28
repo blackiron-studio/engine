@@ -137,7 +137,7 @@ export class Native3DEncoder {
       u.set(rgb(e.sunColor, e.sunIntensity), 92);
       u[95] = e.shadows && mesh.receiveShadow && !viewmodel ? 1 : 0;
       u.set(rgb(e.fogColor), 96);
-      u[99] = e.fogDensity;
+      u[99] = m.fog === false ? 0 : e.fogDensity;
       u.set(
         maps.map((id) => (id ? 1 : 0)),
         100,

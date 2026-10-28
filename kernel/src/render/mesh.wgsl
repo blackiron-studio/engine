@@ -75,6 +75,7 @@ fn brdf(n:vec3<f32>,v:vec3<f32>,l:vec3<f32>,radiance:vec3<f32>,base:vec3<f32>,ro
     let view=normalize(u.eye.xyz-v.position);let sun=u.sunColor.rgb*max(dot(n,u.sun.xyz),0.0)*shadow(v,n);
     var lighting=vec3(u.ambient.w)+u.ground.w*sun;
     color=base*mix(linear(u.ground.rgb),linear(u.ambient.rgb),n.y*0.5+0.5)*(1.0-0.65*metal)+brdf(n,view,u.sun.xyz,u.sunColor.rgb,base,rough,metal)*shadow(v,n);
+    let refl=reflect(-view,n);let envColor=mix(linear(u.ground.rgb),linear(u.ambient.rgb),smoothstep(-0.25,0.65,refl.y));let f0=mix(vec3(0.04),base,metal);let envFresnel=f0+(max(vec3(1.0-rough),f0)-f0)*pow(1.0-max(dot(n,view),0.0),5.0);color+=envColor*envFresnel*(1.0-rough*0.75);
     for(var i=0u;i<8u;i++){if(f32(i)>=u.flags.x){break;}let delta=u.points[i].xyz-v.position;let dist=length(delta);let range=u.points[i].w;let falloff=pow(clamp(1.0-pow(dist/range,4.0),0.0,1.0),2.0)/(1.0+dist*dist);let direction=delta/max(dist,0.0001);lighting+=u.ground.w*u.pointColors[i].rgb*falloff*max(dot(n,direction),0.0);color+=brdf(n,view,direction,u.pointColors[i].rgb*falloff,base,rough,metal);}
     if(u.material.z>0.5){color=linear(palette*lighting);}
   }

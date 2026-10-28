@@ -108,22 +108,36 @@ export class BreachScene extends Scene3D {
     this.camera3D.far = 160;
     this.look.sensitivity = settings.sensitivity;
     this.look.invertY = settings.invertY;
-    this.background = 0xb6c9c8;
+    // Dusk storm over the sea: a low copper sun under a slate sky, cool fill, salt haze.
+    this.background = 0x2a2c36;
     Object.assign(this.environment, {
-      ambient: 0xcde9df,
-      ambientIntensity: 0.65,
-      groundColor: 0x586d70,
-      sunColor: 0xffe7c2,
-      sunIntensity: 2.2,
-      fogColor: 0xb6c9c8,
-      fogDensity: 0.008,
+      ambient: 0x7f93b4,
+      ambientIntensity: 0.8,
+      groundColor: 0x3a3438,
+      sunColor: 0xffb47c,
+      sunIntensity: 3.1,
+      fogColor: 0x5a5665,
+      fogDensity: 0.0115,
+      exposure: 1.2,
       shadows: true,
       shadowMapSize: 2048,
       shadowExtent: 34,
       shadowBias: 0.0007,
     });
-    this.environment.sunDirection.set(-0.5, 1, 0.35);
+    this.environment.sunDirection.set(-0.78, 0.46, -0.42);
     this.environment.shadowTarget.set(0, 1, -3);
+    Object.assign(this.post, {
+      bloom: 0.62,
+      bloomThreshold: 0.7,
+      bloomPasses: 3,
+      vignette: 0.36,
+      saturation: 1.08,
+      contrast: 1.12,
+      brightness: 1.0,
+      tint: 0xd8e4ff,
+      tintAmount: 0.06,
+      grain: 0.035,
+    });
     this.art = new BreachArt(this, physicsWorld);
     this.navigation = this.art.navigation();
     this.player = this.resources.own(
@@ -373,11 +387,7 @@ export class BreachScene extends Scene3D {
     }
     const i = this.nearestRelay;
     this.state.relays[i] = true;
-    const lamp = this.art.relayLamps[i];
-    lamp.color = lamp.emissive = P.cyan;
-    for (const c of this.art.relays[i].children)
-      if (c instanceof Mesh3D && c.geometry === this.art.ring)
-        c.material = this.art.mat(P.cyan, true);
+    this.art.activateRelay(i);
     this.state.health = Math.min(100, this.state.health + 30);
     for (const w of this.weapons) w.reserve += w.definition.magazine * 2;
     this.app.audio.play("breach-relay");
@@ -623,6 +633,7 @@ export class BreachScene extends Scene3D {
         this.nearestRelay = i;
     }
     this.art.rotor.rotation.y = s.time * 0.2;
+    this.art.animate(s.time);
     for (const r of this.art.relays) {
       const ring = r.children.find(
         (c) => c instanceof Mesh3D && c.geometry === this.art.ring,
@@ -728,8 +739,8 @@ export class BreachScene extends Scene3D {
   }
   private placeCamera(): void {
     if (this.state.phase === "title") {
-      this.camera3D.position.set(12, 6.5, 21);
-      this.camera3D.lookAt(-1, 3, -7);
+      this.camera3D.position.set(8.5, 5.6, 22);
+      this.camera3D.lookAt(-3.5, 2.6, -8);
       this.art.weaponRoot.visible = false;
       return;
     }
@@ -782,6 +793,8 @@ export class BreachScene extends Scene3D {
       );
     }
     this.art.muzzle.visible = this.flash > 0;
+    this.art.muzzleLight.intensity = this.flash > 0 ? 7 : 0;
+    this.art.muzzleLight.position.copy(this.art.muzzle.position);
     this.art.muzzle.position.set(
       0.26,
       -0.25 * Math.cos(this.look.pitch) + 1.14 * Math.sin(this.look.pitch),
@@ -822,6 +835,7 @@ class BreachHud extends Node {
     const g = this.game,
       s = g.state,
       w = g.weapons[g.weaponIndex],
+      clock = g.app.time,
       text = (
         value: string,
         x: number,
@@ -830,102 +844,105 @@ class BreachHud extends Node {
         color = 0xe5ebdf,
         align: "left" | "center" | "right" = "left",
         weight = 600,
+        alpha = 1,
       ) =>
         ctx.text(value, x, y, {
           font: { family: "Arial", size, weight },
           color,
           align,
           shadow: null,
+          alpha,
         });
-    const button = (
-      label: string,
-      x: number,
-      y: number,
-      width: number,
-      accent = true,
-    ) => {
-      ctx.rect(x, y, width, 52, accent ? P.cyan : P.dark, 0.96);
-      text(
-        label,
-        x + width / 2,
-        y + 16,
-        16,
-        accent ? P.black : P.chalk,
-        "center",
-        700,
-      );
+    // Glass panel: deep slate fill, a hairline frame and cyan corner brackets.
+    const panel = (x: number, y: number, pw: number, ph: number, accent: number = P.cyan, alpha = 0.78) => {
+      ctx.rect(x, y, pw, ph, P.black, alpha);
+      ctx.rect(x, y, pw, Math.min(18, ph / 3), 0x1d2a35, 0.35);
+      ctx.frame(x, y, pw, ph, 0x8fa6b3, 0.16);
+      const c = 9;
+      ctx.rect(x - 1, y - 1, c, 2, accent);
+      ctx.rect(x - 1, y - 1, 2, c, accent);
+      ctx.rect(x + pw - c + 1, y + ph - 1, c, 2, accent);
+      ctx.rect(x + pw - 1, y + ph - c + 1, 2, c, accent);
     };
-    // Small persistent framing details, designed at 1280×720.
+    const button = (label: string, x: number, y: number, width: number, accent = true) => {
+      if (accent) {
+        ctx.rect(x - 3, y - 3, width + 6, 58, P.cyan, 0.12, true);
+        ctx.rect(x, y, width, 52, P.cyan, 0.97);
+        ctx.rect(x, y + 48, width, 4, 0x2fb9a4, 1);
+        ctx.rect(x + width - 52, y, 1, 52, P.black, 0.25);
+      } else {
+        ctx.rect(x, y, width, 52, P.dark, 0.96);
+        ctx.frame(x, y, width, 52, P.steel, 0.4);
+      }
+      text(label, x + width / 2, y + 16, 16, accent ? P.black : P.chalk, "center", 700);
+    };
+    const blink = Math.sin(clock * 5) > 0;
     if (s.phase === "title") {
-      ctx.rect(36, 38, 450, 625, P.black, 0.94);
+      // Left column: the title card. Hit areas match BreachScene's pointer handlers.
+      for (let k = 0; k < 8; k++) ctx.rect(0, 0, 520 + k * 40, 720, P.black, 0.07);
+      ctx.rect(36, 38, 450, 625, P.black, 0.86);
+      ctx.rect(36, 38, 450, 120, 0x15212b, 0.5);
+      ctx.frame(36, 38, 450, 625, 0x8fa6b3, 0.18);
       ctx.rect(36, 38, 4, 625, P.cyan);
+      ctx.rect(40, 38, 10, 625, P.cyan, 0.08, true);
       ctx.rect(66, 70, 28, 4, P.cyan);
       text("RELAY 07   /   OFFSHORE ARRAY", 108, 63, 12, P.cyan);
-      text("SIGNAL", 60, 110, 88, 0xf0ecda, "left", 800);
-      text("BREACH", 60, 190, 88, 0xf0ecda, "left", 800);
+      text("SIGNAL", 63, 113, 88, 0x000000, "left", 800, 0.5);
+      text("SIGNAL", 60, 110, 88, 0xf3efe2, "left", 800);
+      text("BREACH", 63, 193, 88, 0x000000, "left", 800, 0.5);
+      text("BREACH", 60, 190, 88, 0xf3efe2, "left", 800);
+      ctx.rect(66, 283, 64, 3, P.orange);
+      ctx.rect(134, 283, 18, 3, P.orange, 0.5);
+      ctx.rect(156, 283, 6, 3, P.orange, 0.3);
       text("THE STATION IS NO LONGER OURS.", 68, 304, 13, P.orange);
-      text(
-        "Cut through security. Reboot three relays.",
-        68,
-        343,
-        17,
-        0xb9cbc3,
-        "left",
-        400,
-      );
-      text(
-        "Two weapons. Three response waves.",
-        68,
-        370,
-        17,
-        0xb9cbc3,
-        "left",
-        400,
-      );
-      text(
-        "One way to bring the signal back.",
-        68,
-        397,
-        17,
-        0xb9cbc3,
-        "left",
-        400,
-      );
+      text("Cut through security. Reboot three relays.", 68, 343, 17, 0xb9c8cc, "left", 400);
+      text("Two weapons. Three response waves.", 68, 370, 17, 0xb9c8cc, "left", 400);
+      text("One way to bring the signal back.", 68, 397, 17, 0xb9c8cc, "left", 400);
+      ctx.rect(68, 440, 386, 1, P.steel, 0.3);
       text("01  /  SINGLE PLAYER CAMPAIGN", 68, 456, 12, P.chalk);
       button("ENTER THE STATION   →", 66, 493, 322);
       text("CONTROL SETTINGS", 68, 573, 12, P.cyan);
-      text("ENTER TO BEGIN", 390, 573, 11, P.chalk, "right");
+      text("ENTER TO BEGIN", 390, 573, 11, P.chalk, "right", 600, blink ? 1 : 0.45);
+      ctx.rect(68, 605, 386, 1, P.steel, 0.3);
       text("A BLACKIRON ORIGINAL", 68, 625, 11, P.steel);
       text("FPS  /  01", 453, 625, 11, P.steel, "right");
-      text("SECURITY OVERRIDE REQUIRED", 1227, 53, 11, P.black, "right");
-      text("07", 1232, 569, 92, P.black, "right", 800);
-      text("THE RELAY STATION", 1226, 667, 13, P.black, "right");
+      // Right column: status chips over the scene.
+      panel(1000, 38, 240, 32, P.red, 0.7);
+      ctx.rect(1016, 50, 8, 8, P.red, blink ? 1 : 0.3);
+      text("SECURITY OVERRIDE REQUIRED", 1227, 48, 11, P.chalk, "right");
+      text("STORM ADVISORY  ·  WIND 41 KN  ·  SEA STATE 6", 1227, 82, 10, P.steel, "right");
+      text("07", 1235, 572, 92, 0x000000, "right", 800, 0.45);
+      text("07", 1232, 569, 92, P.chalk, "right", 800, 0.92);
+      ctx.rect(1110, 660, 122, 2, P.cyan);
+      text("THE RELAY STATION", 1226, 670, 13, P.chalk, "right");
     } else {
-      ctx.rect(28, 25, 287, 61, P.black, 0.9);
+      panel(28, 25, 287, 61);
       ctx.rect(28, 25, 3, 61, P.cyan);
-      text("SIGNAL BREACH", 45, 38, 15, P.chalk);
+      text("SIGNAL BREACH", 45, 38, 15, P.chalk, "left", 700);
       text(`${s.completed} / 3 RELAYS ONLINE`, 45, 62, 11, P.cyan);
       for (let i = 0; i < 3; i++) {
-        ctx.rect(
-          230 + i * 22,
-          48,
-          13,
-          18,
-          s.relays[i] ? P.cyan : P.steel,
-          s.relays[i] ? 1 : 0.45,
-        );
+        if (s.relays[i]) ctx.rect(228 + i * 22, 46, 17, 22, P.cyan, 0.25, true);
+        ctx.rect(230 + i * 22, 48, 13, 18, s.relays[i] ? P.cyan : P.steel, s.relays[i] ? 1 : 0.3);
       }
+      // Compass strip: ticks every 15 degrees, cardinal letters, centred heading readout.
       const heading = ((((g.look.yaw * 180) / Math.PI) % 360) + 360) % 360;
-      text(
-        `RELAY 07     ${Math.round(heading).toString().padStart(3, "0")}°     OFFSHORE`,
-        640,
-        34,
-        11,
-        P.black,
-        "center",
-      );
-      ctx.rect(990, 25, 262, 61, P.black, 0.9);
-      text(`RESPONSE ${Math.min(3, s.wave + 1)} / 3`, 1008, 39, 12, P.chalk);
+      ctx.rect(470, 26, 340, 26, P.black, 0.55);
+      ctx.rect(470, 52, 340, 1, P.steel, 0.35);
+      for (let d = -165; d <= 180; d += 15) {
+        const deg = Math.round(heading / 15) * 15 + d,
+          x = 640 + (deg - heading) * 1.6;
+        if (x < 476 || x > 804) continue;
+        const n = ((deg % 360) + 360) % 360,
+          card = n % 90 === 0,
+          fade = 1 - Math.abs(x - 640) / 170;
+        ctx.rect(x, card ? 40 : 45, 1, card ? 12 : 7, P.chalk, 0.6 * fade);
+        if (card) text(["N", "E", "S", "W"][n / 90], x, 27, 11, n === 0 ? P.orange : P.chalk, "center", 700, fade);
+      }
+      ctx.rect(639, 52, 2, 6, P.cyan);
+      text(`${Math.round(heading).toString().padStart(3, "0")}°`, 640, 60, 10, P.cyan, "center");
+      text("RELAY 07  ·  OFFSHORE", 640, 76, 9, P.steel, "center");
+      panel(990, 25, 262, 61);
+      text(`RESPONSE ${Math.min(3, s.wave + 1)} / 3`, 1008, 39, 12, P.chalk, "left", 700);
       text(
         `${String(Math.floor(s.time / 60)).padStart(2, "0")}:${String(Math.floor(s.time % 60)).padStart(2, "0")}`,
         1233,
@@ -933,46 +950,31 @@ class BreachHud extends Node {
         20,
         P.cyan,
         "right",
+        700,
       );
-      text(
-        `${g.enemies.filter((e) => e.health > 0).length} HOSTILES   /   ${s.kills} NEUTRALIZED`,
-        1008,
-        63,
-        10,
-        P.steel,
-      );
+      text(`${g.enemies.filter((e) => e.health > 0).length} HOSTILES   /   ${s.kills} NEUTRALIZED`, 1008, 63, 10, P.steel);
       // Map is deliberately schematic: route choice, relays and moving contacts.
-      ctx.rect(1110, 102, 142, 158, P.black, 0.78);
+      panel(1110, 102, 142, 158, P.cyan, 0.7);
+      ctx.frame(1128, 117, 106, 118, P.steel, 0.25);
+      ctx.rect(1181 - 13 * 2.2, 117, 1, 118, P.steel, 0.15);
+      ctx.rect(1181 + 13 * 2.2, 117, 1, 118, P.steel, 0.15);
       for (let i = 0; i < 3; i++) {
         const p = RELAYS[i];
-        ctx.rect(
-          1181 + p.x * 2.2 - 3,
-          180 + p.z * 2.1 - 3,
-          6,
-          6,
-          s.relays[i] ? P.cyan : P.orange,
-        );
+        ctx.rect(1181 + p.x * 2.2 - 3, 180 + p.z * 2.1 - 3, 6, 6, s.relays[i] ? P.cyan : P.amber);
+        ctx.rect(1181 + p.x * 2.2 - 5, 180 + p.z * 2.1 - 5, 10, 10, s.relays[i] ? P.cyan : P.amber, 0.25, true);
       }
       for (const e of g.enemies)
-        if (e.health > 0)
-          ctx.rect(
-            1181 + e.position.x * 2.2 - 2,
-            180 + e.position.z * 2.1 - 2,
-            4,
-            4,
-            P.red,
-          );
-      ctx.rect(
-        1181 + g.player.position.x * 2.2 - 3,
-        180 + g.player.position.z * 2.1 - 3,
-        6,
-        6,
-        0xffffff,
-      );
+        if (e.health > 0) {
+          ctx.rect(1181 + e.position.x * 2.2 - 2, 180 + e.position.z * 2.1 - 2, 4, 4, P.red);
+          ctx.rect(1181 + e.position.x * 2.2 - 4, 180 + e.position.z * 2.1 - 4, 8, 8, P.red, blink ? 0.3 : 0.1, true);
+        }
+      ctx.rect(1181 + g.player.position.x * 2.2 - 3, 180 + g.player.position.z * 2.1 - 3, 6, 6, 0xffffff);
       text("RELAY SCAN", 1181, 244, 9, P.steel, "center");
-      // Minimal crosshair expands with recoil. White hit confirmation is brief.
+      // Minimal crosshair expands with recoil. Hit confirmation is brief.
       const gap = 5 + g.recoil * 40,
         color = s.hitMarker > 0 ? P.orange : P.cyan;
+      ctx.rect(640 - gap - 9, 358, 9, 4, P.black, 0.35);
+      ctx.rect(640 + gap, 358, 9, 4, P.black, 0.35);
       ctx.rect(640 - gap - 8, 359, 7, 2, color);
       ctx.rect(640 + gap + 1, 359, 7, 2, color);
       ctx.rect(639, 360 - gap - 8, 2, 7, color);
@@ -987,128 +989,78 @@ class BreachHud extends Node {
         ])
           ctx.rect(640 + x, 360 + y, 4, 4, P.orange);
       }
-      ctx.rect(28, 617, 266, 77, P.black, 0.9);
-      ctx.rect(28, 617, 3, 77, s.health < 30 ? P.red : P.cyan);
-      text("INTEGRITY", 46, 631, 10, P.steel);
-      text(
-        String(Math.ceil(s.health)).padStart(3, "0"),
-        45,
-        650,
-        31,
-        s.health < 30 ? P.red : P.chalk,
-        "left",
-        700,
-      );
-      for (let i = 0; i < 10; i++)
-        ctx.rect(
-          118 + i * 15,
-          663,
-          11,
-          14,
-          s.health > i * 10 ? P.cyan : P.steel,
-          s.health > i * 10 ? 1 : 0.2,
-        );
-      ctx.rect(968, 601, 284, 93, P.black, 0.92);
+      const low = s.health < 30;
+      panel(28, 617, 266, 77, low ? P.red : P.cyan);
+      ctx.rect(28, 617, 3, 77, low ? P.red : P.cyan);
+      text("INTEGRITY", 46, 631, 10, P.steel, "left", 700);
+      text(String(Math.ceil(s.health)).padStart(3, "0"), 45, 650, 31, low ? P.red : P.chalk, "left", 700);
+      for (let i = 0; i < 10; i++) {
+        const on = s.health > i * 10;
+        ctx.rect(118 + i * 15, 663, 11, 14, on ? (low ? P.red : P.cyan) : P.steel, on ? 1 : 0.18);
+        if (on) ctx.rect(118 + i * 15, 663, 11, 3, 0xffffff, 0.25);
+      }
+      if (low && blink) ctx.rect(118, 683, 146, 2, P.red, 0.8);
+      panel(968, 601, 284, 93, P.orange);
       ctx.rect(1249, 601, 3, 93, P.orange);
-      text(
-        g.weaponIndex === 0 ? "AR-04 / PULSE RIFLE" : "SG-08 / SCATTERGUN",
-        989,
-        615,
-        11,
-        P.chalk,
-      );
-      text(String(w.ammo).padStart(2, "0"), 990, 638, 39, P.chalk);
+      text(g.weaponIndex === 0 ? "AR-04 / PULSE RIFLE" : "SG-08 / SCATTERGUN", 989, 615, 11, P.chalk, "left", 700);
+      text(String(w.ammo).padStart(2, "0"), 990, 638, 39, w.ammo <= w.definition.magazine * 0.25 ? P.orange : P.chalk, "left", 700);
       text(`/ ${w.reserve}`, 1050, 658, 15, P.steel);
-      text("1  RIFLE    2  SCATTER", 1230, 639, 10, P.steel, "right");
-      text(
-        w.reloadRemaining > 0 ? "RELOADING…" : "R  RELOAD",
-        1230,
-        672,
-        10,
-        w.reloadRemaining > 0 ? P.orange : P.cyan,
-        "right",
-      );
-      if (w.reloadRemaining > 0)
-        ctx.rect(
-          990,
-          689,
-          236 * (1 - w.reloadRemaining / w.definition.reloadSeconds),
-          2,
-          P.orange,
-        );
-      text(
-        "WASD MOVE   SHIFT SPRINT   SPACE JUMP   E RELAY",
-        640,
-        675,
-        10,
-        P.chalk,
-        "center",
-      );
-      text(
-        "ESC PAUSE   •   F1 SETTINGS   •   M SOUND",
-        640,
-        694,
-        9,
-        P.steel,
-        "center",
-      );
+      for (let i = 0; i < 2; i++) ctx.rect(1132 + i * 50, 652, 44, 2, i === g.weaponIndex ? P.cyan : P.steel, i === g.weaponIndex ? 1 : 0.3);
+      text("1  RIFLE    2  SCATTER", 1230, 635, 10, P.steel, "right");
+      text(w.reloadRemaining > 0 ? "RELOADING…" : "R  RELOAD", 1230, 672, 10, w.reloadRemaining > 0 ? P.orange : P.cyan, "right", 700);
+      if (w.reloadRemaining > 0) ctx.rect(990, 689, 236 * (1 - w.reloadRemaining / w.definition.reloadSeconds), 2, P.orange);
+      text("WASD MOVE   SHIFT SPRINT   SPACE JUMP   E RELAY", 640, 675, 10, P.chalk, "center", 600, 0.75);
+      text("ESC PAUSE   •   F1 SETTINGS   •   M SOUND", 640, 694, 9, P.steel, "center");
       if (g.nearestRelay >= 0 && s.phase === "playing") {
-        ctx.rect(420, 478, 440, 54, P.black, 0.92);
-        text(
-          g.enemies.some((e) => e.health > 0)
-            ? "RELAY LOCKED / CLEAR SECURITY FIRST"
-            : "[ E ]   REBOOT RELAY / RESTORE +30 INTEGRITY",
-          640,
-          498,
-          12,
-          P.cyan,
-          "center",
-        );
+        const locked = g.enemies.some((e) => e.health > 0);
+        panel(420, 478, 440, 54, locked ? P.red : P.amber, 0.88);
+        text(locked ? "RELAY LOCKED / CLEAR SECURITY FIRST" : "[ E ]   REBOOT RELAY / RESTORE +30 INTEGRITY", 640, 498, 12, locked ? P.red : P.amber, "center", 700);
       }
       if (s.noticeTime > 0) {
-        ctx.rect(387, 111, 506, 37, P.black, 0.82);
-        text(s.notice, 640, 123, 12, P.cyan, "center");
+        const a = Math.min(1, s.noticeTime * 3);
+        ctx.rect(387, 111, 506, 37, P.black, 0.78 * a);
+        ctx.rect(387, 111, 506, 1, P.cyan, 0.6 * a);
+        ctx.rect(387, 147, 506, 1, P.cyan, 0.6 * a);
+        ctx.rect(387, 111, 3, 37, P.cyan, a);
+        ctx.rect(890, 111, 3, 37, P.cyan, a);
+        text(s.notice, 640, 123, 12, P.cyan, "center", 700, a);
       }
       if (s.damageFlash > 0) {
-        ctx.rect(0, 0, 1280, 7, P.red, s.damageFlash * 2);
-        ctx.rect(0, 713, 1280, 7, P.red, s.damageFlash * 2);
-        ctx.rect(0, 0, 7, 720, P.red, s.damageFlash * 2);
-        ctx.rect(1273, 0, 7, 720, P.red, s.damageFlash * 2);
+        const a = s.damageFlash * 2;
+        for (let k = 0; k < 4; k++) {
+          const t = 8 + k * 14,
+            al = a * (0.5 - k * 0.11);
+          ctx.rect(0, 0, 1280, t, P.red, al);
+          ctx.rect(0, 720 - t, 1280, t, P.red, al);
+          ctx.rect(0, 0, t, 720, P.red, al);
+          ctx.rect(1280 - t, 0, t, 720, P.red, al);
+        }
       }
       if (s.phase === "playing" && !g.lock?.locked) {
-        ctx.rect(402, 554, 476, 40, P.black, 0.9);
+        panel(402, 554, 476, 40, P.cyan, 0.85);
         text(
-          g.lock?.dragFallback
-            ? "HOLD RIGHT MOUSE TO AIM · LEFT CLICK FIRES"
-            : "CLICK TO CAPTURE MOUSE  /  ARROWS AIM · J FIRES",
+          g.lock?.dragFallback ? "HOLD RIGHT MOUSE TO AIM · LEFT CLICK FIRES" : "CLICK TO CAPTURE MOUSE  /  ARROWS AIM · J FIRES",
           640,
           568,
           11,
           P.cyan,
           "center",
+          700,
         );
       }
     }
     if (s.phase === "paused" || s.phase === "won" || s.phase === "lost") {
       ctx.rect(0, 0, 1280, 720, P.black, 0.62);
-      ctx.rect(415, 172, 450, 428, P.black, 0.97);
-      ctx.rect(415, 172, 450, 3, P.cyan);
+      const accent = s.phase === "lost" ? P.orange : P.cyan;
+      ctx.rect(415, 172, 450, 428, P.black, 0.95);
+      ctx.rect(415, 172, 450, 90, 0x15212b, 0.6);
+      ctx.frame(415, 172, 450, 428, 0x8fa6b3, 0.2);
+      ctx.rect(415, 172, 450, 3, accent);
+      ctx.rect(415, 175, 450, 8, accent, 0.08, true);
       text("RELAY 07 / OPERATOR STATUS", 640, 203, 11, P.steel, "center");
-      const title =
-        s.phase === "paused"
-          ? "SIGNAL HELD"
-          : s.phase === "won"
-            ? "SIGNAL RESTORED"
-            : "SIGNAL LOST";
-      text(
-        title,
-        640,
-        256,
-        36,
-        s.phase === "lost" ? P.orange : P.chalk,
-        "center",
-        800,
-      );
+      const title = s.phase === "paused" ? "SIGNAL HELD" : s.phase === "won" ? "SIGNAL RESTORED" : "SIGNAL LOST";
+      text(title, 640, 256, 36, s.phase === "lost" ? P.orange : P.chalk, "center", 800);
+      ctx.rect(610, 300, 60, 2, accent);
       text(
         s.phase === "paused"
           ? "The station will wait."
@@ -1118,63 +1070,36 @@ class BreachHud extends Node {
         640,
         315,
         14,
-        P.steel,
+        0xa9b8bf,
         "center",
         400,
       );
       if (s.phase === "paused") {
         button("RESUME OPERATION", 470, 397, 340);
-        text("CONTROL SETTINGS", 640, 482, 13, P.cyan, "center");
-        text("RESTART STATION", 640, 550, 12, P.steel, "center");
+        text("CONTROL SETTINGS", 640, 482, 13, P.cyan, "center", 700);
+        ctx.rect(560, 520, 160, 1, P.steel, 0.3);
+        text("RESTART STATION", 640, 550, 12, P.steel, "center", 700);
       } else {
-        text(
-          `${s.kills} CONTACTS   /   ${Math.floor(s.time)} SECONDS   /   ${s.completed} RELAYS`,
-          640,
-          369,
-          12,
-          P.cyan,
-          "center",
-        );
+        text(`${s.kills} CONTACTS   /   ${Math.floor(s.time)} SECONDS   /   ${s.completed} RELAYS`, 640, 369, 12, P.cyan, "center", 700);
         button("DEPLOY AGAIN   →", 470, 438, 340);
         text("ENTER TO RESTART", 640, 538, 11, P.steel, "center");
       }
     }
     if (g.settingsOpen) {
       ctx.rect(0, 0, 1280, 720, P.black, 0.88);
-      ctx.rect(400, 135, 480, 443, P.dark);
+      ctx.rect(400, 135, 480, 443, P.dark, 0.98);
+      ctx.frame(400, 135, 480, 443, 0x8fa6b3, 0.2);
       ctx.rect(400, 135, 480, 3, P.cyan);
       text("OPERATOR CONTROLS", 640, 164, 25, P.chalk, "center", 700);
-      text(
-        `−     MOUSE SENSITIVITY  ${(g.look.sensitivity * 1000).toFixed(1)}     +`,
-        640,
-        237,
-        15,
-        P.cyan,
-        "center",
-      );
-      text(
-        `INVERT VERTICAL LOOK    ${g.look.invertY ? "ON" : "OFF"}`,
-        640,
-        291,
-        14,
-        P.chalk,
-        "center",
-      );
-      text(
-        `FIELD OF VIEW    ${g.settings.fov}°   /   CLICK TO SWITCH`,
-        640,
-        347,
-        14,
-        P.chalk,
-        "center",
-      );
+      for (const y of [215, 275, 330, 390]) ctx.rect(430, y, 420, 1, P.steel, 0.2);
+      text(`−     MOUSE SENSITIVITY  ${(g.look.sensitivity * 1000).toFixed(1)}     +`, 640, 237, 15, P.cyan, "center");
+      text(`INVERT VERTICAL LOOK    ${g.look.invertY ? "ON" : "OFF"}`, 640, 291, 14, P.chalk, "center");
+      text(`FIELD OF VIEW    ${g.settings.fov}°   /   CLICK TO SWITCH`, 640, 347, 14, P.chalk, "center");
       text(`REBIND FORWARD`, 527, 407, 12, P.cyan, "center");
       text("REBIND JUMP", 752, 407, 12, P.cyan, "center");
       button("BACK", 470, 463, 340);
       text(
-        g.rebindAction
-          ? `PRESS A LETTER KEY OR SPACE FOR ${g.rebindAction.toUpperCase()} · ESC CANCELS`
-          : "SETTINGS SAVE ON THIS DEVICE",
+        g.rebindAction ? `PRESS A LETTER KEY OR SPACE FOR ${g.rebindAction.toUpperCase()} · ESC CANCELS` : "SETTINGS SAVE ON THIS DEVICE",
         640,
         543,
         10,
@@ -1193,20 +1118,8 @@ class BreachHud extends Node {
         12,
         P.cyan,
       );
-      text(
-        `${(d?.estimatedGpuBytes / 1048576).toFixed(1)} MiB EST. GPU  |  ${g.combat.targetCount} TARGETS`,
-        43,
-        143,
-        11,
-        P.chalk,
-      );
-      text(
-        `GPU p95 ${d?.gpu?.p95Ms?.toFixed(2) ?? "—"} ms`,
-        43,
-        165,
-        11,
-        P.chalk,
-      );
+      text(`${(d?.estimatedGpuBytes / 1048576).toFixed(1)} MiB EST. GPU  |  ${g.combat.targetCount} TARGETS`, 43, 143, 11, P.chalk);
+      text(`GPU p95 ${d?.gpu?.p95Ms?.toFixed(2) ?? "—"} ms`, 43, 165, 11, P.chalk);
     }
   }
 }

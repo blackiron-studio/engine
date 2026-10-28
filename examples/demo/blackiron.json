@@ -16,18 +16,18 @@
   "fallback": true,
   "background": "#0b0a14",
   "fonts": [
-    "https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Instrument+Sans:wght@500;600;700&display=swap"
+    "https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Instrument+Sans:wght@500;600;700&display=swap"
   ],
   "post": {
-    "bloom": 0.45,
-    "bloomThreshold": 0.55,
+    "bloom": 0.55,
+    "bloomThreshold": 0.6,
     "bloomPasses": 2,
-    "vignette": 0.25,
-    "tint": "#8fa0ff",
-    "tintAmount": 0.06,
-    "saturation": 1.1,
-    "contrast": 1.02,
-    "grain": 0.015
+    "vignette": 0.38,
+    "tint": "#a8b8ff",
+    "tintAmount": 0.05,
+    "saturation": 1.08,
+    "contrast": 1.06,
+    "grain": 0.012
   },
   "pixelSnap": false,
   "snapshots": [

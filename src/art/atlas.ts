@@ -2,6 +2,7 @@
 // texture with shelf packing. Runs anywhere: browser, tests, CLI.
 
 import { Painter } from "./painter.ts";
+import { Pen } from "./vector.ts";
 import { FONT_CHARS, FONT_H, FONT_W, glyphKey, glyphRows } from "./font.ts";
 import { type SpriteDef, paintContextFor, spriteDefs } from "./sprites.ts";
 import { type SpriteStyle, applyStyle } from "./style.ts";
@@ -19,6 +20,39 @@ export interface Region {
   /** Origin offset in pixels from the top-left of the region. */
   ox: number;
   oy: number;
+  /**
+   * Texels per logical unit. `w`, `h`, `ox` and `oy` are logical; `x` and `y` are atlas texels,
+   * and the texel size is w * density. 1 (pixel art) when absent.
+   */
+  density?: number;
+  /** Sample with linear filtering by default: smooth, high-resolution art. */
+  smooth?: boolean;
+}
+
+/** Texel width and height of a region. */
+export const texelSize = (r: Region): [number, number] => [Math.round(r.w * (r.density ?? 1)), Math.round(r.h * (r.density ?? 1))];
+
+/**
+ * Nine regions slicing `r` with a border of `inset` logical units, in reading order. They keep
+ * the region's density and smoothness, so a high-resolution panel stays crisp when stretched.
+ */
+export function sliceNine(r: Region, inset: number, atlasW: number, atlasH: number): Region[] {
+  const d = r.density ?? 1;
+  const [tw, th] = texelSize(r);
+  const i = Math.max(0, Math.min(Math.round(inset * d), Math.floor(tw / 2), Math.floor(th / 2)));
+  const xs = [r.x, r.x + i, r.x + tw - i, r.x + tw];
+  const ys = [r.y, r.y + i, r.y + th - i, r.y + th];
+  const parts: Region[] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const x0 = xs[col];
+      const x1 = xs[col + 1];
+      const y0 = ys[row];
+      const y1 = ys[row + 1];
+      parts.push({ name: `${r.name}#${row}${col}`, x: x0, y: y0, w: (x1 - x0) / d, h: (y1 - y0) / d, u0: x0 / atlasW, v0: y0 / atlasH, u1: x1 / atlasW, v1: y1 / atlasH, ox: 0, oy: 0, density: r.density, smooth: r.smooth });
+    }
+  }
+  return parts;
 }
 
 export interface BakeOptions {
@@ -34,7 +68,7 @@ export interface BakeOptions {
   /** Include `__white`, `__blob`, `__missing`. Default true. */
   builtins?: boolean;
   /** Imported images to pack next to the painted sprites. */
-  images?: { name: string; w: number; h: number; data: Uint8ClampedArray; origin: [number, number]; style?: SpriteStyle; normal?: Uint8ClampedArray | "bevel"; edge?: SpriteEdge }[];
+  images?: { name: string; w: number; h: number; data: Uint8ClampedArray; origin: [number, number]; style?: SpriteStyle; normal?: Uint8ClampedArray | "bevel"; edge?: SpriteEdge; density?: number; smooth?: boolean }[];
 }
 
 /**
@@ -117,10 +151,14 @@ export class Atlas {
   }
 
   /** Rebuild an atlas from a manifest plus raw RGBA, for prebaked art shipped with a native build. */
-  static fromManifest(manifest: { width: number; height: number; sprites: Record<string, { x: number; y: number; w: number; h: number; ox: number; oy: number }>; normals?: boolean }, data: Uint8ClampedArray, normals: Uint8ClampedArray | null = null): Atlas {
+  static fromManifest(manifest: { width: number; height: number; sprites: Record<string, { x: number; y: number; w: number; h: number; ox: number; oy: number; density?: number; smooth?: boolean }>; normals?: boolean }, data: Uint8ClampedArray, normals: Uint8ClampedArray | null = null): Atlas {
     const regions: Region[] = [];
     for (const [name, s] of Object.entries(manifest.sprites)) {
-      regions.push({ name, x: s.x, y: s.y, w: s.w, h: s.h, u0: s.x / manifest.width, v0: s.y / manifest.height, u1: (s.x + s.w) / manifest.width, v1: (s.y + s.h) / manifest.height, ox: s.ox, oy: s.oy });
+      const d = s.density ?? 1;
+      const region: Region = { name, x: s.x, y: s.y, w: s.w, h: s.h, u0: s.x / manifest.width, v0: s.y / manifest.height, u1: (s.x + Math.round(s.w * d)) / manifest.width, v1: (s.y + Math.round(s.h * d)) / manifest.height, ox: s.ox, oy: s.oy };
+      if (d !== 1) region.density = d;
+      if (s.smooth) region.smooth = true;
+      regions.push(region);
     }
     return new Atlas(manifest.width, manifest.height, data, regions, normals);
   }
@@ -128,10 +166,12 @@ export class Atlas {
   /** Copy one region back out as a painter; used by the CLI's per-sprite export. */
   extract(name: string): Painter {
     const r = this.region(name);
-    const p = new Painter(r.w, r.h);
-    for (let y = 0; y < r.h; y++) {
+    const [tw, th] = texelSize(r);
+    const p = new Painter(tw, th);
+    p.density = r.density ?? 1;
+    for (let y = 0; y < th; y++) {
       const src = ((r.y + y) * this.width + r.x) * 4;
-      p.data.set(this.data.subarray(src, src + r.w * 4), y * r.w * 4);
+      p.data.set(this.data.subarray(src, src + tw * 4), y * tw * 4);
     }
     return p;
   }
@@ -145,13 +185,20 @@ interface Item {
   /** The sprite's normal map, when it has one. */
   normal?: Painter | null;
   edge?: SpriteEdge;
+  /** Texels per logical unit; ox and oy are logical. */
+  density?: number;
+  smooth?: boolean;
 }
 
 /** Run one sprite's painter and return the finished surface. */
 export function paintSprite(def: SpriteDef): Painter {
-  const p = new Painter(def.w, def.h);
+  const d = def.density ?? 1;
+  const p = new Painter(Math.round(def.w * d), Math.round(def.h * d));
+  p.density = d;
   def.paint(p, paintContextFor(def));
   applyStyle(p, def.style);
+  // Linear filtering reads neighbouring texels: give transparent ones the edge colour.
+  if (def.smooth) p.bleed(2);
   return p;
 }
 
@@ -196,7 +243,8 @@ export function bevelNormals(p: Painter, strength = 1): Painter {
 function paintNormal(def: SpriteDef, painted: Painter): Painter | null {
   if (!def.normal) return null;
   if (def.normal === "bevel") return bevelNormals(painted);
-  const p = new Painter(def.w, def.h);
+  const p = new Painter(painted.width, painted.height);
+  p.density = painted.density;
   def.normal(p, paintContextFor(def));
   return p;
 }
@@ -208,9 +256,16 @@ function builtinItems(): Item[] {
   for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) missing.px(x, y, ((x >> 2) + (y >> 2)) & 1 ? "#ff00ff" : "#1a001a");
   const blob = new Painter(64, 64);
   blob.glow(32, 32, 32, "#ffffff", 2);
-  const ring = new Painter(32, 32);
-  ring.ring(16, 16, 14, "#ffffff");
-  ring.ring(16, 16, 13, "#ffffff");
+  // Rings and discs are drawn at four texels per unit with exact coverage and sampled
+  // smoothly, so on-screen controls and markers stay round at any size.
+  const ring = new Painter(128, 128);
+  ring.density = 4;
+  new Pen(ring).ring(16, 16, 13.5, 2, "#ffffff");
+  ring.bleed(2);
+  const disc = new Painter(128, 128);
+  disc.density = 4;
+  new Pen(disc).circle(16, 16, 15.5, "#ffffff");
+  disc.bleed(2);
   // A soft wedge pointing +x, for cone lights: glow falloff times an angular falloff.
   const cone = new Painter(64, 64);
   for (let y = 0; y < 64; y++) {
@@ -228,9 +283,10 @@ function builtinItems(): Item[] {
   return [
     { name: "__white", painter: white, ox: 2, oy: 2 },
     { name: "__missing", painter: missing, ox: 4, oy: 4 },
-    { name: "__blob", painter: blob, ox: 32, oy: 32 },
-    { name: "__ring", painter: ring, ox: 16, oy: 16 },
-    { name: "__cone", painter: cone, ox: 8, oy: 32 },
+    { name: "__blob", painter: blob, ox: 32, oy: 32, smooth: true },
+    { name: "__ring", painter: ring, ox: 16, oy: 16, density: 4, smooth: true },
+    { name: "__disc", painter: disc, ox: 16, oy: 16, density: 4, smooth: true },
+    { name: "__cone", painter: cone, ox: 8, oy: 32, smooth: true },
   ];
 }
 
@@ -261,17 +317,26 @@ export function bakeAtlas(opts: BakeOptions = {}): Atlas {
     items.push({
       name: def.name,
       painter,
-      ox: Math.round(def.w * def.origin[0]),
-      oy: Math.round(def.h * def.origin[1]),
+      ox: (def.density ?? 1) === 1 ? Math.round(def.w * def.origin[0]) : def.w * def.origin[0],
+      oy: (def.density ?? 1) === 1 ? Math.round(def.h * def.origin[1]) : def.h * def.origin[1],
       normal: paintNormal(def, painter),
       edge: def.edge,
+      density: def.density,
+      smooth: def.smooth,
     });
   }
   for (const img of opts.images ?? []) {
     const painter = new Painter(img.w, img.h, new Uint8ClampedArray(img.data));
     applyStyle(painter, img.style ?? "palette");
     const normal = img.normal === "bevel" ? bevelNormals(painter) : img.normal ? new Painter(img.w, img.h, new Uint8ClampedArray(img.normal)) : null;
-    items.push({ name: img.name, painter, ox: Math.round(img.w * img.origin[0]), oy: Math.round(img.h * img.origin[1]), normal, edge: img.edge });
+    const d = img.density ?? 1;
+    painter.density = d;
+    items.push({ name: img.name, painter, ox: (img.w / d) * img.origin[0], oy: (img.h / d) * img.origin[1], normal, edge: img.edge, density: d === 1 ? undefined : d, smooth: img.smooth });
+    if (d === 1) {
+      const last = items[items.length - 1];
+      last.ox = Math.round(last.ox);
+      last.oy = Math.round(last.oy);
+    }
   }
   // Pack the painted items once, growing from actual item dimensions and packing height.
   // Both dimensions are bounded before allocating the output texture.
@@ -323,19 +388,23 @@ export function bakeAtlas(opts: BakeOptions = {}): Atlas {
       extrudeEdges(data, W, x, y, p.width, p.height);
       if (normals && item.normal) extrudeEdges(normals, W, x, y, p.width, p.height);
     }
-    regions.push({
+    const d = item.density ?? 1;
+    const region: Region = {
       name: item.name,
       x,
       y,
-      w: p.width,
-      h: p.height,
+      w: p.width / d,
+      h: p.height / d,
       u0: x / W,
       v0: y / H,
       u1: (x + p.width) / W,
       v1: (y + p.height) / H,
       ox: item.ox,
       oy: item.oy,
-    });
+    };
+    if (d !== 1) region.density = d;
+    if (item.smooth) region.smooth = true;
+    regions.push(region);
   }
   return new Atlas(W, H, data, regions, normals);
 }
@@ -343,6 +412,11 @@ export function bakeAtlas(opts: BakeOptions = {}): Atlas {
 /** Serialisable description of an atlas layout, written next to the PNG by the CLI. */
 export function atlasManifest(atlas: Atlas): { width: number; height: number; sprites: Record<string, Omit<Region, "name" | "u0" | "v0" | "u1" | "v1">>; normals: boolean } {
   const sprites: Record<string, Omit<Region, "name" | "u0" | "v0" | "u1" | "v1">> = {};
-  for (const r of atlas.all()) sprites[r.name] = { x: r.x, y: r.y, w: r.w, h: r.h, ox: r.ox, oy: r.oy };
+  for (const r of atlas.all()) {
+    const s: Omit<Region, "name" | "u0" | "v0" | "u1" | "v1"> = { x: r.x, y: r.y, w: r.w, h: r.h, ox: r.ox, oy: r.oy };
+    if (r.density && r.density !== 1) s.density = r.density;
+    if (r.smooth) s.smooth = true;
+    sprites[r.name] = s;
+  }
   return { width: atlas.width, height: atlas.height, sprites, normals: !!atlas.normals };
 }

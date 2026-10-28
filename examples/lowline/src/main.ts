@@ -1,46 +1,53 @@
 import type { App } from "@blackiron-studio/engine/app";
-import {
-  Scene,
-  Node2D,
-  Graphics2D,
-  type DrawContext,
-} from "@blackiron-studio/engine/scene";
+import { Scene, Node2D, type DrawContext } from "@blackiron-studio/engine/scene";
 import { Rng } from "@blackiron-studio/engine/core";
 import { CityRun } from "./game.ts";
+import { SIZE, XS, YS, buildings, distance, type Car } from "./city.ts";
 import {
-  SIZE,
-  XS,
-  YS,
-  buildings,
-  PICKUP,
-  DROP,
-  distance,
-  type Car,
-} from "./city.ts";
-import { C, text, buildCity, carArt, personArt } from "./presentation.ts";
+  C,
+  text,
+  buildCity,
+  carArt,
+  personArt,
+  Beacon,
+  CarLights,
+  Harbour,
+  HarbourGlow,
+  type CarNode,
+  type City,
+} from "./presentation.ts";
 export class LowlineScene extends Scene {
   readonly run = new CityRun();
   readonly actors = new Node2D();
-  readonly carNodes = new Map<Car, Node2D>();
+  readonly skids = new Node2D();
+  readonly carNodes = new Map<Car, CarNode>();
   readonly pedestrianNodes: {
     node: Node2D;
     route: { x: number; y: number }[];
     index: number;
   }[] = [];
-  readonly playerArt = personArt(C.gold);
-  readonly marker = new Graphics2D();
+  readonly playerArt = personArt(C.gold, 1, true);
+  readonly marker = new Beacon();
+  city!: City;
   mapOpen = false;
   private soundClock = 0;
   private skidClock = 0;
-  private marks: { node: Graphics2D; life: number }[] = [];
+  private marks: { node: Node2D; life: number }[] = [];
   constructor() {
     super(1280, 720);
     this.name = "lowline";
   }
   override ready() {
-    buildCity(this.world);
+    const city = (this.city = buildCity());
+    this.world.add(city.ground);
+    this.world.add(new Harbour());
+    this.world.add(this.skids);
     this.world.add(this.actors);
-    this.actors.add(this.playerArt);
+    this.world.add(city.above);
+    this.world.add(city.fountain);
+    this.world.add(this.marker);
+    this.world.add(city.lights);
+    city.lights.add(new HarbourGlow());
     const rng = new Rng(51);
     for (let i = 0; i < 32; i++) {
       const col = i % 4,
@@ -55,35 +62,16 @@ export class LowlineScene extends Scene {
       ];
       const index = i % 4,
         node = this.actors.add(
-          personArt(rng.pick([0xc6a281, 0x76a8a3, 0xd28580, 0x9695b4])),
+          personArt(
+            rng.pick([0xc6a281, 0x76a8a3, 0xd28580, 0x9695b4, 0xe9e4da, 0x4a5a78, 0x8fbf8a]),
+            rng.int(0, 4),
+          ),
         );
       node.x = route[index].x;
       node.y = route[index].y;
       this.pedestrianNodes.push({ node, route, index: (index + 1) % 4 });
     }
-    this.world.add(this.marker);
-    this.marker
-      .ellipse(0, 0, 35, 35, { color: C.gold, alpha: 0.18 }, 32)
-      .polyline(
-        Array.from(
-          { length: 33 },
-          (_, i) =>
-            [
-              Math.cos((i / 32) * Math.PI * 2) * 28,
-              Math.sin((i / 32) * Math.PI * 2) * 28,
-            ] as const,
-        ),
-        2,
-        C.gold,
-      )
-      .polygon(
-        [
-          [-8, -47],
-          [8, -47],
-          [0, -36],
-        ],
-        C.paper,
-      );
+    this.actors.add(this.playerArt);
     this.camera.bounds = { x: 120, y: 120, w: 2300, h: 1930 };
     this.camera.snap = false;
     this.camera.zoom = 1.1;
@@ -156,10 +144,10 @@ export class LowlineScene extends Scene {
     else if (
       this.run.phase !== "playing" &&
       this.run.phase !== "title" &&
-      x > 455 &&
-      x < 825 &&
-      y > 440 &&
-      y < 506
+      x - (this.width - 1280) / 2 > 455 &&
+      x - (this.width - 1280) / 2 < 825 &&
+      y - (this.height - 720) / 2 > 440 &&
+      y - (this.height - 720) / 2 < 506
     )
       this.onAction("confirm", true);
   }
@@ -213,17 +201,16 @@ export class LowlineScene extends Scene {
       ) {
         this.skidClock = 0.07;
         const m = r.vehicle.motor,
-          g = new Graphics2D(m.x, m.y);
-        g.rect(-12, -16, 18, 3, 0x23323d).rect(-12, 13, 18, 3, 0x23323d);
+          g = new Skid(m.x, m.y);
         g.rotation = m.angle;
-        this.world.add(g);
+        this.skids.add(g);
         this.marks.push({ node: g, life: 7 });
         if (this.marks.length > 100) this.marks.shift()!.node.destroy();
       }
       for (let i = this.marks.length - 1; i >= 0; i--) {
         const m = this.marks[i];
         m.life -= dt;
-        m.node.alpha = Math.min(0.7, m.life / 3);
+        m.node.alpha = Math.min(0.75, m.life / 3);
         if (m.life <= 0) {
           m.node.destroy();
           this.marks.splice(i, 1);
@@ -243,9 +230,11 @@ export class LowlineScene extends Scene {
     for (const c of r.cars) {
       let node = this.carNodes.get(c);
       if (!node) {
-        node = this.actors.add(carArt(c));
+        node = this.actors.add(carArt(c, this.carNodes.size));
         this.carNodes.set(c, node);
+        this.city.lights.add(new CarLights(node));
       }
+      node.lit = c.kind !== "parked" || r.vehicle === c;
       node.x = c.motor.x;
       node.y = c.motor.y;
       node.rotation = c.motor.angle;
@@ -256,7 +245,6 @@ export class LowlineScene extends Scene {
     this.playerArt.visible = !r.vehicle;
     this.marker.x = r.objective.x;
     this.marker.y = r.objective.y;
-    this.marker.scale = 1 + Math.sin(r.time * 3) * 0.08;
     this.marker.visible =
       r.phase === "playing" && r.mission !== 2 && !r.freeRoam;
   }
@@ -277,128 +265,178 @@ export class LowlineScene extends Scene {
     };
   }
 }
+/** A tyre mark left by the handbrake. */
+class Skid extends Node2D {
+  override render(ctx: DrawContext) {
+    ctx.sprite("ll.fx.skid", -3, -14.6, { alpha: 0.8, smooth: true });
+    ctx.sprite("ll.fx.skid", -3, 14.6, { alpha: 0.8, smooth: true });
+  }
+}
+/** A HUD card: soft shadow, deep translucent glass, a hairline border and an accent edge. */
+function panel(ctx: DrawContext, x: number, y: number, w: number, h: number, accent = 0, alpha = 0.88) {
+  ctx.sprite("ll.ui.shadow", x + w / 2, y + h / 2 + 5, { sx: (w + 16) / 36, sy: (h + 16) / 36, alpha: 0.55, smooth: true });
+  ctx.rect(x, y, w, h, C.ink, alpha);
+  ctx.sprite("ll.ui.fadeV", x, y, { ox: 0, oy: 0, sx: w / 8, sy: Math.min(h, 60) / 64, tint: 0x3a5478, alpha: 0.28, smooth: true });
+  ctx.frame(x, y, w, h, 0xffffff, 0.09, 1);
+  ctx.rect(x, y, w, 1, 0xffffff, 0.12);
+  if (accent) ctx.rect(x, y, 3, h, accent);
+}
+function keycap(ctx: DrawContext, label: string, x: number, y: number, size = 10): number {
+  const w = Math.max(18, label.length * size * 0.66 + 10);
+  ctx.rect(x, y, w, size + 9, 0xffffff, 0.08);
+  ctx.frame(x, y, w, size + 9, 0xffffff, 0.22, 1);
+  text(ctx, label, x + w / 2, y + 4, size, C.paper, "center", 800);
+  return w;
+}
+function hints(ctx: DrawContext, items: [string, string][], x: number, y: number, size = 10, align: "left" | "center" = "left") {
+  const widths = items.map(([k, l]) => Math.max(18, k.length * size * 0.66 + 10) + 7 + ctx.measure(l, 1, 0, { family: "Arial", size, weight: 700 }) + 22);
+  let cx = align === "center" ? x - widths.reduce((a, b) => a + b, 0) / 2 : x;
+  items.forEach(([k, l], i) => {
+    const w = keycap(ctx, k, cx, y, size);
+    text(ctx, l, cx + w + 7, y + 4, size, C.muted, "left", 700);
+    cx += widths[i];
+  });
+}
+/** A view of `ctx` that offsets every positioned draw, for anchoring HUD groups to screen edges. */
+function shift(ctx: DrawContext, dx: number, dy: number): DrawContext {
+  if (dx === 0 && dy === 0) return ctx;
+  return new Proxy(ctx, {
+    get(target, prop, receiver) {
+      if (prop === "sprite") return (n: string, x = 0, y = 0, o?: object) => target.sprite(n, x + dx, y + dy, o);
+      if (prop === "rect") return (x: number, y: number, w: number, h: number, c: number, a?: number, add?: boolean) => target.rect(x + dx, y + dy, w, h, c, a, add);
+      if (prop === "frame") return (x: number, y: number, w: number, h: number, c: number, a?: number, t?: number) => target.frame(x + dx, y + dy, w, h, c, a, t);
+      if (prop === "text") return (t: string, x: number, y: number, o?: object) => target.text(t, x + dx, y + dy, o);
+      const v = Reflect.get(target, prop, receiver);
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  });
+}
 class LowlineHUD extends Node2D {
+  t = 0;
   constructor(readonly game: LowlineScene) {
     super();
   }
-  private map(ctx: DrawContext, large: boolean) {
+  override update(dt: number) {
+    this.t += dt;
+  }
+  private map(screen: DrawContext, large: boolean) {
+    const g = this.game, ctx = large ? shift(screen, (g.width - 1280) / 2, (g.height - 720) / 2) : shift(screen, g.width - 1280, 0);
     const r = this.game.run,
-      x = large ? 320 : 1030,
-      y = large ? 115 : 105,
-      w = large ? 640 : 220,
+      x = large ? 320 : 1036,
+      y = large ? 115 : 106,
+      w = large ? 640 : 216,
       h = (w * SIZE.h) / SIZE.w,
       k = w / SIZE.w;
-    ctx.rect(x - 12, y - 12, w + 24, h + 38, C.ink, 0.96);
-    ctx.rect(x, y, w, h, 0x435f65);
-    for (const rx of XS)
-      ctx.rect(x + (rx - 56) * k, y + 140 * k, 112 * k, 1860 * k, 0x859397);
-    for (const ry of YS)
-      ctx.rect(x + 140 * k, y + (ry - 56) * k, 2188 * k, 112 * k, 0x859397);
-    for (const b of buildings)
-      ctx.rect(x + b.x * k, y + b.y * k, b.w * k, b.h * k, 0x304750);
-    ctx.rect(x + 812 * k, y + 812 * k, 336 * k, 336 * k, 0x689380);
-    for (const car of r.cars.filter((c) => c.kind === "police" && r.heat > 0))
-      ctx.rect(x + car.motor.x * k - 3, y + car.motor.y * k - 3, 6, 6, C.coral);
-    if (!r.freeRoam) {
-      const goal = r.objective;
-      ctx.rect(x + goal.x * k - 4, y + goal.y * k - 4, 8, 8, C.gold);
+    panel(ctx, x - 10, y - 10, w + 20, h + 40, 0, 0.94);
+    ctx.rect(x, y, w, h, 0x0f2a3c);
+    ctx.rect(x + 140 * k, y + 140 * k, 2188 * k, 1868 * k, 0x2a3442);
+    for (const rx of XS) ctx.rect(x + (rx - 56) * k, y + 140 * k, 112 * k, 1868 * k, 0x59657a);
+    for (const ry of YS) ctx.rect(x + 140 * k, y + (ry - 56) * k, 2188 * k, 112 * k, 0x59657a);
+    for (const b of buildings) ctx.rect(x + b.x * k, y + b.y * k, b.w * k, b.h * k, 0x1b222d);
+    ctx.rect(x + 812 * k, y + 812 * k, 336 * k, 336 * k, 0x3f7a5c);
+    const flash = Math.sin(this.t * 12) > 0;
+    for (const car of r.cars.filter((c) => c.kind === "police" && r.heat > 0)) {
+      ctx.sprite("ll.fx.dot", x + car.motor.x * k, y + car.motor.y * k, { sx: 0.9, sy: 0.9, tint: flash ? C.coral : 0x5a8dff, smooth: true });
     }
-    ctx.rect(x + r.position.x * k - 3, y + r.position.y * k - 3, 7, 7, C.mint);
-    text(
-      ctx,
-      large ? "CITY MAP / M TO CLOSE" : "LOWLINE / M TO EXPAND",
-      x,
-      y + h + 9,
-      10,
-      C.muted,
-    );
+    if (!r.freeRoam) {
+      const goal = r.objective,
+        pulse = 1 + ((this.t * 1.2) % 1) * 1.6;
+      ctx.sprite("__ring", x + goal.x * k, y + goal.y * k, { sx: pulse * 0.32, sy: pulse * 0.32, tint: C.gold, alpha: 1 - ((this.t * 1.2) % 1), smooth: true });
+      ctx.sprite("ll.fx.dot", x + goal.x * k, y + goal.y * k, { sx: 1, sy: 1, tint: C.gold, smooth: true });
+    }
+    const heading = r.vehicle ? r.vehicle.motor.angle : r.angle;
+    ctx.sprite("ll.ui.arrow", x + r.position.x * k, y + r.position.y * k, { rot: heading, sx: 0.85, sy: 0.85, tint: C.mint, smooth: true });
+    ctx.frame(x, y, w, h, 0xffffff, 0.12, 1);
+    text(ctx, large ? "CITY MAP" : "LOWLINE", x, y + h + 10, 10, C.paper, "left", 800);
+    text(ctx, large ? "M  CLOSE" : "M  EXPAND", x + w, y + h + 10, 10, C.muted, "right", 700);
   }
-  override render(ctx: DrawContext) {
+  private stars(ctx: DrawContext, heat: number, x: number, y: number) {
+    for (let i = 0; i < 3; i++) {
+      const on = i < heat,
+        flash = on && Math.sin(this.t * 8 + i) > 0;
+      if (on) ctx.sprite("ll.fx.glow", x + i * 22, y, { sx: 0.5, sy: 0.5, tint: C.coral, alpha: flash ? 0.6 : 0.3, additive: true, smooth: true });
+      ctx.sprite(on ? "ll.ui.star" : "ll.ui.starline", x + i * 22, y, { tint: on ? (flash ? 0xffb0a0 : C.coral) : 0x5d6f80, smooth: true });
+    }
+  }
+  private title(screen: DrawContext) {
+    const W = this.game.width, H = this.game.height;
+    screen.sprite("ll.ui.fadeH", 0, 0, { ox: 0, oy: 0, sx: 820 / 64, sy: H / 8, tint: C.ink, alpha: 0.92, smooth: true });
+    screen.sprite("ll.ui.fadeV", 0, H, { ox: 0, oy: 0, sx: W / 8, sy: -220 / 64, tint: C.ink, alpha: 0.85, smooth: true });
+    screen.sprite("ll.ui.fadeV", 0, 0, { ox: 0, oy: 0, sx: W / 8, sy: 120 / 64, tint: C.ink, alpha: 0.6, smooth: true });
+    const ctx = shift(screen, 0, (H - 720) / 2);
+    panel(ctx, 36, 35, 464, 650, 0, 0.72);
+    ctx.rect(36, 35, 4, 650, C.gold);
+    ctx.sprite("ll.fx.glow", 40, 360, { sx: 0.4, sy: 10, tint: C.gold, alpha: 0.25, additive: true, smooth: true });
+    text(ctx, "BLACKIRON ORIGINAL", 70, 69, 11, C.gold, "left", 800);
+    text(ctx, "OPEN CITY  01", 466, 69, 11, C.muted, "right", 800);
+    ctx.rect(70, 92, 396, 1, 0xffffff, 0.14);
+    // The wordmark: two heavy lines, the second picked out in amber with a neon underline.
+    text(ctx, "LOW", 64, 114, 112, 0x000000, "left", 900, 0.35);
+    text(ctx, "LOW", 62, 110, 112, C.paper, "left", 900);
+    text(ctx, "LINE", 64, 219, 112, 0x000000, "left", 900, 0.35);
+    text(ctx, "LINE", 62, 215, 112, C.gold, "left", 900);
+    ctx.sprite("ll.fx.glow", 190, 336, { sx: 5, sy: 0.35, tint: C.pink, alpha: 0.55, additive: true, smooth: true });
+    ctx.rect(70, 334, 244, 3, C.pink);
+    ctx.rect(322, 334, 18, 3, C.cyan);
+    text(ctx, "ONE CITY. ONE LAST DISPATCH.", 70, 360, 13, C.mint, "left", 800);
+    text(ctx, "Borrow a ride. Collect the archive.", 70, 394, 18, C.paper, "left", 600);
+    text(ctx, "Shake the patrols. Make the waterfront.", 70, 423, 18, C.paper, "left", 600);
+    const pulse = 0.5 + Math.sin(this.t * 3) * 0.5;
+    ctx.sprite("ll.ui.shadow", 233, 516, { sx: 346 / 36, sy: 70 / 36, alpha: 0.6, smooth: true });
+    ctx.sprite("ll.fx.glow", 233, 510, { sx: 6.5, sy: 1.6, tint: C.gold, alpha: 0.15 + pulse * 0.15, additive: true, smooth: true });
+    ctx.rect(70, 483, 326, 54, C.gold);
+    ctx.sprite("ll.ui.fadeV", 70, 483, { ox: 0, oy: 0, sx: 326 / 8, sy: 54 / 64, tint: 0xffffff, alpha: 0.35, smooth: true });
+    ctx.rect(70, 535, 326, 2, 0xa86a22);
+    text(ctx, "TAKE THE WHEEL", 214, 502, 16, C.ink, "center", 900);
+    text(ctx, "→", 360 + pulse * 4, 499, 20, C.ink, "center", 900);
+    hints(ctx, [["WASD", "MOVE / DRIVE"], ["E", "ENTER / EXIT"]], 70, 568, 10);
+    hints(ctx, [["SPACE", "HANDBRAKE"], ["SHIFT", "SPRINT"]], 70, 598, 10);
+    ctx.rect(70, 636, 396, 1, 0xffffff, 0.1);
+    text(ctx, "PRESS ENTER TO START", 70, 650, 10, C.paper, "left", 800, 0.5 + pulse * 0.5);
+    text(ctx, "ORIGINAL PROCEDURAL ART", 466, 650, 10, C.muted, "right", 700);
+    const corner = shift(screen, W - 1280, H - 720);
+    text(corner, "THE CITY DOESN’T WAIT.", 1240, 640, 24, 0x000000, "right", 900, 0.4);
+    text(corner, "THE CITY DOESN’T WAIT.", 1238, 638, 24, C.paper, "right", 900);
+    text(corner, "NORTH QUAY  ·  23:47  ·  14°C", 1238, 672, 11, C.muted, "right", 800);
+  }
+  override render(screen: DrawContext) {
     const g = this.game,
-      r = g.run;
+      r = g.run,
+      W = g.width,
+      H = g.height;
+    // The HUD is designed at 1280 x 720; each group is anchored to its own screen edge.
+    const ctx = screen,
+      tr = shift(screen, W - 1280, 0),
+      tc = shift(screen, (W - 1280) / 2, 0),
+      bl = shift(screen, 0, H - 720),
+      br = shift(screen, W - 1280, H - 720),
+      bc = shift(screen, (W - 1280) / 2, H - 720),
+      cc = shift(screen, (W - 1280) / 2, (H - 720) / 2);
+    // A soft vignette frame keeps the HUD legible over bright streets.
+    screen.sprite("ll.ui.fadeV", 0, 0, { ox: 0, oy: 0, sx: W / 8, sy: 130 / 64, tint: 0x050a14, alpha: 0.45, smooth: true });
+    screen.sprite("ll.ui.fadeV", 0, H, { ox: 0, oy: 0, sx: W / 8, sy: -170 / 64, tint: 0x050a14, alpha: 0.55, smooth: true });
     if (r.phase === "title") {
-      ctx.rect(0, 0, 1280, 720, C.ink, 0.18);
-      ctx.rect(36, 35, 464, 650, C.ink, 0.96);
-      ctx.rect(36, 35, 4, 650, C.gold);
-      text(ctx, "BLACKIRON ORIGINAL / OPEN CITY 01", 70, 69, 12, C.gold);
-      text(ctx, "LOW", 62, 112, 110, C.paper, "left", 800);
-      text(ctx, "LINE", 62, 217, 110, C.paper, "left", 800);
-      text(ctx, "ONE CITY. ONE LAST DISPATCH.", 70, 356, 14, C.mint);
-      text(ctx, "Borrow a ride. Collect the archive.", 70, 392, 18, C.paper);
-      text(
-        ctx,
-        "Shake the patrols. Make the waterfront.",
-        70,
-        421,
-        18,
-        C.paper,
-      );
-      ctx.rect(70, 483, 326, 54, C.gold);
-      text(ctx, "TAKE THE WHEEL  →", 233, 501, 15, C.ink, "center", 800);
-      text(ctx, "WASD  MOVE / DRIVE     E  ENTER / EXIT", 70, 572, 12, C.muted);
-      text(ctx, "SPACE  HANDBRAKE     SHIFT  SPRINT", 70, 600, 12, C.muted);
-      text(
-        ctx,
-        "ENTER TO START  ·  ORIGINAL PROCEDURAL ART",
-        70,
-        648,
-        10,
-        C.muted,
-      );
-      text(ctx, "THE CITY DOESN’T WAIT.", 1238, 650, 20, C.paper, "right");
+      this.title(screen);
       return;
     }
-    ctx.rect(28, 24, 265, 64, C.ink, 0.94);
-    ctx.rect(28, 24, 3, 64, C.gold);
-    text(ctx, "LOWLINE", 46, 35, 23, C.paper);
-    text(
-      ctx,
-      r.vehicle ? "AFTER HOURS / BEHIND THE WHEEL" : "AFTER HOURS / ON FOOT",
-      47,
-      67,
-      10,
-      C.muted,
-    );
-    ctx.rect(1008, 24, 244, 64, C.ink, 0.94);
-    text(
-      ctx,
-      r.heat ? "PURSUIT ACTIVE" : "OFF THE RADAR",
-      1027,
-      37,
-      11,
-      r.heat ? C.coral : C.mint,
-    );
-    for (let i = 0; i < 3; i++)
-      text(
-        ctx,
-        i < r.heat ? "★" : "☆",
-        1190 + i * 18,
-        35,
-        17,
-        i < r.heat ? C.coral : C.muted,
-      );
-    text(ctx, "$" + r.cash.toLocaleString("en-US"), 1027, 59, 16, C.paper);
-    this.map(ctx, false);
-    ctx.rect(28, 584, 535, 110, C.ink, 0.96);
-    ctx.rect(28, 584, 4, 110, C.mint);
-    text(
-      ctx,
-      r.freeRoam
-        ? "FREE ROAM"
-        : "DISPATCH / " + String(Math.min(r.mission + 1, 4)).padStart(2, "0"),
-      48,
-      600,
-      11,
-      C.mint,
-    );
-    text(
-      ctx,
-      r.freeRoam ? "Explore the city" : r.objectiveText,
-      48,
-      621,
-      23,
-      C.paper,
-    );
+    // Brand and status.
+    panel(ctx, 28, 24, 265, 64, C.gold);
+    text(ctx, "LOWLINE", 46, 34, 24, C.paper, "left", 900);
+    ctx.rect(157, 41, 1, 14, 0xffffff, 0.2);
+    text(ctx, "23:47", 168, 39, 13, C.gold, "left", 800);
+    text(ctx, r.vehicle ? "AFTER HOURS  /  BEHIND THE WHEEL" : "AFTER HOURS  /  ON FOOT", 47, 67, 10, C.muted, "left", 700);
+    // Wanted level and cash.
+    panel(tr, 1008, 24, 244, 64, r.heat ? C.coral : C.mint);
+    text(tr, r.heat ? "PURSUIT ACTIVE" : "OFF THE RADAR", 1026, 36, 11, r.heat ? C.coral : C.mint, "left", 800);
+    this.stars(tr, r.heat, 1188, 44);
+    text(tr, "$" + r.cash.toLocaleString("en-US"), 1026, 56, 20, C.paper, "left", 900);
+    this.map(screen, false);
+    // Dispatch card.
+    panel(bl, 28, 584, 535, 110, C.mint);
+    text(bl, r.freeRoam ? "FREE ROAM" : "DISPATCH  /  " + String(Math.min(r.mission + 1, 4)).padStart(2, "0"), 48, 600, 11, C.mint, "left", 800);
+    if (!r.freeRoam)
+      for (let i = 0; i < 4; i++) bl.rect(470 + i * 20, 604, 14, 4, i < r.mission ? C.mint : i === r.mission ? C.gold : 0x33465a);
+    text(bl, r.freeRoam ? "Explore the city" : r.objectiveText, 48, 621, 24, C.paper, "left", 800);
     const detail =
       r.mission === 0
         ? "Walk to the amber coupe. Press E to enter."
@@ -407,168 +445,78 @@ class LowlineHUD extends Node2D {
           : r.mission === 2
             ? "Break sightlines for 8 seconds. Keep moving."
             : "Press E at Pier 09 to complete the dispatch.";
-    text(
-      ctx,
-      r.freeRoam ? "Drive any civilian car. H horn / R new dispatch." : detail,
-      48,
-      660,
-      13,
-      C.muted,
-    );
-    ctx.rect(1048, 596, 204, 98, C.ink, 0.95);
-    text(
-      ctx,
-      r.vehicle
-        ? String(Math.round(Math.abs(r.vehicle.motor.speed) * 0.28)).padStart(
-            3,
-            "0",
-          )
-        : "ON FOOT",
-      1067,
-      608,
-      r.vehicle ? 40 : 23,
-      C.paper,
-    );
-    text(
-      ctx,
-      r.vehicle
-        ? "KM/H / " + (r.vehicle.motor.speed < 0 ? "R" : "D")
-        : "SHIFT TO SPRINT",
-      1234,
-      656,
-      10,
-      C.muted,
-      "right",
-    );
-    ctx.rect(1067, 678, 166, 4, 0x36515a);
-    ctx.rect(
-      1067,
-      678,
-      (166 * r.health) / 100,
-      4,
-      r.health < 30 ? C.coral : C.mint,
-    );
-    text(
-      ctx,
-      "WASD  MOVE / DRIVE     E  INTERACT     SPACE  DRIFT     ESC  PAUSE     H  HORN     N  MUTE",
-      640,
-      709,
-      10,
-      C.muted,
-      "center",
-    );
+    text(bl, r.freeRoam ? "Drive any civilian car. H horn / R new dispatch." : detail, 48, 662, 13, C.muted, "left", 600);
+    // Speedometer.
+    panel(br, 1048, 560, 204, 134);
+    const speed = r.vehicle ? Math.abs(r.vehicle.motor.speed) * 0.28 : 0,
+      frac = Math.min(1, speed / 90),
+      cx = 1150,
+      cy = 618;
+    br.sprite("ll.ui.gauge", cx, cy, { sx: 0.88, sy: 0.88, alpha: 0.9, smooth: true });
+    const segs = 30;
+    for (let i = 0; i < segs; i++) {
+      const a = Math.PI * 0.75 + (Math.PI * 1.5 * (i + 0.5)) / segs,
+        on = i / segs < frac;
+      br.sprite("ll.ui.seg", cx + Math.cos(a) * 49, cy + Math.sin(a) * 49, { rot: a + Math.PI / 2, sx: 0.55, sy: 0.6, tint: on ? (i / segs > 0.8 ? C.coral : C.gold) : 0x2a3a50, alpha: on ? 1 : 0.8, smooth: true });
+    }
+    if (frac > 0) {
+      const na = Math.PI * 0.75 + Math.PI * 1.5 * frac;
+      br.sprite("ll.fx.glow", cx + Math.cos(na) * 49, cy + Math.sin(na) * 49, { sx: 0.4, sy: 0.4, tint: C.gold, alpha: 0.8, additive: true, smooth: true });
+    }
+    text(br, r.vehicle ? String(Math.round(speed)).padStart(3, "0") : "--", cx, cy - 16, 30, C.paper, "center", 900);
+    text(br, r.vehicle ? "KM/H  " + (r.vehicle.motor.speed < 0 ? "R" : "D") : "ON FOOT", cx, cy + 22, 9, C.muted, "center", 800);
+    br.rect(1066, 682, 168, 4, 0x26364a);
+    br.rect(1066, 682, (168 * r.health) / 100, 4, r.health < 30 ? C.coral : C.mint);
+    text(br, "HP", 1066, 668, 9, C.muted, "left", 800);
+    text(br, String(Math.round(r.health)), 1234, 668, 9, C.paper, "right", 800);
+    hints(bc, [["WASD", "DRIVE"], ["E", "INTERACT"], ["SPACE", "DRIFT"], ["ESC", "PAUSE"], ["H", "HORN"], ["N", "MUTE"]], 805, 700, 9, "center");
     if (r.heat) {
-      ctx.rect(437, 28, 400, 43, C.ink, 0.93);
-      text(
-        ctx,
-        r.busted > 0 ? "BLOCKED / GET MOVING" : "BREAK LINE OF SIGHT",
-        637,
-        37,
-        12,
-        r.busted > 0 ? C.coral : C.gold,
-        "center",
-      );
-      ctx.rect(453, 59, 368, 3, 0x38535a);
-      ctx.rect(
-        453,
-        59,
-        368 * (r.busted > 0 ? r.busted / 5 : r.escape / 8),
-        3,
-        r.busted > 0 ? C.coral : C.mint,
-      );
+      panel(tc, 437, 24, 400, 50, r.busted > 0 ? C.coral : C.gold);
+      text(tc, r.busted > 0 ? "BLOCKED  /  GET MOVING" : "BREAK LINE OF SIGHT", 637, 34, 12, r.busted > 0 ? C.coral : C.gold, "center", 800);
+      tc.rect(457, 58, 360, 4, 0x26364a);
+      tc.rect(457, 58, 360 * (r.busted > 0 ? r.busted / 5 : r.escape / 8), 4, r.busted > 0 ? C.coral : C.mint);
+      const flash = Math.sin(this.t * 10) > 0;
+      ctx.sprite("ll.fx.glow", 0, 0, { ox: 0, oy: 0, sx: 4, sy: H / 32, tint: flash ? 0xff2030 : 0x2050ff, alpha: 0.18, additive: true, smooth: true });
+      ctx.sprite("ll.fx.glow", W, 0, { ox: 64, oy: 0, sx: 4, sy: H / 32, tint: flash ? 0x2050ff : 0xff2030, alpha: 0.18, additive: true, smooth: true });
     }
     if (r.noticeTime > 0) {
-      ctx.rect(280, 510, 720, 38, C.ink, 0.94);
-      text(ctx, r.notice, 640, 522, 12, C.paper, "center");
+      const a = Math.min(1, r.noticeTime * 2);
+      bc.sprite("ll.ui.shadow", 640, 533, { sx: 740 / 36, sy: 50 / 36, alpha: 0.5 * a, smooth: true });
+      bc.rect(280, 512, 720, 40, C.ink, 0.9 * a);
+      bc.rect(280, 512, 720, 1, C.gold, 0.6 * a);
+      text(bc, r.notice, 640, 525, 13, C.paper, "center", 700, a);
     }
     if (!r.freeRoam && r.mission !== 2) {
       const [sx, sy] = g.camera.worldToScreen(r.objective.x, r.objective.y);
-      if (sx < 50 || sx > 1000 || sy < 100 || sy > 530) {
-        const x = Math.max(72, Math.min(950, sx)),
-          y = Math.max(125, Math.min(480, sy));
-        ctx.rect(x - 27, y - 15, 54, 30, C.gold, 0.95);
-        text(
-          ctx,
-          Math.round(distance(r.position, r.objective) / 10) + "m",
-          x,
-          y - 6,
-          12,
-          C.ink,
-          "center",
-        );
+      if (sx < 50 || sx > W - 280 || sy < 100 || sy > H - 190) {
+        const x = Math.max(72, Math.min(W - 330, sx)),
+          y = Math.max(125, Math.min(H - 240, sy)),
+          a = Math.atan2(sy - y, sx - x);
+        ctx.sprite("ll.ui.shadow", x, y + 3, { sx: 70 / 36, sy: 40 / 36, alpha: 0.5, smooth: true });
+        ctx.rect(x - 30, y - 15, 60, 30, C.gold, 0.96);
+        ctx.sprite("ll.ui.arrow", x + Math.cos(a) * 40, y + Math.sin(a) * 26, { rot: a, tint: C.gold, smooth: true });
+        text(ctx, Math.round(distance(r.position, r.objective) / 10) + "m", x, y - 7, 13, C.ink, "center", 900);
       }
     }
     if (g.mapOpen) this.map(ctx, true);
     if (r.phase === "paused" || r.phase === "won" || r.phase === "lost") {
-      ctx.rect(0, 0, 1280, 720, C.ink, 0.64);
-      ctx.rect(405, 173, 470, 385, C.ink, 0.98);
-      ctx.rect(405, 173, 470, 4, r.phase === "lost" ? C.coral : C.gold);
-      text(
-        ctx,
-        r.phase === "won"
-          ? "DELIVERY CONFIRMED"
-          : r.phase === "lost"
-            ? "DISPATCH INTERRUPTED"
-            : "CITY ON HOLD",
-        640,
-        211,
-        12,
-        C.mint,
-        "center",
-      );
-      text(
-        ctx,
-        r.phase === "won"
-          ? "CLEAN GETAWAY"
-          : r.phase === "lost"
-            ? r.health <= 0
-              ? "OUT OF ACTION"
-              : "BUSTED"
-            : "PAUSED",
-        640,
-        262,
-        38,
-        C.paper,
-        "center",
-        800,
-      );
-      text(
-        ctx,
-        r.phase === "won"
-          ? "$2,400 earned. The archive is safe."
-          : r.phase === "lost"
-            ? "The city caught up. Try another route."
-            : "Your ride will be here when you return.",
-        640,
-        335,
-        16,
-        C.muted,
-        "center",
-      );
-      ctx.rect(455, 441, 370, 55, C.gold);
-      text(
-        ctx,
-        r.phase === "won"
-          ? "KEEP EXPLORING"
-          : r.phase === "lost"
-            ? "TRY AGAIN"
-            : "BACK TO THE CITY",
-        640,
-        459,
-        14,
-        C.ink,
-        "center",
-        800,
-      );
-      text(
-        ctx,
-        "ENTER TO CONTINUE / R NEW DISPATCH",
-        640,
-        521,
-        11,
-        C.muted,
-        "center",
-      );
+      const accent = r.phase === "lost" ? C.coral : C.gold;
+      screen.rect(0, 0, W, H, 0x050a14, 0.62);
+      panel(cc, 405, 173, 470, 385, 0, 0.96);
+      cc.rect(405, 173, 470, 4, accent);
+      cc.sprite("ll.fx.glow", 640, 175, { sx: 6, sy: 0.6, tint: accent, alpha: 0.35, additive: true, smooth: true });
+      text(cc, r.phase === "won" ? "DELIVERY CONFIRMED" : r.phase === "lost" ? "DISPATCH INTERRUPTED" : "CITY ON HOLD", 640, 211, 12, C.mint, "center", 800);
+      const head = r.phase === "won" ? "CLEAN GETAWAY" : r.phase === "lost" ? (r.health <= 0 ? "OUT OF ACTION" : "BUSTED") : "PAUSED";
+      text(cc, head, 642, 264, 44, 0x000000, "center", 900, 0.4);
+      text(cc, head, 640, 260, 44, C.paper, "center", 900);
+      cc.rect(590, 322, 100, 2, accent);
+      text(cc, r.phase === "won" ? "$2,400 earned. The archive is safe." : r.phase === "lost" ? "The city caught up. Try another route." : "Your ride will be here when you return.", 640, 343, 16, C.muted, "center", 600);
+      cc.sprite("ll.ui.shadow", 640, 474, { sx: 390 / 36, sy: 70 / 36, alpha: 0.6, smooth: true });
+      cc.rect(455, 441, 370, 55, C.gold);
+      cc.sprite("ll.ui.fadeV", 455, 441, { ox: 0, oy: 0, sx: 370 / 8, sy: 55 / 64, tint: 0xffffff, alpha: 0.35, smooth: true });
+      cc.rect(455, 494, 370, 2, 0xa86a22);
+      text(cc, r.phase === "won" ? "KEEP EXPLORING" : r.phase === "lost" ? "TRY AGAIN" : "BACK TO THE CITY", 640, 459, 15, C.ink, "center", 900);
+      hints(cc, [["ENTER", "CONTINUE"], ["R", "NEW DISPATCH"]], 640, 516, 10, "center");
     }
   }
 }

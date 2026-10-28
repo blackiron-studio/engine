@@ -26,6 +26,8 @@ export interface Material3DOptions {
   lambertDiffuse?: number;
   /** Legacy alias for shading: "unlit". An explicit shading option takes precedence. */
   unlit?: boolean;
+  /** Apply the environment's distance fog; false for skies and far backdrops. */
+  fog?: boolean;
 }
 /** Lit material; base and emissive maps are sRGB, normal and metallic/roughness maps are linear. */
 export class Material3D {
@@ -47,6 +49,7 @@ export class Material3D {
   toneMapped = true;
   lambertAmbient = 0.48;
   lambertDiffuse = 0.52;
+  fog = true;
 
   get unlit(): boolean {
     return this.shading === "unlit";

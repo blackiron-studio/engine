@@ -43,6 +43,21 @@ export class TileMap extends Node2D implements Occluding {
   readonly data: TileMapData;
   readonly tileSize: number;
   readonly tiles: Record<number, TileEntry>;
+  /**
+   * Sample tiles with linear filtering. Null (the default) follows the tiles: smooth when the
+   * tile sprites are high-resolution (density above one).
+   */
+  smooth: boolean | null = null;
+  private smoothTiles: boolean | null = null;
+
+  /** Whether the plain tile sprites were painted smooth (high resolution). */
+  private highRes(ctx: DrawContext): boolean {
+    if (this.smoothTiles === null) {
+      const names = Object.values(this.tiles).filter((t): t is string => typeof t === "string");
+      this.smoothTiles = names.length > 0 && names.some((n) => ctx.atlas.has(n) && !!ctx.region(n).smooth);
+    }
+    return this.smoothTiles;
+  }
   readonly solidIds: Set<number>;
   readonly oneWayIds: Set<number>;
   overscan: number;
@@ -289,8 +304,9 @@ export class TileMap extends Node2D implements Occluding {
     const [ox, oy] = this.positionIn(this.scene?.world ?? this);
     const pad = this.overscan * this.tileSize;
     const cull = { x: v.x - ox - pad, y: v.y - oy - pad, w: v.w + pad * 2, h: v.h + pad * 2 };
-    ctx.batch(this.staticBatch, cull);
-    if (this.animBatch >= 0) ctx.batch(this.animBatch, cull);
+    const smooth = { smooth: this.smooth ?? this.highRes(ctx) };
+    ctx.batch(this.staticBatch, cull, smooth);
+    if (this.animBatch >= 0) ctx.batch(this.animBatch, cull, smooth);
   }
 
   /** Write every static tile into the batch once; animated cells are kept aside. */

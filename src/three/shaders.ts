@@ -169,6 +169,14 @@ void main(){
   vec3 V=normalize(uEye-vPosition);
   vec3 hemi=mix(linearColor(uGround),linearColor(uAmbient),N.y*0.5+0.5);
   vec3 color=base*hemi*(1.0-0.65*metallic);
+  // Environment reflection from the sky/ground hemisphere: smooth and metallic surfaces pick up
+  // the sky instead of going black where no light hits them directly.
+  vec3 R=reflect(-V,N);
+  vec3 envColor=mix(linearColor(uGround),linearColor(uAmbient),smoothstep(-0.25,0.65,R.y));
+  vec3 F0=mix(vec3(0.04),base,metallic);
+  float nvEnv=max(dot(N,V),0.0);
+  vec3 envFresnel=F0+(max(vec3(1.0-roughness),F0)-F0)*pow(1.0-nvEnv,5.0);
+  color+=envColor*envFresnel*(1.0-roughness*0.75);
   color+=brdf(N,V,uSunDirection,uSunColor,base)*shadow(N);
   for(int i=0;i<8;i++){
     if(i>=uPointCount)break;

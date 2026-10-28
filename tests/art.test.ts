@@ -161,7 +161,8 @@ describe("sprites and atlas", () => {
   test("bakeAtlas packs without overlap and keeps pixels", () => {
     defineSprite("solid", { w: 6, h: 3, origin: [0, 1] }, (p) => p.rect(0, 0, 6, 3, "#ff8800"));
     defineVariants("big", 3, { w: 40, h: 30 }, (p, { index }) => p.rect(0, 0, 40, 30, index ? "#00ff00" : "#0000ff"));
-    const atlas = bakeAtlas({ maxWidth: 128 });
+    // Wide enough for the high-resolution built-in ring and disc (128 texels each).
+    const atlas = bakeAtlas({ maxWidth: 256 });
     const regions = atlas.all();
     expect(atlas.has("solid")).toBe(true);
     expect(atlas.has("__white")).toBe(true);

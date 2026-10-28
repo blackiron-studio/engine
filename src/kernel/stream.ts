@@ -7,9 +7,9 @@ import { BLEND, type Kernel, MATERIAL, OP, type ProjectionMatrix, SLOT, drawFlag
 const MATERIAL_CODE: Record<SpriteMaterial["kind"], number> = { none: MATERIAL.NONE, flash: MATERIAL.FLASH, dissolve: MATERIAL.DISSOLVE, outline: MATERIAL.OUTLINE, silhouette: MATERIAL.SILHOUETTE };
 
 /** The flags word for a sprite draw. */
-export function spriteFlags(d: { additive?: boolean; erase?: boolean; smooth?: boolean; material?: SpriteMaterial | null }): number {
+export function spriteFlags(d: { additive?: boolean; erase?: boolean; smooth?: boolean; material?: SpriteMaterial | null; region?: { smooth?: boolean } }): number {
   const blend = d.erase ? BLEND.ERASE : d.additive ? BLEND.ADDITIVE : BLEND.NORMAL;
-  return drawFlags(blend, d.smooth ? SLOT.LINEAR : SLOT.NEAREST, d.material ? MATERIAL_CODE[d.material.kind] : 0);
+  return drawFlags(blend, (d.smooth ?? d.region?.smooth) ? SLOT.LINEAR : SLOT.NEAREST, d.material ? MATERIAL_CODE[d.material.kind] : 0);
 }
 
 const plainFlags = (additive: boolean, smooth: boolean): number => drawFlags(additive ? BLEND.ADDITIVE : BLEND.NORMAL, smooth ? SLOT.LINEAR : SLOT.NEAREST, 0);

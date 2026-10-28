@@ -22,6 +22,14 @@ export interface SpriteSpec {
   normal?: PaintFn | "bevel";
   /** What the atlas padding holds at this sprite's edge; "auto" extrudes tiles and clears props. */
   edge?: SpriteEdge;
+  /**
+   * Texels per logical unit. 2 or more paints a high-resolution sprite: `w` and `h` stay its
+   * size in the game, the painter is `w * density` texels wide, and vector pens draw in logical
+   * units. High-resolution sprites default to smooth sampling and no palette style.
+   */
+  density?: number;
+  /** Sample with linear filtering; defaults to true when density > 1. */
+  smooth?: boolean;
 }
 
 export interface PaintContext {
@@ -46,6 +54,8 @@ export interface SpriteDef {
   style: SpriteStyle;
   normal: PaintFn | "bevel" | null;
   edge?: SpriteEdge;
+  density?: number;
+  smooth?: boolean;
 }
 
 export interface AnimationDef {
@@ -71,9 +81,11 @@ export function defineSprite(name: string, spec: SpriteSpec, paint: PaintFn): st
     seed: typeof spec.seed === "string" ? hashString(spec.seed) : (spec.seed ?? hashString(name)),
     index: 0,
     paint,
-    style: spec.style ?? "palette",
+    style: spec.style ?? ((spec.density ?? 1) > 1 ? "none" : "palette"),
     normal: spec.normal ?? null,
     edge: spec.edge,
+    density: spec.density && spec.density !== 1 ? spec.density : undefined,
+    smooth: spec.smooth ?? (spec.density ?? 1) > 1,
   });
   return name;
 }

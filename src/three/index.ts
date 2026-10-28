@@ -15,3 +15,4 @@ export * from "./first-person.ts";
 export * from "./character.ts";
 export * from "./combat.ts";
 export * from "./navigation.ts";
+export * from "./procedural.ts";

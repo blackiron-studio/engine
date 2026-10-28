@@ -1,5 +1,7 @@
 export * from "./color.ts";
 export * from "./painter.ts";
+export * from "./vector.ts";
+export * as noise from "./noise.ts";
 export * from "./font.ts";
 export * from "./sprites.ts";
 export * from "./atlas.ts";

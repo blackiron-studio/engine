@@ -18,6 +18,12 @@ export function parseColor(c: ColorInput): RGBA {
   let out: RGBA;
   if (typeof c === "number") {
     out = { r: (c >> 16) & 255, g: (c >> 8) & 255, b: c & 255, a: 255 };
+  } else if (/^rgba?\(/i.test(c)) {
+    // rgb(r, g, b) or rgba(r, g, b, a) with a in 0..1, for translucent gradient stops.
+    const parts = c.slice(c.indexOf("(") + 1, c.lastIndexOf(")")).split(/[\s,/]+/).filter(Boolean).map(Number);
+    if (parts.length < 3 || parts.some((v) => !Number.isFinite(v))) throw new Error(`Bad colour: ${c}`);
+    const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+    out = { r: clamp(parts[0]), g: clamp(parts[1]), b: clamp(parts[2]), a: clamp((parts[3] ?? 1) * 255) };
   } else {
     let s = c.startsWith("#") ? c.slice(1) : c;
     if (s.length === 3 || s.length === 4) s = [...s].map((ch) => ch + ch).join("");

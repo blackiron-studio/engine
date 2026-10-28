@@ -4,6 +4,9 @@ import { SettingsScene, TitleScene, bindShellActions, createSaveSlots, createSet
 import { HighgroundTitle } from "./scenes/title.ts";
 import { PlayScene } from "./scenes/play.ts";
 import { type Progress, shell } from "./shell.ts";
+import { BUTTON } from "./look.ts";
+
+const BUTTON_THEME = { fill: 0x1d4a53, fillAlpha: 1, border: null, bevel: null, text: 0xf3ead2, hover: 0x2c6670, pressedFill: 0x123139, skin: BUTTON.skin };
 
 /** Called by the entry wrapper once the App exists, on the web and natively. */
 export default async function main(app: App): Promise<void> {
@@ -15,7 +18,16 @@ export default async function main(app: App): Promise<void> {
     jump: ["Space", "GamepadA"],
     reset: ["KeyR", "GamepadY"],
   });
-  app.setTheme({ font: { family: "Instrument Sans", size: 18, weight: 600 }, accent: 0xc9dc9c });
+  // One HUD language across the game, the shell's menus and its hints: glass ink panels, cream
+  // text, sun-gold accents, rounded skinned buttons.
+  app.setTheme({
+    font: { family: "Instrument Sans", size: 18, weight: 600 },
+    accent: 0xffcf5a,
+    text: 0xf3ead2,
+    muted: 0x9fc2b8,
+    panel: { fill: 0x12343e, fillAlpha: 0.94, border: 0x4f8a80, bevel: null },
+    button: { ...BUTTON_THEME },
+  });
   app.audio.defineSfx("jump", { wave: "square", freq: 300, freqEnd: 620, duration: 0.07, release: 0.09, volume: 0.18 });
   app.audio.defineSfx("land", { wave: "noise", freq: 240, freqEnd: 80, duration: 0.05, release: 0.08, volume: 0.2, lowpass: 900 });
   app.audio.defineSfx("coin", { wave: "sine", freq: 1040, freqEnd: 1560, duration: 0.06, release: 0.18, volume: 0.25, repeat: 2, repeatGap: 0.06 });
@@ -38,6 +50,6 @@ export function title(app: App): TitleScene {
     const settings = shell.settings;
     entries.push({ label: "Settings", onPick: () => app.scenes.push(new SettingsScene(settings), { overlay: true }) });
   }
-  const scene = new HighgroundTitle({ title: "Highground", subtitle: "Find the sun coins. Build a foothold. Explore the sunlit terraces.", entries, version: "Blackiron · 2.5D", background: 0x174f53 });
+  const scene = new HighgroundTitle({ title: "Highground", subtitle: "Find the sun coins. Build a foothold. Explore the sunlit terraces.", entries, version: "Blackiron · 2.5D", background: 0x2f9aa8 });
   return scene;
 }

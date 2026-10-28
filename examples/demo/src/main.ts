@@ -4,6 +4,7 @@
 
 import "./art.ts";
 import type { App } from "@blackiron-studio/engine/app";
+import { buildLut } from "@blackiron-studio/engine/render";
 import { defineAudio } from "./audio.ts";
 import { TitleScene } from "./scenes/title.ts";
 
@@ -19,5 +20,7 @@ export default async function main(app: App): Promise<void> {
     swap: ["KeyK", "GamepadY"],
   });
   defineAudio(app.audio);
+  // Colour grade: moonlit blue lifted into the shadows, a warm roll-off in the highlights.
+  app.basePost.lut = buildLut((t) => [Math.min(1, t ** 1.06 + 0.06 * t ** 3), t ** 1.02, Math.min(1, t * 0.94 + 0.05 + 0.08 * t * (1 - t))]);
   app.scenes.change(new TitleScene());
 }

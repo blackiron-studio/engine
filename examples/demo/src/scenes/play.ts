@@ -1,7 +1,8 @@
 import { TAU } from "@blackiron-studio/engine/core";
-import { Anchor, Graphics2D, AnimatedSprite, Button, Label, Light2D, Node2D, Panel, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
+import { Anchor, AnimatedSprite, Button, Label, Light2D, NineSlice, Node2D, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
+import { BUTTON_SKINS } from "../look.ts";
 import { LanternKeeper, EmberCompass } from "../scenery.ts";
-import { BUTTON, DISPLAY_SMALL, UI, UI_SMALL } from "../fonts.ts";
+import { BUTTON, CAPTION, DISPLAY_SMALL, SCORE, UI_SMALL } from "../fonts.ts";
 import { type GameEvent, type GameState, RULES, WORLD_H, WORLD_W, createGame, tick } from "../game.ts";
 import { saves } from "../store.ts";
 import { type Hollow, buildHollow } from "./hollow.ts";
@@ -34,6 +35,8 @@ export class PlayScene extends Scene {
   /** The knight as a cutout rig (default), the knight's sheet, or the painted hero. K cycles. */
   private heroMode: "vector" | "rig" | "sheet" | "painted" = "vector";
   private heroLight!: Sprite;
+  /** A warm wash on the ground around the keeper, under everything that stands. */
+  private pool!: Sprite;
   private lantern!: Light2D;
   private sparks!: ParticleEmitter;
   private bursts!: ParticleEmitter;
@@ -41,6 +44,7 @@ export class PlayScene extends Scene {
   private embers = new Map<number, Glowing>();
   private wisps = new Map<number, Glowing>();
   private wispLights = new Map<number, Light2D>();
+  private emberLights = new Map<number, Light2D>();
   private wispTrails = new Map<number, ParticleEmitter>();
   private hearts: Sprite[] = [];
   private score!: Label;
@@ -60,7 +64,7 @@ export class PlayScene extends Scene {
   override ready(): void {
     const app = this.app;
     this.state = createGame(this.seed);
-    this.hollow = buildHollow(this.world, this.state, 0x879eac);
+    this.hollow = buildHollow(this.world, this.state, 0x5a7294);
     this.camera.bounds = { x: 0, y: 0, w: WORLD_W, h: WORLD_H };
     this.camera.follow(this.state.player, 7);
 
@@ -71,6 +75,11 @@ export class PlayScene extends Scene {
     this.rig.scaleX = this.rig.scaleY = 0.97;
     this.rig.play("idle");
     this.keeper = this.hollow.actors.add(new LanternKeeper());
+    this.pool = this.hollow.shadows.add(new Sprite("__blob"));
+    this.pool.tint = 0xff9a48;
+    this.pool.additive = true;
+    this.pool.scaleX = 7;
+    this.pool.scaleY = 4.6;
     this.heroFx = this.hollow.actors.add(new Node2D());
     this.heroLight = this.heroFx.add(new Sprite("__blob", 12, -12));
     this.heroLight.tint = 0xffc070;
@@ -80,7 +89,7 @@ export class PlayScene extends Scene {
     this.sparks = this.heroFx.add(
       new ParticleEmitter({ rate: 12, life: [0.3, 0.7], speed: [8, 30], angle: [-TAU * 0.4, -TAU * 0.1], gravity: -36, size: [2, 3], colors: [0xffd36b, 0xff9a3a, 0xfff2b0], alpha: [0.9, 0], additive: true, spread: 4, seed: 4 }, 12, -12),
     );
-    this.lantern = this.hollow.lights.add(new Light2D({ radius: 340, color: 0xffb060, intensity: 1.1, flicker: 0.1, falloff: 1.4, shadows: true, shadowStrength: 0.45 }));
+    this.lantern = this.hollow.lights.add(new Light2D({ radius: 380, color: 0xffa050, intensity: 1.5, flicker: 0.08, falloff: 1.3, shadows: true, shadowStrength: 0.5 }));
 
     this.bursts = this.world.add(new ParticleEmitter({ life: [0.35, 0.8], speed: [60, 180], gravity: 80, drag: 2, size: [2, 5], colors: [0xffd36b, 0xff9a3a, 0xfff2b0, 0xffffff], alpha: [1, 0], additive: true, seed: 8 }));
     this.bursts.emitting = false;
@@ -90,32 +99,40 @@ export class PlayScene extends Scene {
     for (const e of this.state.embers) this.addEmber(e.id);
     for (const w of this.state.wisps) this.addWisp(w.id);
 
-    // HUD, anchored so it holds at any aspect ratio.
+    // HUD: glass plates, vector icons and one 16-unit margin, anchored for any aspect ratio.
     const topLeft = this.ui.add(new Anchor({ x: "left", y: "top", safe: 16 }));
-    topLeft.add(new Graphics2D(-8,-8).roundedRect(0,0,154,78,12,{color:0x142d3b,alpha:.88}));
-    topLeft.add(new Label("LANTERN KEEPER",0,46,{font:UI_SMALL,color:0xb5ccc5}));
-    for (let i = 0; i < RULES.lives; i++) {
-      const h = topLeft.add(new Sprite("heart", i * 44, 0));
-      h.scale = 2;
-      this.hearts.push(h);
-    }
+    topLeft.add(new NineSlice("wh.ui.plate", -4, -4, 132, 76, 16));
+    topLeft.add(new Label("LANTERN", 14, 10, { font: CAPTION, color: 0x8fb8b0 }));
+    for (let i = 0; i < RULES.lives; i++) this.hearts.push(topLeft.add(new Sprite("heart", 10 + i * 34, 28)));
     const topRight = this.ui.add(new Anchor({ x: "right", y: "top", safe: 16 }));
-    topRight.add(new Graphics2D(-214,-8).roundedRect(0,0,222,80,12,{color:0x142d3b,alpha:.88}));
-    this.score = topRight.add(new Label("EMBERS 0", 0, 0, { font: UI, align: "right", color: 0xffe9a3, shadow: 0x000000 }));
+    topRight.add(new NineSlice("wh.ui.plate", -160, -4, 164, 76, 16));
+    topRight.add(new Sprite("wh.ui.ember", -124, 34)).scale = 1.25;
+    topRight.add(new Label("EMBERS", -16, 10, { font: CAPTION, align: "right", color: 0x8fb8b0 }));
+    const scoreBox = topRight.add(new Node2D(-16, 24));
+    this.score = scoreBox.add(new Label("0", 0, 0, { font: SCORE, align: "right", color: 0xffd98a, shadow: 0x2a1406 }));
     this.bestScore = saves.load().best;
-    this.best = topRight.add(new Label(this.bestScore > 0 ? `BEST ${this.bestScore}` : "", 0, 30, { font: UI_SMALL, align: "right", color: 0xaaa6c8, shadow: 0x000000 }));
+    this.best = topRight.add(new Label(this.bestScore > 0 ? `BEST ${this.bestScore}` : "", -146, 10, { font: CAPTION, color: 0x8fb8b0 }));
 
-    const compass = this.ui.add(new Anchor({x:"center",y:"bottom",dy:-62}));
+    const compass = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -78 }));
     compass.add(new EmberCompass(this.state));
-    compass.add(new Label("FOLLOW THE EMBERS",0,40,{font:UI_SMALL,align:"center",color:0xc7dbce}));
-    const hint = this.ui.add(new Anchor({x:"left",y:"bottom",safe:20,dy:-24}));
-    hint.add(new Label("WASD / ARROWS   Move     ESC   Pause",0,0,{font:UI_SMALL,color:0xc7dbce,shadow:0x142d3b}));
+    compass.add(new NineSlice("wh.ui.pill", -84, 36, 168, 28, 12));
+    compass.add(new Label("FOLLOW THE EMBERS", 0, 43, { font: CAPTION, align: "center", color: 0xd8e8dc }));
+    const hint = this.ui.add(new Anchor({ x: "left", y: "bottom", safe: 16, dy: -34 }));
+    let hx = 0;
+    for (const [key, what] of [["WASD", "Move"], ["ESC", "Pause"], ["K", "Hero"]] as const) {
+      const kw = key.length > 1 ? 18 + key.length * 9 : 28;
+      hint.add(new NineSlice("wh.ui.key", hx, 0, kw, 28, 9));
+      hint.add(new Label(key, hx + kw / 2, 6, { font: CAPTION, align: "center", color: 0xe8f2ee }));
+      hint.add(new Label(what, hx + kw + 8, 5, { font: UI_SMALL, color: 0xa9c6c0, shadow: 0x02060c }));
+      hx += kw + 8 + what.length * 8 + 22;
+    }
 
-    this.pausePanel = this.ui.add(new Anchor({ x: "center", y: "center", w: 360, h: 220 }));
-    this.pausePanel.add(new Panel(0, 0, 360, 220));
-    this.pausePanel.add(new Label("PAUSED", 180, 22, { font: DISPLAY_SMALL, align: "center", color: 0xffd67a, shadow: 0x000000 }));
-    this.pausePanel.add(new Button("RESUME", 30, 96, 300, 44, { action: "pause", style: { font: BUTTON } }));
-    this.pausePanel.add(new Button("QUIT TO TITLE", 30, 152, 300, 44, { action: "quit", style: { font: BUTTON } }));
+    this.pausePanel = this.ui.add(new Anchor({ x: "center", y: "center", w: 360, h: 240 }));
+    this.pausePanel.add(new NineSlice("wh.ui.plate", -6, -6, 372, 252, 16));
+    this.pausePanel.add(new Label("PAUSED", 180, 24, { font: DISPLAY_SMALL, align: "center", color: 0xffd98a, shadow: 0x2a1406 }));
+    this.pausePanel.add(new Sprite("wh.ui.rule", 180, 82));
+    this.pausePanel.add(new Button("RESUME", 30, 104, 300, 48, { action: "pause", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
+    this.pausePanel.add(new Button("QUIT TO TITLE", 30, 164, 300, 48, { action: "quit", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xe8f2ee } }));
     this.pausePanel.visible = false;
 
     this.ui.add(new TouchControls({ stick: { left: "left", right: "right", up: "up", down: "down" }, buttons: [{ action: "pause", label: "II" }], size: 64 }));
@@ -124,13 +141,16 @@ export class PlayScene extends Scene {
   }
 
   private addEmber(id: number): void {
-    const g = new Glowing("ember", 0xff9a3a, 1.1, 0.6);
+    const g = new Glowing("ember", 0xff9a3a, 1.7, 0.6);
+    g.body.scale = 1.35;
     this.hollow.actors.add(g);
     this.embers.set(id, g);
+    this.emberLights.set(id, this.hollow.lights.add(new Light2D({ radius: 110, color: 0xff9440, intensity: 0.8, flicker: 0.15 })));
   }
 
   private addWisp(id: number): void {
-    const g = new Glowing("wisp", 0x66ffe0, 1.4, 0.5);
+    const g = new Glowing("wisp", 0x66ffe0, 1.8, 0.5);
+    g.body.scale = 1.3;
     g.body.play("wisp");
     this.hollow.actors.add(g);
     this.wisps.set(id, g);
@@ -173,7 +193,8 @@ export class PlayScene extends Scene {
   }
 
   override update(dt: number): void {
-    if (this.pausedFlag) return;
+    // A scene-change tween can detach this scene just before its update runs (see Scene.updateTree).
+    if (this.pausedFlag || !this.attachedApp) return;
     this.t += dt;
     const app = this.app;
     const s = this.state;
@@ -192,6 +213,13 @@ export class PlayScene extends Scene {
     for (const ev of tick(s, dir, dt)) this.handle(ev);
 
     this.syncPresentation();
+    // Canopies the keeper walks behind thin out so the keeper never disappears.
+    const p = s.player;
+    for (const tree of this.hollow.trees) {
+      const k = tree.scaleX;
+      const behind = Math.abs(p.x - tree.x) < 66 * k && p.y < tree.y - 4 && p.y > tree.y - 150 * k;
+      tree.alpha += ((behind ? 0.42 : 1) - tree.alpha) * Math.min(1, dt * 8);
+    }
   }
 
   /** Establish poses before the first draw as well as after simulation; never advances game rules. */
@@ -224,10 +252,17 @@ export class PlayScene extends Scene {
     this.keeper.facing = p.facing;
     const flicker = 0.45 + Math.sin(this.t * 17) * 0.05 + Math.sin(this.t * 5.3) * 0.06;
     this.heroLight.alpha = flicker;
-    this.heroLight.x = p.facing === -1 ? -12 : 12;
-    this.sparks.x = this.heroLight.x;
-    this.lantern.x = p.x + (p.facing === -1 ? -12 : 12);
-    this.lantern.y = p.y - 14;
+    const vector = this.heroMode === "vector";
+    const lx = vector ? this.keeper.lanternX : p.facing === -1 ? -12 : 12;
+    const ly = vector ? this.keeper.lanternY : -12;
+    this.heroLight.x = this.sparks.x = lx;
+    this.heroLight.y = ly;
+    this.sparks.y = ly - 4;
+    this.pool.x = p.x + lx * 0.6;
+    this.pool.y = p.y - 4;
+    this.pool.alpha = 0.34 + (flicker - 0.45) * 0.5;
+    this.lantern.x = p.x + lx;
+    this.lantern.y = p.y + ly - 2;
 
     // Embers bob; wisps float.
     for (const e of s.embers) {
@@ -236,6 +271,11 @@ export class PlayScene extends Scene {
       n.x = e.x;
       n.y = e.y + Math.sin(this.t * 3 + e.phase) * 3;
       n.halo.alpha = 0.5 + Math.sin(this.t * 5 + e.phase) * 0.2;
+      const light = this.emberLights.get(e.id);
+      if (light) {
+        light.x = e.x;
+        light.y = n.y + 6;
+      }
     }
     for (const w of s.wisps) {
       const n = this.wisps.get(w.id);
@@ -258,10 +298,10 @@ export class PlayScene extends Scene {
 
     // HUD.
     for (let i = 0; i < this.hearts.length; i++) this.hearts[i].sprite = i < p.lives ? "heart" : "heart.empty";
-    this.score.text = `EMBERS ${s.score}`;
+    this.score.text = `${s.score}`;
     if (s.score > this.bestScore) {
       this.best.text = "NEW BEST";
-      this.best.color = 0xffd67a;
+      this.best.color = 0xffd98a;
     }
   }
 
@@ -329,6 +369,8 @@ export class PlayScene extends Scene {
       if (!this.state.embers.some((e) => e.id === id)) {
         n.destroy();
         this.embers.delete(id);
+        this.emberLights.get(id)?.destroy();
+        this.emberLights.delete(id);
       }
     }
   }

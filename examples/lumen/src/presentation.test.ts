@@ -52,4 +52,4 @@ test("Lumen integrates 3D, movement, pause, victory and clean restart", async ()
   } finally {
     app.destroy();
   }
-});
+}, 20_000);

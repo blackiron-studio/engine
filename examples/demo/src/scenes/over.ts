@@ -1,5 +1,6 @@
-import { Anchor, Button, FocusGroup, Label, Panel, Scene, Sprite } from "@blackiron-studio/engine/scene";
-import { BUTTON, DISPLAY, UI, UI_SMALL } from "../fonts.ts";
+import { Anchor, Button, FocusGroup, Label, NineSlice, Scene, Sprite } from "@blackiron-studio/engine/scene";
+import { BUTTON_SKINS } from "../look.ts";
+import { BUTTON, CAPTION, DISPLAY, UI, UI_SMALL } from "../fonts.ts";
 import { WORLD_H, WORLD_W, createGame } from "../game.ts";
 import { saves } from "../store.ts";
 import { buildHollow } from "./hollow.ts";
@@ -20,7 +21,7 @@ export class OverScene extends Scene {
 
   override ready(): void {
     const state = createGame(this.seed);
-    buildHollow(this.world, state, 0x1c2040);
+    buildHollow(this.world, state, 0x283650);
     this.camera.bounds = { x: 0, y: 0, w: WORLD_W, h: WORLD_H };
     this.camera.x = WORLD_W / 2;
     this.camera.y = WORLD_H / 2;
@@ -31,12 +32,13 @@ export class OverScene extends Scene {
     const pw = 480;
     const ph = 300;
     const box = this.ui.add(new Anchor({ x: "center", y: "center", w: pw, h: ph }));
-    box.add(new Panel(0, 0, pw, ph, { fillAlpha: 0.92 }));
-    box.add(new Label("THE LANTERN WENT OUT", pw / 2, 24, { font: UI, align: "center", color: 0xd9d6ec, shadow: 0x000000 }));
-    box.add(new Label(`${this.score}`, pw / 2, 56, { font: DISPLAY, align: "center", color: 0xffd67a, shadow: 0x3a1c0a }));
-    box.add(new Label(this.score === 1 ? "EMBER GATHERED" : "EMBERS GATHERED", pw / 2, 146, { font: UI_SMALL, align: "center", color: 0xffe9a3, shadow: 0x000000 }));
+    box.add(new NineSlice("wh.ui.plate", -6, -6, pw + 12, ph + 12, 16));
+    box.add(new Label("THE LANTERN WENT OUT", pw / 2, 26, { font: UI, align: "center", color: 0xd8e8e4, shadow: 0x02060c }));
+        box.add(new Label(`${this.score}`, pw / 2, 58, { font: DISPLAY, align: "center", color: 0xffd98a, shadow: 0x2a1406 }));
+    box.add(new Sprite("wh.ui.rule", pw / 2, 138));
+    box.add(new Label(this.score === 1 ? "EMBER GATHERED" : "EMBERS GATHERED", pw / 2, 148, { font: CAPTION, align: "center", color: 0xffe3ae }));
     const best = saves.load().best;
-    box.add(new Label(this.isBest ? "NEW BEST!" : `BEST ${best}`, pw / 2, 172, { font: UI_SMALL, align: "center", color: this.isBest ? 0x8de9d8 : 0xaaa6c8, shadow: 0x000000 }));
+    box.add(new Label(this.isBest ? "NEW BEST!" : `BEST ${best}`, pw / 2, 172, { font: UI_SMALL, align: "center", color: this.isBest ? 0x8de9d8 : 0x8fb0aa, shadow: 0x02060c }));
     if (this.isBest) {
       const glow = box.add(new Sprite("__blob", pw / 2, 182));
       glow.scaleX = 6;
@@ -45,12 +47,12 @@ export class OverScene extends Scene {
       glow.additive = true;
       glow.alpha = 0.25;
     }
-    const again = box.add(new Button("PLAY AGAIN", 32, 216, 200, 46, { action: "again", style: { font: BUTTON } }));
-    const title = box.add(new Button("TITLE", pw - 32 - 200, 216, 200, 46, { action: "title", style: { font: BUTTON } }));
+    const again = box.add(new Button("PLAY AGAIN", 32, 216, 200, 46, { action: "again", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
+    const title = box.add(new Button("TITLE", pw - 32 - 200, 216, 200, 46, { action: "title", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xd8e8e4 } }));
     this.focus.items = [again, title];
     this.focus.set(0);
     const foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -40, safe: 12 }));
-    foot.add(new Label("Enter to play again", 0, 0, { font: UI_SMALL, align: "center", color: 0x6b6890, shadow: 0x000000 }));
+    foot.add(new Label("Enter to play again", 0, 0, { font: UI_SMALL, align: "center", color: 0x8fb0aa, shadow: 0x02060c }));
   }
 
   override onAction(name: string, pressed: boolean): void {
