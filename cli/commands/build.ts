@@ -5,11 +5,12 @@ import { existsSync } from "node:fs";
 import { cp, mkdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { atlasManifest, bakeAtlas } from "../../src/art/atlas.ts";
+import { filterAtlasRows } from "../../src/art/prebaked.ts";
 import { resolveAssets } from "../../src/art/images.ts";
 import { HeadlessPlatform } from "../../src/platform/headless.ts";
 import type { Args } from "../args.ts";
 import { bundle, gzipSize, kb } from "../bundle.ts";
-import { writeEntry } from "../entry.ts";
+import { type PrebakedRef, writeEntry } from "../entry.ts";
 import { pageHtml } from "../html.ts";
 import { type Project, loadProject, runtimeConfig } from "../project.ts";
 
@@ -19,9 +20,31 @@ export interface BuildOutput {
   html: string;
 }
 
+/**
+ * Paint the project's art once and write it next to the page as `assets/atlas.json` plus packed
+ * RGBA, so the page loads the atlas instead of painting it at boot. Returns where the entry
+ * should look for it, or null for a project without art.
+ */
+async function prebakeWebAtlas(project: Project, dist: string): Promise<PrebakedRef | null> {
+  if (!project.artPath) return null;
+  const t = performance.now();
+  await import(project.artPath);
+  const atlas = bakeAtlas({ images: await resolveAssets(new HeadlessPlatform({ root: project.root })) });
+  const data = Bun.gzipSync(filterAtlasRows(atlas.data, atlas.width), { level: 9 });
+  const normals = atlas.normals ? Bun.gzipSync(filterAtlasRows(atlas.normals, atlas.width), { level: 9 }) : null;
+  const id = `${atlas.width}x${atlas.height}-${Bun.hash(data).toString(36)}`;
+  await Bun.write(resolve(dist, "assets", "atlas.pack"), data);
+  if (normals) await Bun.write(resolve(dist, "assets", "atlas_n.pack"), normals);
+  await Bun.write(resolve(dist, "assets", "atlas.json"), JSON.stringify({ id, ...atlasManifest(atlas) }));
+  console.log(
+    `  prebaked ${atlas.all().filter((x) => !x.name.startsWith("__")).length} sprites into ${atlas.width}x${atlas.height} (${kb(data.length + (normals?.length ?? 0))}) in ${(performance.now() - t).toFixed(0)} ms`,
+  );
+  return { base: "./assets/atlas", id };
+}
+
 export async function buildProject(
   project: Project,
-  opts: { report?: boolean } = {},
+  opts: { report?: boolean; prebake?: boolean } = {},
 ): Promise<BuildOutput> {
   requireTarget(project, "web");
   const dist = exportDirectory(project, "dist");
@@ -32,7 +55,8 @@ export async function buildProject(
       const dist = stage;
       await mkdir(resolve(dist, "assets"), { recursive: true });
       await copyAssets(project, resolve(dist, "assets"));
-      const entry = await writeEntry(project, "web", runtimeConfig(project));
+      const prebaked = opts.prebake === false ? null : await prebakeWebAtlas(project, dist);
+      const entry = await writeEntry(project, "web", runtimeConfig(project), prebaked);
       const r = await bundle(project, {
         minify: true,
         sourcemap: "linked",

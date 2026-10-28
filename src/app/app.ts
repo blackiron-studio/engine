@@ -468,8 +468,8 @@ export class App {
     const mode: AppMode = opts.mode ?? (opts.headless ? "headless" : platform.kind === "native" ? "native" : platform.kind === "headless" ? "headless" : "web");
     const { width, height } = config.viewport;
     if (mode === "web" && config.fonts?.length) await loadFonts(config.fonts);
-    const images = await resolveAssets(platform);
-    const atlas = opts.atlas ?? bakeAtlas({ images });
+    // A prebaked atlas already holds the imported images; only paint (and load them) without one.
+    const atlas = opts.atlas ?? bakeAtlas({ images: await resolveAssets(platform) });
     if (mode === "headless") {
       const app = new App(platform, config, null, opts.renderer ?? new FakeRenderer(width, height), atlas, "headless");
       app.renderer.resize(width, height, 1);

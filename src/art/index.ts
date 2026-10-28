@@ -7,6 +7,7 @@ export * from "./sprites.ts";
 export * from "./atlas.ts";
 export { opaqueEdged, type SpriteEdge } from "./atlas.ts";
 export * from "./images.ts";
+export * from "./prebaked.ts";
 export * from "./style.ts";
 export * from "./rows.ts";
 export * as materials from "./materials.ts";

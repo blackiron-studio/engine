@@ -9,7 +9,13 @@ import type { Project } from "./project.ts";
 
 const ENGINE = resolve(import.meta.dir, "..", "src", "index.ts");
 
-export async function writeEntry(project: Project, target: "web" | "native", config: Partial<BlackironConfig>): Promise<string> {
+/** Where a web build's prebaked atlas sits, relative to the page, and the id it was stamped with. */
+export interface PrebakedRef {
+  base: string;
+  id: string;
+}
+
+export async function writeEntry(project: Project, target: "web" | "native", config: Partial<BlackironConfig>, prebaked: PrebakedRef | null = null): Promise<string> {
   const dir = resolve(project.root, ".blackiron");
   await mkdir(dir, { recursive: true });
   const file = resolve(dir, `entry.${target}.ts`);
@@ -18,7 +24,17 @@ export async function writeEntry(project: Project, target: "web" | "native", con
   const cfg = JSON.stringify(config);
   const source =
     target === "web"
-      ? `import * as game from ${entry};
+      ? prebaked
+        ? `import * as game from ${entry};
+import { App, loadPrebakedAtlas } from ${engine};
+if (typeof game.default === "function") {
+  const atlas = (await loadPrebakedAtlas(${JSON.stringify(prebaked.base)}, ${JSON.stringify(prebaked.id)})) ?? undefined;
+  const app = await App.create({ canvas: "#blackiron", atlas });
+  await game.default(app);
+  app.start();
+}
+`
+        : `import * as game from ${entry};
 import { App } from ${engine};
 if (typeof game.default === "function") {
   const app = await App.create({ canvas: "#blackiron" });

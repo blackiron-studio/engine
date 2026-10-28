@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Web builds prebake the atlas: `blackiron build` paints every sprite once and ships `assets/atlas.json` with packed RGBA (`atlas.pack`, PNG's up filter under gzip, exact texels), and the page loads it instead of painting at boot. A stamped id ties atlas and bundle; a missing, stale or undecodable atlas falls back to painting. Single-file exports and the dev server still paint live.
+- `App.create` resolves imported images only when it has to paint the atlas.
+
 ## 0.17.1 (2026-10-14)
 
 - Fix oversized native icon sprites wrapping into adjacent rows; safely downscale to fit while preserving pixel-art enlargement.
