@@ -135,8 +135,10 @@ const proc = Bun.spawn(
     `--force-device-scale-factor=${dpr}`,
     `--user-data-dir=${join(temp, "profile")}`,
     `--window-size=${width},${height}`,
-    "--virtual-time-budget=60000",
-    "--dump-dom",
+    // Keep the browser alive until the page posts /result; frames already advance on a fixed clock.
+    // No --virtual-time-budget: under chrome-headless-shell it stalls createImageBitmap, hanging every
+    // project that loads PNG assets.
+    "--remote-debugging-port=0",
     `http://127.0.0.1:${server.port}/`,
   ],
   { stdout: "pipe", stderr: "pipe" },
