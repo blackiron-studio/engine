@@ -20,9 +20,10 @@ export interface ExportOverrides {
 function validateReleaseMetadata(config: ExportOverrides): void {
   if (
     config.version !== undefined &&
-    (typeof config.version !== "string" || !/^\d+\.\d+\.\d+$/.test(config.version))
+    (typeof config.version !== "string" || !/^\d+(\.\d+){0,2}$/.test(config.version))
   )
-    throw Error("version must be major.minor.patch");
+    // Apple's marketing version is one to three period-separated integers ("1.0" is common).
+    throw Error("version must be major, major.minor or major.minor.patch");
   if (
     config.buildNumber !== undefined &&
     (!Number.isInteger(config.buildNumber) ||

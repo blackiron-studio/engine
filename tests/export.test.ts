@@ -264,6 +264,9 @@ test("generic export metadata validates configured values and supplies CLI defau
   const p = await project();
   expect(resolveExportProject(p).config.version).toBe("1.0.0");
   expect(resolveExportProject(p, { version: "7.8.9", buildNumber: 9 }).config.buildNumber).toBe(9);
+  // Apple marketing versions are one to three integers; anything else is refused.
+  for (const version of ["1", "1.0", "2.10.3"]) expect(resolveExportProject(p, { version }).config.version).toBe(version);
+  for (const version of ["1.0.0.0", "1.0-beta", "v1.0", ""]) expect(() => resolveExportProject(p, { version })).toThrow();
   p.config.buildNumber = 0;
   expect(() => resolveExportProject(p)).toThrow();
 });

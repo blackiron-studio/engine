@@ -4,6 +4,7 @@
 
 - Web builds prebake the atlas: `blackiron build` paints every sprite once and ships `assets/atlas.json` with packed RGBA (`atlas.pack`, PNG's up filter under gzip, exact texels), and the page loads it instead of painting at boot. A stamped id ties atlas and bundle; a missing, stale or undecodable atlas falls back to painting. Single-file exports and the dev server still paint live.
 - `App.create` resolves imported images only when it has to paint the atlas.
+- Release versions may have one to three integer parts ("1", "1.0", "1.0.0"), matching Apple's marketing-version format, so a build can match an App Store version such as "1.0" exactly.
 - Depth of field post effect (`post.focus`, `focusBand`, `focusY`): a half-size blurred copy of the world is mixed in away from a horizontal focus band, on WebGL2 and the native wgpu renderer; the UI stays sharp.
 
 ## 0.17.1 (2026-10-14)
