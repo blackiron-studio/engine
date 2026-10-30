@@ -37,6 +37,33 @@ export interface Platform {
   haptic?(kind: HapticKind): void;
   /** Read text out through the screen reader, when the platform has one and it is on. */
   announce?(text: string): void;
+  /** The app store (StoreKit, Play Billing), where the build has one. Absent on plain web and desktop. */
+  readonly purchases?: Purchases;
+}
+
+/** A product as the store describes it, with the price already localised for the player. */
+export interface StoreProduct {
+  id: string;
+  title: string;
+  price: string;
+}
+
+export type PurchaseResult = "purchased" | "restored" | "cancelled" | "pending" | "failed" | "unavailable";
+
+/**
+ * In-app purchases. Product ids are the ones registered in App Store Connect and the Play
+ * Console. Entitlements are the store's to keep: a game re-reads `owned()` on launch and
+ * grants whatever is listed, so a reinstall or a second device restores itself.
+ */
+export interface Purchases {
+  products(ids: string[]): Promise<StoreProduct[]>;
+  buy(id: string): Promise<PurchaseResult>;
+  /** Ask the store to re-sync past purchases; resolves with every owned id. */
+  restore(): Promise<string[]>;
+  /** Non-consumables the store last reported as owned. */
+  owned(): string[];
+  /** Called when entitlements change outside a `buy` (approved Ask to Buy, refunds, another device). */
+  onChange(cb: (owned: string[]) => void): () => void;
 }
 
 export type HapticKind = "light" | "medium" | "heavy" | "selection" | "success" | "warning" | "error";

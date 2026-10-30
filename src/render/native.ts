@@ -87,6 +87,13 @@ export interface BlackironHostApi {
   haptic?(kind: string): void;
   /** Read text through the platform's screen reader when one is on. */
   announce?(text: string): void;
+  /**
+   * Start a store request: `op` is "products" (arg: JSON id list), "buy" (arg: product id)
+   * or "restore". The answer comes back through `__blackiron.purchase(requestId, json)`.
+   */
+  purchaseRequest?(requestId: number, op: string, arg: string): void;
+  /** JSON list of owned product ids, as the host last saw them. */
+  purchaseOwned?(): string;
   /** Show or hide the on-screen keyboard, where the host has one. */
   showKeyboard?(visible: boolean): void;
   /** Set by hosts running a synthetic clock (`blackiron verify`), so unseeded games stay reproducible. */

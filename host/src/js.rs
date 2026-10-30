@@ -55,6 +55,8 @@ pub struct HostState {
     pub haptics: Vec<String>,
     /// Text the script asked the screen reader to say.
     pub announcements: Vec<String>,
+    /// Store requests from the script (request id, op, argument); Android hands them to Play Billing.
+    pub purchase_requests: Vec<(i32, String, String)>,
     pub physics: Vec<Option<Physics>>,
     /// Set by the script when a text field wants the on-screen keyboard.
     pub keyboard: Option<bool>,
@@ -173,6 +175,7 @@ impl Js {
             frame: None,
             haptics: Vec::new(),
             announcements: Vec::new(),
+            purchase_requests: Vec::new(),
             physics: Vec::new(),
             keyboard: None,
             pointer_capture: None,
@@ -295,6 +298,16 @@ impl Js {
             st.borrow_mut().announcements.push(arg(a, 0).text());
             Val::Undefined
         }));
+        // Only Android builds have a store; on desktop the script sees no purchases at all.
+        #[cfg(target_os = "android")]
+        {
+            let st = state.clone();
+            reg(e, "__blackironHost", "purchaseRequest", Box::new(move |a| {
+                st.borrow_mut().purchase_requests.push((arg(a, 0).num() as i32, arg(a, 1).text(), arg(a, 2).text()));
+                Val::Undefined
+            }));
+            reg(e, "__blackironHost", "purchaseOwned", Box::new(move |_| Val::Str(crate::android::purchase_owned())));
+        }
         let st=state.clone();
         reg(e,"__blackironHost","setPointerCapture",Box::new(move |a|{st.borrow_mut().pointer_capture=Some(arg(a,0).truthy());Val::Undefined}));
         let st=state.clone();
@@ -619,6 +632,11 @@ impl Js {
 
     pub fn wheel(&mut self, dy: f64) {
         self.engine.call("__blackiron", "wheel", &[Val::Num(dy)]);
+    }
+
+    /// A store answer for the script's `purchaseRequest`; id 0 is an entitlement update.
+    pub fn purchase(&mut self, request_id: i32, json: &str) {
+        self.engine.call("__blackiron", "purchase", &[Val::Num(request_id as f64), Val::Str(json.into())]);
     }
 }
 

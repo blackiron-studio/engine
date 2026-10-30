@@ -133,7 +133,15 @@ impl App {
             }
         }
         if self.pointer_captured {let (x,y)=self.relative_mouse.take();if x!=0.0||y!=0.0 {js.mouse_motion(x,y);}}
+        #[cfg(target_os = "android")]
+        for (id, json) in android::take_purchase_answers() {
+            js.purchase(id, &json);
+        }
         js.tick(now);
+        #[cfg(target_os = "android")]
+        for (id, op, arg) in std::mem::take(&mut js.state.borrow_mut().purchase_requests) {
+            android::purchase_request(id, &op, &arg);
+        }
         if js.state.borrow().boot_failed {el.exit();return;}
         let (uploads, frame, haptics, keyboard, announcements) = {
             let mut s = js.state.borrow_mut();

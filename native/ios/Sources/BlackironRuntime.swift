@@ -30,6 +30,8 @@ func blackironLog(_ message: String) {
     var audio: BlackironAudio { get }
     func haptic(_ kind: String)
     func announce(_ text: String)
+    func purchaseRequest(_ requestId: Int, _ op: String, _ arg: String)
+    func purchaseOwned() -> String
     func createPhysics(_ pixelsPerMeter: Double) -> BlackironPhysicsBridge
     func showKeyboard(_ visible: Bool)
     var deterministic: Bool { get set }
@@ -67,6 +69,12 @@ func blackironLog(_ message: String) {
         audio = BlackironAudio(context: context)
         BlackironHost.registerBundledFonts()
     }
+
+    /// StoreKit, started on the first store call so games without purchases never touch it.
+    private lazy var store = BlackironStore(context: context)
+
+    func purchaseRequest(_ requestId: Int, _ op: String, _ arg: String) { store.request(requestId, op, arg) }
+    func purchaseOwned() -> String { store.ownedJSON() }
 
     /// The view that owns the on-screen keyboard; set by the runtime.
     weak var keyboardView: UIView?

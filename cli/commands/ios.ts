@@ -275,6 +275,7 @@ targets:
       - sdk: Metal.framework
       - sdk: QuartzCore.framework
       - sdk: CoreGraphics.framework
+      - sdk: StoreKit.framework
     info:
       path: Info.plist
       properties:

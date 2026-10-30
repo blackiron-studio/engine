@@ -1,10 +1,14 @@
 import { fetchResource } from "./resources.ts";
 import { defaultBackend } from "../save/store.ts";
-import type { DecodedImage, HapticKind, Platform } from "./types.ts";
+import { MockPurchases } from "./purchases.ts";
+import type { DecodedImage, HapticKind, Platform, Purchases } from "./types.ts";
 
 /** The browser platform: DOM timers, fetch, image decoding through a canvas. */
 export class WebPlatform implements Platform {
   readonly kind = "web" as const;
+  /** Browsers have no app store; `?store=mock` turns on a pretend one for testing shops. */
+  readonly purchases?: Purchases =
+    typeof location !== "undefined" && new URLSearchParams(location.search).get("store") === "mock" ? new MockPurchases(defaultBackend()) : undefined;
 
   now(): number {
     return performance.now();

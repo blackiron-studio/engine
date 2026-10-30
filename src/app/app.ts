@@ -357,6 +357,8 @@ export interface HostBridge {
   wheel(dy: number): void;
   resize(width: number, height: number, scale: number, insets?: [number, number, number, number]): void;
   visibility(visible: boolean): void;
+  /** A store answer for `purchaseRequest(requestId, ...)`; request id 0 is an entitlement update. */
+  purchase(requestId: number, json: string): void;
   capture(): string | null;
 }
 
@@ -866,6 +868,7 @@ export class App {
         if (!v) this.stop();
         else if (!this.running) this.start();
       },
+      purchase: (id, json) => platform.purchases?.deliver(id, json),
       capture: () => this.renderer.snapshot?.() ?? null,
     };
     (globalThis as { __blackiron?: HostBridge }).__blackiron = bridge;

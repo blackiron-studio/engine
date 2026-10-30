@@ -1,4 +1,5 @@
-export type { Platform, DecodedImage } from "./types.ts";
+export type { Platform, DecodedImage, Purchases, PurchaseResult, StoreProduct } from "./types.ts";
+export { HostPurchases, MockPurchases } from "./purchases.ts";
 export { WebPlatform } from "./web.ts";
 export { HeadlessPlatform } from "./headless.ts";
 export { NativePlatform, hostApi } from "./native.ts";

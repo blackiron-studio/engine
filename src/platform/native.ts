@@ -3,6 +3,7 @@
 
 import type { BlackironHostApi } from "../render/native.ts";
 import type { StoreBackend } from "../save/store.ts";
+import { HostPurchases } from "./purchases.ts";
 import type { DecodedImage, HapticKind, Platform } from "./types.ts";
 
 export function hostApi(): BlackironHostApi {
@@ -15,6 +16,8 @@ export class NativePlatform implements Platform {
   readonly kind = "native" as const;
   readonly host: BlackironHostApi;
   readonly deterministic: boolean;
+  /** Present when the host was built with a store (StoreKit on iOS, Play Billing on Android). */
+  readonly purchases?: HostPurchases;
   private pending: ((t: number) => void) | null = null;
   private isVisible = true;
   private readonly visibilityListeners = new Set<(v: boolean) => void>();
@@ -22,6 +25,7 @@ export class NativePlatform implements Platform {
   constructor(host: BlackironHostApi = hostApi()) {
     this.host = host;
     this.deterministic = host.deterministic ?? false;
+    if (HostPurchases.supported(host)) this.purchases = new HostPurchases(host);
   }
 
   now(): number {

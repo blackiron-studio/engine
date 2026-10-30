@@ -262,6 +262,7 @@ dependencies {
   implementation platform('org.jetbrains.kotlin:kotlin-bom:1.9.24')
   implementation 'androidx.games:games-activity:${GAMES_ACTIVITY_VERSION}'
   implementation 'androidx.appcompat:appcompat:1.7.0'
+  implementation 'com.android.billingclient:billing:7.1.1'
 }
 `,
   );
@@ -282,7 +283,7 @@ dependencies {
  * The activity and the input bridge. GameActivity forwards touches and keys to native code
  * but not controller motion, so BlackironActivity catches controller events first and hands them
  * to the host through BlackironInput's native methods (host/src/android.rs); the host calls back
- * into BlackironInput.haptic for vibration.
+ * into BlackironInput.haptic for vibration and BlackironStore for Play Billing.
  */
 async function writeJavaSources(main: string): Promise<void> {
   const pkg = join(main, "java", "com", "blackiron", "host");
@@ -308,6 +309,7 @@ public class BlackironActivity extends GameActivity implements InputManager.Inpu
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    BlackironStore.activity = this;
     InputManager im = (InputManager) getSystemService(INPUT_SERVICE);
     if (im != null) im.registerInputDeviceListener(this, null);
   }
@@ -415,6 +417,179 @@ public final class BlackironInput {
   static native void nativeAxis(int device, int axis, float value);
   static native void nativeButton(int device, int key, boolean down);
   static native void nativeRemoved(int device);
+}
+`,
+  );
+  await Bun.write(
+    join(pkg, "BlackironStore.java"),
+    `package com.blackiron.host;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.SharedPreferences;
+import com.android.billingclient.api.AcknowledgePurchaseParams;
+import com.android.billingclient.api.BillingClient;
+import com.android.billingclient.api.BillingClientStateListener;
+import com.android.billingclient.api.BillingFlowParams;
+import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams;
+import com.android.billingclient.api.ProductDetails;
+import com.android.billingclient.api.Purchase;
+import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryPurchasesParams;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/**
+ * In-app purchases through Google Play Billing, for the engine's HostPurchases. The Rust host
+ * calls request() and owned(); answers go back as JSON through nativeDeliver (host/src/android.rs).
+ * Request id 0 carries entitlement changes that arrive on their own (pending purchases completing).
+ * Only one-time products (non-consumables) are supported.
+ */
+public final class BlackironStore {
+  private BlackironStore() {}
+
+  private static BillingClient client;
+  private static Context app;
+  private static int buying = -1;
+  private static final List<Runnable> waiting = new ArrayList<>();
+
+  /** The activity that launches the purchase sheet; set by BlackironActivity. */
+  static Activity activity;
+
+  private static synchronized void connected(Context context, Runnable then) {
+    if (client == null) {
+      app = context.getApplicationContext();
+      client = BillingClient.newBuilder(app)
+          .setListener(BlackironStore::onPurchases)
+          .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
+          .build();
+    }
+    if (client.isReady()) { then.run(); return; }
+    waiting.add(then);
+    if (waiting.size() > 1) return;
+    client.startConnection(new BillingClientStateListener() {
+      @Override public void onBillingSetupFinished(BillingResult r) {
+        List<Runnable> run;
+        synchronized (BlackironStore.class) { run = new ArrayList<>(waiting); waiting.clear(); }
+        for (Runnable x : run) x.run();
+        if (r.getResponseCode() == BillingClient.BillingResponseCode.OK) refresh(0);
+      }
+      @Override public void onBillingServiceDisconnected() {}
+    });
+  }
+
+  public static void request(Context context, int id, String op, String arg) {
+    connected(context, () -> {
+      if (!client.isReady()) { deliver(id, "{\\"error\\":\\"unavailable\\",\\"result\\":\\"unavailable\\",\\"products\\":[]}"); return; }
+      switch (op) {
+        case "products": products(id, arg); break;
+        case "buy": buy(id, arg); break;
+        case "restore": refresh(id); break;
+        default: deliver(id, "{\\"error\\":\\"unavailable\\"}");
+      }
+    });
+  }
+
+  /** JSON list of product ids the last purchase query reported as owned. */
+  public static String owned(Context context) {
+    connected(context, () -> {});
+    return prefs(context).getString("owned", "[]");
+  }
+
+  private static SharedPreferences prefs(Context context) {
+    return context.getSharedPreferences("blackiron.store", Context.MODE_PRIVATE);
+  }
+
+  private static void query(List<String> ids, com.android.billingclient.api.ProductDetailsResponseListener done) {
+    List<QueryProductDetailsParams.Product> list = new ArrayList<>();
+    for (String p : ids) list.add(QueryProductDetailsParams.Product.newBuilder().setProductId(p).setProductType(BillingClient.ProductType.INAPP).build());
+    client.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(list).build(), done);
+  }
+
+  private static void products(int id, String arg) {
+    List<String> ids = new ArrayList<>();
+    try { JSONArray a = new JSONArray(arg); for (int i = 0; i < a.length(); i++) ids.add(a.getString(i)); } catch (Exception e) {}
+    if (ids.isEmpty()) { deliver(id, "{\\"products\\":[]}"); return; }
+    query(ids, (r, details) -> {
+      JSONArray out = new JSONArray();
+      try {
+        for (ProductDetails d : details) {
+          ProductDetails.OneTimePurchaseOfferDetails offer = d.getOneTimePurchaseOfferDetails();
+          if (offer == null) continue;
+          out.put(new JSONObject().put("id", d.getProductId()).put("title", d.getName()).put("price", offer.getFormattedPrice()));
+        }
+        deliver(id, new JSONObject().put("products", out).toString());
+      } catch (Exception e) { deliver(id, "{\\"products\\":[]}"); }
+    });
+  }
+
+  private static void buy(int id, String product) {
+    Activity a = activity;
+    if (a == null) { deliver(id, "{\\"result\\":\\"unavailable\\"}"); return; }
+    query(Collections.singletonList(product), (r, details) -> {
+      if (details.isEmpty()) { deliver(id, "{\\"result\\":\\"unavailable\\"}"); return; }
+      BillingFlowParams params = BillingFlowParams.newBuilder()
+          .setProductDetailsParamsList(Collections.singletonList(BillingFlowParams.ProductDetailsParams.newBuilder().setProductDetails(details.get(0)).build()))
+          .build();
+      a.runOnUiThread(() -> {
+        BillingResult launch = client.launchBillingFlow(a, params);
+        if (launch.getResponseCode() == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) { refresh(id, "restored"); return; }
+        if (launch.getResponseCode() != BillingClient.BillingResponseCode.OK) { deliver(id, "{\\"result\\":\\"failed\\"}"); return; }
+        synchronized (BlackironStore.class) { buying = id; }
+      });
+    });
+  }
+
+  private static void onPurchases(BillingResult r, List<Purchase> purchases) {
+    int id;
+    synchronized (BlackironStore.class) { id = buying; buying = -1; }
+    int code = r.getResponseCode();
+    if (code == BillingClient.BillingResponseCode.USER_CANCELED) { if (id >= 0) deliver(id, "{\\"result\\":\\"cancelled\\"}"); return; }
+    if (code == BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED) { refresh(Math.max(id, 0), "restored"); return; }
+    if (code != BillingClient.BillingResponseCode.OK || purchases == null) { if (id >= 0) deliver(id, "{\\"result\\":\\"failed\\"}"); return; }
+    boolean pending = false;
+    for (Purchase p : purchases) {
+      if (p.getPurchaseState() == Purchase.PurchaseState.PENDING) pending = true;
+      else acknowledge(p);
+    }
+    if (pending && id >= 0) { deliver(id, "{\\"result\\":\\"pending\\"}"); return; }
+    refresh(Math.max(id, 0), "purchased");
+  }
+
+  private static void acknowledge(Purchase p) {
+    if (p.getPurchaseState() != Purchase.PurchaseState.PURCHASED || p.isAcknowledged()) return;
+    client.acknowledgePurchase(AcknowledgePurchaseParams.newBuilder().setPurchaseToken(p.getPurchaseToken()).build(), r -> {});
+  }
+
+  private static void refresh(int id) { refresh(id, null); }
+
+  /** Re-read owned one-time products, cache them, and answer request id (0: an unsolicited update). */
+  private static void refresh(int id, String result) {
+    client.queryPurchasesAsync(QueryPurchasesParams.newBuilder().setProductType(BillingClient.ProductType.INAPP).build(), (r, list) -> {
+      JSONArray owned = new JSONArray();
+      for (Purchase p : list) {
+        if (p.getPurchaseState() != Purchase.PurchaseState.PURCHASED) continue;
+        acknowledge(p);
+        for (String product : p.getProducts()) owned.put(product);
+      }
+      String before = prefs(app).getString("owned", "[]");
+      prefs(app).edit().putString("owned", owned.toString()).apply();
+      try {
+        JSONObject out = new JSONObject().put("owned", owned);
+        if (result != null) out.put("result", result);
+        if (r.getResponseCode() != BillingClient.BillingResponseCode.OK && id != 0) out.put("error", "unavailable");
+        if (id != 0 || !before.equals(owned.toString())) deliver(id, out.toString());
+      } catch (Exception e) {}
+    });
+  }
+
+  private static void deliver(int id, String json) { nativeDeliver(id, json); }
+
+  static native void nativeDeliver(int request, String json);
 }
 `,
   );
