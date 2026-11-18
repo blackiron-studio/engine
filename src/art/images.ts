@@ -17,6 +17,11 @@ export interface ImageSpriteSpec {
   normal?: string;
   /** Edge mode for every frame; "auto" by default. */
   edge?: SpriteEdge;
+  /**
+   * Texels per logical unit, as for painted sprites: a 300 texel image at density 3 is 100
+   * units wide in the game. Grid frame sizes stay in texels. 1 when absent.
+   */
+  density?: number;
 }
 
 export interface ImageItem {
@@ -30,6 +35,8 @@ export interface ImageItem {
   normal?: Uint8ClampedArray | "bevel";
   /** What the atlas padding holds at the edge; "auto" extrudes tiles and clears props. */
   edge?: SpriteEdge;
+  density?: number;
+  smooth?: boolean;
 }
 
 type Raw = { width: number; height: number; data: Uint8ClampedArray };
@@ -87,7 +94,7 @@ export function defineImageSprite(name: string, url: string, spec: ImageSpriteSp
   pending.push(async (platform) => {
     const img = await platform.loadImage(url);
     const nimg = await loadNormal(platform, spec, url.slice(0, url.lastIndexOf("/") + 1));
-    return [{ name, w: img.width, h: img.height, data: img.data, origin: spec.origin ?? [0.5, 0.5], style: spec.style, normal: normalFor(spec, nimg, 0, 0, img.width, img.height) }];
+    return [{ name, w: img.width, h: img.height, data: img.data, origin: spec.origin ?? [0.5, 0.5], style: spec.style, normal: normalFor(spec, nimg, 0, 0, img.width, img.height), edge: spec.edge, density: spec.density, smooth: spec.smooth }];
   });
   return name;
 }
@@ -104,7 +111,7 @@ export function defineImageGrid(prefix: string, url: string, frameW: number, fra
     for (let i = 0; i < count; i++) {
       const x = (i % cols) * frameW;
       const y = Math.floor(i / cols) * frameH;
-      items.push({ name: out[i], w: frameW, h: frameH, data: crop(img, x, y, frameW, frameH), origin: spec.origin ?? [0.5, 0.5], style: spec.style, normal: normalFor(spec, nimg, x, y, frameW, frameH) });
+      items.push({ name: out[i], w: frameW, h: frameH, data: crop(img, x, y, frameW, frameH), origin: spec.origin ?? [0.5, 0.5], style: spec.style, normal: normalFor(spec, nimg, x, y, frameW, frameH) , density: spec.density, smooth: spec.smooth });
     }
     return items;
   });
