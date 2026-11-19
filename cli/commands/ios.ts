@@ -276,6 +276,7 @@ targets:
       - sdk: QuartzCore.framework
       - sdk: CoreGraphics.framework
       - sdk: StoreKit.framework
+      - sdk: AuthenticationServices.framework
     info:
       path: Info.plist
       properties:
@@ -284,7 +285,7 @@ targets:
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
 ${project.config.ios?.usesNonExemptEncryption === undefined ? "" : `        ITSAppUsesNonExemptEncryption: ${project.config.ios.usesNonExemptEncryption}\n`}        UILaunchScreen:
           UIColorName: LaunchBackground
-        UIRequiresFullScreen: true
+${ios.signInWithApple ? "        BlackironSignInWithApple: true\n" : ""}${project.config.services || project.config.network ? "        NSAppTransportSecurity:\n          NSAllowsLocalNetworking: true\n" : ""}        UIRequiresFullScreen: true
         UIStatusBarHidden: true
         UIViewControllerBasedStatusBarAppearance: true
         UISupportedInterfaceOrientations: [${orientations.join(", ")}]
@@ -295,7 +296,7 @@ ${project.config.ios?.usesNonExemptEncryption === undefined ? "" : `        ITSA
             UIWindowSceneSessionRoleApplication:
               - UISceneConfigurationName: Default
                 UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
-    settings:
+${ios.signInWithApple ? "    entitlements:\n      path: App.entitlements\n      properties:\n        com.apple.developer.applesignin: [Default]\n" : ""}    settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ${bundleId}
         TARGETED_DEVICE_FAMILY: "1,2"

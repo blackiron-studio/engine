@@ -21,7 +21,8 @@ when distributing the compiled audio module.
 ## Native hosts and transitive dependencies
 
 Native builds additionally use wgpu, winit, QuickJS and, optionally, V8, along
-with audio, input, image and font libraries. Their licenses are included in the
+with audio, input, image and font libraries, and tungstenite, ureq, rustls, ring
+and webpki-roots for networking. Their licenses are included in the
 inventory when their packages have been downloaded for the build target.
 
 Regenerate the inventory after dependency or target changes:

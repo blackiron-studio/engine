@@ -222,6 +222,21 @@ const r = map.moveBody(player, dx, dy);
 `HeadlessPlatform` runs tests and the CLI; `NativePlatform` talks to a host object that a
 shell installs as `globalThis.__blackironHost`. Every layer above is shared.
 
+## Networking and player services (0.18)
+
+`platform.net` opens WebSockets and sends HTTP requests on every host; `LoopbackNet` stands
+in for the network in tests, with seeded latency and disconnects on a manual clock; `Channel`
+adds reconnection, request/reply and a heartbeat. Player identity and cloud saves sit behind
+a `ServiceProvider`, chosen in `blackiron.json`:
+
+```json
+{ "services": { "provider": "http", "url": "https://players.example.com" }, "cloud": true }
+```
+
+Providers ship for an in-memory mock, the reference server (`blackiron services`) and Apteva
+Games; `registerProvider` plugs in any other backend. Stores stay synchronous and work
+offline; saves sync in the background. See [docs/SERVICES.md](docs/SERVICES.md).
+
 ## Kernel
 
 The scene tree, UI and game rules stay in TypeScript. Everything that scales with sprite,

@@ -193,7 +193,7 @@ async function buildAndroidExport(
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-feature android:glEsVersion="0x00030000" android:required="true" />
   <uses-permission android:name="android.permission.VIBRATE" />
-  <application android:label="${xmlText(project.config.name)}" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:hasCode="true">
+${project.config.services || project.config.network ? '  <uses-permission android:name="android.permission.INTERNET" />\n' : ""}  <application android:label="${xmlText(project.config.name)}" android:icon="@mipmap/ic_launcher" android:allowBackup="true" android:hasCode="true">
     <activity android:name="com.blackiron.host.BlackironActivity"
         android:exported="true"
         android:launchMode="singleTask"

@@ -1,6 +1,6 @@
 [package]
 name = "blackiron-host"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 description = "Blackiron's generic native host: a window, the kernel's wgpu renderer, QuickJS, audio and input for Windows, Linux, macOS and Android."
 license = "MIT"
@@ -34,6 +34,9 @@ dirs = "6"
 log = "0.4"
 env_logger = "0.11"
 serde_json = "1"
+# platform.net: WebSockets and HTTPS with rustls and bundled roots, so no system TLS is needed on any target.
+tungstenite = { version = "0.24", default-features = false, features = ["handshake", "rustls-tls-webpki-roots"] }
+ureq = { version = "2.12", default-features = false, features = ["tls"] }
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "ogg", "vorbis", "wav", "flac", "pcm", "isomp4", "aac"] }
 ttf-parser = "0.25"
 jpeg-decoder = { version = "=0.3.2", default-features = false }

@@ -36,6 +36,7 @@ import { type RendererChoice, createRenderer } from "../render/index.ts";
 import { NativeRenderer } from "../render/native.ts";
 import { type PostSettings, type Renderer, type RenderStats, defaultPost } from "../render/types.ts";
 import { DrawContext } from "../scene/draw.ts";
+import { type Services, type ServicesConfig, createServices } from "../services/index.ts";
 import type { Scene } from "../scene/scene.ts";
 
 export interface ViewportBase {
@@ -123,6 +124,11 @@ export interface IosConfig {
   team?: string;
   /** External build settings, Xcode automatic signing, or an explicitly unsigned export. */
   signing?: "external" | "automatic" | "unsigned";
+  /**
+   * Add the Sign in with Apple entitlement and offer the sheet to `identity.link("apple")`.
+   * The App ID needs the capability in the developer account, and the backend must verify Apple accounts.
+   */
+  signInWithApple?: boolean;
 }
 
 /** One scripted screenshot for `blackiron verify`: frames to run, taps to make, and the file name. */
@@ -171,6 +177,15 @@ export interface BlackironConfig {
   fonts?: string[];
   ios?: IosConfig;
   android?: AndroidConfig;
+  /** The player-services backend: `{ "provider": "http", "url": "https://…" }`. See docs/SERVICES.md. */
+  services?: ServicesConfig;
+  /** Copy saves to the services backend and bring newer ones down. Needs `services`. */
+  cloud?: boolean;
+  /**
+   * The game opens connections of its own through `platform.net` (its own server). Native
+   * exports then request network access; `services` implies it.
+   */
+  network?: boolean;
 }
 
 export const defaultConfig = (): BlackironConfig => ({
@@ -359,12 +374,18 @@ export interface HostBridge {
   visibility(visible: boolean): void;
   /** A store answer for `purchaseRequest(requestId, ...)`; request id 0 is an entitlement update. */
   purchase(requestId: number, json: string): void;
+  /** A socket event or HTTP answer for `netOpen` / `netRequest`. */
+  net(id: number, kind: string, data: string, code: number): void;
+  /** A platform sign-in answer for `signInRequest(requestId, provider)`. */
+  signIn(requestId: number, json: string): void;
   capture(): string | null;
 }
 
 const FRAME_HISTORY = 120;
 
 export class App {
+  /** Player identity and cloud saves, when `services` is configured; null otherwise. */
+  readonly services: Services | null = null;
   readonly platform: Platform;
   readonly config: BlackironConfig;
   readonly mode: AppMode;
@@ -450,7 +471,20 @@ export class App {
     // Under a synthetic clock (screenshot tests) an unseeded game still renders the same frame.
     this.rng = new Rng(config.seed ?? (platform.deterministic ? 1 : Date.now()));
     // Stores persist through the platform; scripted (golden) runs start from nothing every time.
-    setDefaultBackend(platform.deterministic ? memoryBackend() : platform.storage());
+    const storage = platform.deterministic ? memoryBackend() : platform.storage();
+    setDefaultBackend(storage);
+    // Scripted (golden) runs never touch a backend, so their frames cannot depend on one.
+    if (config.services && !platform.deterministic) {
+      this.services = createServices({ config: config.services, net: platform.net, storage, platformSignIn: platform.signIn, cloud: config.cloud === true });
+      const saves = this.services.saves;
+      if (saves) {
+        // Stores now read and write the device as before, with changes mirrored to the backend.
+        setDefaultBackend(saves.backend);
+        void saves.sync().catch(() => {});
+        // Upload on the way to the background (the app may not come back) and catch up on return.
+        platform.onVisibility(() => void saves.sync().catch(() => {}));
+      }
+    }
     this.clock = new FixedStep(config.fixedStep);
     this.bg = rgbOf(config.background);
     this.basePost = { ...defaultPost(), ...config.post, tint: typeof config.post.tint === "string" ? rgbOf(config.post.tint) : (config.post.tint ?? 0xffffff) };
@@ -869,6 +903,8 @@ export class App {
         else if (!this.running) this.start();
       },
       purchase: (id, json) => platform.purchases?.deliver(id, json),
+      net: (id, kind, data, code) => (platform as NativePlatform).net?.deliver(id, kind, data, code),
+      signIn: (id, json) => (platform as NativePlatform).signIn?.deliver(id, json),
       capture: () => this.renderer.snapshot?.() ?? null,
     };
     (globalThis as { __blackiron?: HostBridge }).__blackiron = bridge;

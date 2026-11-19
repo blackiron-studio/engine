@@ -55,6 +55,8 @@ pub struct HostState {
     pub haptics: Vec<String>,
     /// Text the script asked the screen reader to say.
     pub announcements: Vec<String>,
+    /// The script's sockets and HTTP requests.
+    pub net: crate::net::Net,
     /// Store requests from the script (request id, op, argument); Android hands them to Play Billing.
     pub purchase_requests: Vec<(i32, String, String)>,
     pub physics: Vec<Option<Physics>>,
@@ -175,6 +177,7 @@ impl Js {
             frame: None,
             haptics: Vec::new(),
             announcements: Vec::new(),
+            net: crate::net::Net::new(),
             purchase_requests: Vec::new(),
             physics: Vec::new(),
             keyboard: None,
@@ -296,6 +299,26 @@ impl Js {
         let st = state.clone();
         reg(e, "__blackironHost", "announce", Box::new(move |a| {
             st.borrow_mut().announcements.push(arg(a, 0).text());
+            Val::Undefined
+        }));
+        let st = state.clone();
+        reg(e, "__blackironHost", "netOpen", Box::new(move |a| {
+            st.borrow_mut().net.open(arg(a, 0).int(), arg(a, 1).text());
+            Val::Undefined
+        }));
+        let st = state.clone();
+        reg(e, "__blackironHost", "netSend", Box::new(move |a| {
+            st.borrow_mut().net.send(arg(a, 0).int(), arg(a, 1).text(), arg(a, 2).truthy());
+            Val::Undefined
+        }));
+        let st = state.clone();
+        reg(e, "__blackironHost", "netClose", Box::new(move |a| {
+            st.borrow_mut().net.close(arg(a, 0).int(), arg(a, 1).int().clamp(1000, 4999) as u16, arg(a, 2).text());
+            Val::Undefined
+        }));
+        let st = state.clone();
+        reg(e, "__blackironHost", "netRequest", Box::new(move |a| {
+            st.borrow_mut().net.request(arg(a, 0).int(), arg(a, 1).text());
             Val::Undefined
         }));
         // Only Android builds have a store; on desktop the script sees no purchases at all.
@@ -632,6 +655,11 @@ impl Js {
 
     pub fn wheel(&mut self, dy: f64) {
         self.engine.call("__blackiron", "wheel", &[Val::Num(dy)]);
+    }
+
+    /// A socket event or HTTP answer for the script's `netOpen` / `netRequest`.
+    pub fn net(&mut self, id: i32, kind: &str, data: &str, code: i32) {
+        self.engine.call("__blackiron", "net", &[Val::Num(id as f64), Val::Str(kind.into()), Val::Str(data.into()), Val::Num(code as f64)]);
     }
 
     /// A store answer for the script's `purchaseRequest`; id 0 is an entitlement update.

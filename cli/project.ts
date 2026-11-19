@@ -33,6 +33,33 @@ function validateReleaseMetadata(config: ExportOverrides): void {
     throw Error("buildNumber must be an integer from 1 to 2100000000");
 }
 
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\]|[^/:]+\.localhost)$/;
+
+/** Fail before any build when the player-services config cannot work on a device. */
+export function validateServices(config: Pick<BlackironConfig, "services" | "cloud">): void {
+  const s = config.services as Partial<NonNullable<BlackironConfig["services"]>> | undefined;
+  if (config.cloud !== undefined && typeof config.cloud !== "boolean") throw Error("cloud must be true or false");
+  if (s === undefined) {
+    if (config.cloud) throw Error('cloud: true needs a "services" block naming the backend, e.g. { "provider": "http", "url": "https://…" }');
+    return;
+  }
+  if (!s || typeof s !== "object" || typeof s.provider !== "string" || !s.provider)
+    throw Error('services.provider is required: "mock", "http", "apteva" or a name registered with registerProvider()');
+  if (s.provider === "mock") return;
+  if (typeof s.url !== "string" || !s.url)
+    throw Error(`services.url is missing: the "${s.provider}" provider needs the backend's base URL`);
+  let url: URL;
+  try {
+    url = new URL(s.url);
+  } catch {
+    throw Error(`services.url is not a URL: ${s.url}`);
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOCAL_HOST.test(url.hostname)))
+    throw Error("services.url must be https (http is allowed for localhost only): phones refuse cleartext connections");
+  if (s.provider === "apteva" && (typeof s.game !== "string" || !s.game))
+    throw Error('services.game is missing: the "apteva" provider needs the game id on the Apteva server');
+}
+
 /** A supplied flag must have a nonempty value; never silently use a fallback. */
 export function optionalStringFlag(args: Args, name: string): string | undefined {
   const value = args.flags[name];
@@ -66,6 +93,8 @@ export function resolveExportProject(
     buildNumber: overrides.buildNumber ?? project.config.buildNumber ?? 1,
   };
   validateReleaseMetadata(config);
+  if (config.services?.provider === "mock")
+    console.warn('  warning: services.provider is "mock": this export signs players in to nothing and keeps no cloud saves');
   return { ...project, config };
 }
 
@@ -93,6 +122,7 @@ export async function loadProject(cwd = process.cwd()): Promise<Project> {
       "targets must contain web, native, macos, windows, linux, ios and/or android",
     );
   validateReleaseMetadata(raw);
+  validateServices(raw);
   const base = defaultConfig();
   const config = {
     ...base,

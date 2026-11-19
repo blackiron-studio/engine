@@ -3,7 +3,9 @@
 // The web implementation wraps the DOM; a headless one runs tests and tools; a native
 // shell would implement this once and reuse every layer above it.
 
+import type { Net } from "../net/types.ts";
 import type { StoreBackend } from "../save/store.ts";
+import type { PlatformSignIn } from "../services/types.ts";
 
 export interface DecodedImage {
   width: number;
@@ -39,6 +41,10 @@ export interface Platform {
   announce?(text: string): void;
   /** The app store (StoreKit, Play Billing), where the build has one. Absent on plain web and desktop. */
   readonly purchases?: Purchases;
+  /** Sockets and HTTP requests. Absent on a native host built without networking. */
+  readonly net?: Net;
+  /** The platform's own sign-in sheet (Sign in with Apple), where the build has one. */
+  readonly signIn?: PlatformSignIn;
 }
 
 /** A product as the store describes it, with the price already localised for the player. */

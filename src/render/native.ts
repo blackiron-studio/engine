@@ -94,6 +94,24 @@ export interface BlackironHostApi {
   purchaseRequest?(requestId: number, op: string, arg: string): void;
   /** JSON list of owned product ids, as the host last saw them. */
   purchaseOwned?(): string;
+  /** Open a WebSocket. Events come back through `__blackiron.net(id, kind, data, code)`: "open", "text", "binary" (base64), "close" (data: reason) or "error". */
+  netOpen?(id: number, url: string): void;
+  /** Send on an open socket; `binary` data is base64. */
+  netSend?(id: number, data: string, binary: boolean): void;
+  netClose?(id: number, code: number, reason: string): void;
+  /**
+   * Start an HTTP request described by JSON `{url, method, headers, body, timeoutMs}`. The
+   * answer is `__blackiron.net(id, "response", '{"headers":{},"body":""}', status)`, or
+   * `(id, "error", reason, 0)` when no response arrived ("timeout" for a timeout).
+   */
+  netRequest?(id: number, json: string): void;
+  /**
+   * Ask the platform to sign the player in ("apple" or "google"). The answer is
+   * `__blackiron.signIn(id, json)`: `{"token": "<identity token>", "name"?: ""}` or `{"error": "cancelled" | "unavailable" | "failed"}`.
+   */
+  signInRequest?(id: number, provider: string): void;
+  /** JSON list of the providers `signInRequest` can show a sheet for, e.g. `["apple"]`. */
+  signInProviders?(): string;
   /** Show or hide the on-screen keyboard, where the host has one. */
   showKeyboard?(visible: boolean): void;
   /** Set by hosts running a synthetic clock (`blackiron verify`), so unseeded games stay reproducible. */

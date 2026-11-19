@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.18.0 — Networking and player services (2026-11-19)
+
+- `platform.net`: WebSockets and HTTP requests on every host behind one interface. Web and Bun use `WebSocket` and `fetch`; the Rust host (desktop and Android) uses tungstenite and ureq on rustls with bundled roots; iOS uses URLSession. Native answers arrive through `__blackiron.net`.
+- `LoopbackNet`: a client and a server in one process with seeded latency, jitter, retransmission delay and disconnects, on a manual clock. `HeadlessPlatform.net` is a loopback, so tests reach only the servers they set up.
+- Realtime helpers: `Channel` (typed JSON messages, request/reply, reconnection with backoff, send queue, heartbeat with latency and server-clock estimate), `Peer` for the server's end, `ClockSync`, `SnapshotBuffer` and `InputBuffer`.
+- Player services behind a pluggable `ServiceProvider`: `Identity` (silent guest sign-in, account linking, switching, sign-out, deletion, session renewal) and `CloudSaves` (stores stay synchronous and offline-first; changes upload in the background and newer saves come down, with a conflict policy). `App.services` exists when `blackiron.json` has a `services` block; `cloud: true` mirrors every store.
+- Providers: `mock` (in memory), `http` (the reference protocol) and `apteva` (Apteva Games v2 player API: guest players and versioned saves). `registerProvider` plugs in any other backend.
+- Reference player service: `blackiron services` runs it; `createServiceHandler` mounts it elsewhere. It stores only hashes of secrets and tokens, rotates refresh tokens, and verifies Apple and Google identity tokens with `oidcVerifier`.
+- Sign in with Apple on iOS (`ios.signInWithApple`), supplying the identity token to `identity.link("apple")`.
+- `blackiron dev --server <script>` runs a game's own server beside the dev server.
+- Projects fail to load when `cloud` is on without `services`, when `services.url` is missing, malformed or cleartext to a non-local host, or when the `apteva` provider has no `game`. Android exports request INTERNET when `services` or `network` is set.
+- `VERSION` now matches the package version (it had been left at 0.13.0).
+- Not included: Google sign-in sheets, Sign in with Apple outside iOS, and an Android device build of the networking code. See [docs/SERVICES.md](docs/SERVICES.md).
+
+## Unreleased (folded into 0.18.0)
 
 - Web builds prebake the atlas: `blackiron build` paints every sprite once and ships `assets/atlas.json` with packed RGBA (`atlas.pack`, PNG's up filter under gzip, exact texels), and the page loads it instead of painting at boot. A stamped id ties atlas and bundle; a missing, stale or undecodable atlas falls back to painting. Single-file exports and the dev server still paint live.
 - `App.create` resolves imported images only when it has to paint the atlas.

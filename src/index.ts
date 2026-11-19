@@ -9,6 +9,8 @@
 //   audio     synth sound effects, samples and generative music
 //   input     action map, pointer, gamepad
 //   save      versioned stores
+//   net       sockets and HTTP on every host, a loopback for tests, realtime helpers
+//   services  player identity and cloud saves over a pluggable backend
 //   app       the App: loop, layout, scene stack
 //   shell     settings, save slots, hints and menus a game composes
 
@@ -22,10 +24,12 @@ export * from "./scene/index.ts";
 export * from "./audio/index.ts";
 export * from "./input/index.ts";
 export * from "./save/index.ts";
+export * from "./net/index.ts";
+export * from "./services/index.ts";
 export * from "./app/index.ts";
 export * from "./shell/index.ts";
 
-export const VERSION = "0.13.0";
+export const VERSION = "0.18.0";
 
 export * from "./three/index.ts";
 

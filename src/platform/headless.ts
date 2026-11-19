@@ -1,4 +1,6 @@
 import { decodePNG } from "../art/png.ts";
+import { LoopbackNet } from "../net/loopback.ts";
+import type { Net } from "../net/types.ts";
 import { memoryBackend } from "../save/store.ts";
 import type { DecodedImage, Platform } from "./types.ts";
 
@@ -11,8 +13,14 @@ export class HeadlessPlatform implements Platform {
   readonly files = new Map<string, ArrayBuffer | string | DecodedImage>();
   /** Directory that URLs resolve against when they are not in `files`; the working directory under Bun. */
   readonly root: string | null;
+  /**
+   * A loopback by default, so a test reaches only the servers it sets up on it. Pass a
+   * `WebNet` for a tool that should reach real ones.
+   */
+  readonly net: Net;
 
-  constructor(opts: { root?: string | null } = {}) {
+  constructor(opts: { root?: string | null; net?: Net } = {}) {
+    this.net = opts.net ?? new LoopbackNet();
     this.root = opts.root === undefined ? (typeof process !== "undefined" && typeof process.cwd === "function" ? process.cwd() : null) : opts.root;
   }
 

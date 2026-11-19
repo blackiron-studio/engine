@@ -32,6 +32,12 @@ func blackironLog(_ message: String) {
     func announce(_ text: String)
     func purchaseRequest(_ requestId: Int, _ op: String, _ arg: String)
     func purchaseOwned() -> String
+    func netOpen(_ id: Int, _ url: String)
+    func netSend(_ id: Int, _ data: String, _ binary: Bool)
+    func netClose(_ id: Int, _ code: Int, _ reason: String)
+    func netRequest(_ id: Int, _ json: String)
+    func signInRequest(_ requestId: Int, _ provider: String)
+    func signInProviders() -> String
     func createPhysics(_ pixelsPerMeter: Double) -> BlackironPhysicsBridge
     func showKeyboard(_ visible: Bool)
     var deterministic: Bool { get set }
@@ -75,6 +81,20 @@ func blackironLog(_ message: String) {
 
     func purchaseRequest(_ requestId: Int, _ op: String, _ arg: String) { store.request(requestId, op, arg) }
     func purchaseOwned() -> String { store.ownedJSON() }
+
+    /// URLSession networking, started on the first connection or request.
+    private lazy var net = BlackironNet(context: context)
+
+    func netOpen(_ id: Int, _ url: String) { net.open(id, url) }
+    func netSend(_ id: Int, _ data: String, _ binary: Bool) { net.send(id, data, binary) }
+    func netClose(_ id: Int, _ code: Int, _ reason: String) { net.close(id, code, reason) }
+    func netRequest(_ id: Int, _ json: String) { net.request(id, json) }
+
+    /// Sign in with Apple, when the export enabled it.
+    private lazy var signIn = BlackironSignIn(context: context)
+
+    func signInRequest(_ requestId: Int, _ provider: String) { signIn.request(requestId, provider) }
+    func signInProviders() -> String { BlackironSignIn.providersJSON() }
 
     /// The view that owns the on-screen keyboard; set by the runtime.
     weak var keyboardView: UIView?

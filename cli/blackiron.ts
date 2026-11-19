@@ -18,7 +18,10 @@ const args = parseArgs(rest);
 const usage = `Blackiron Engine
 blackiron <command> [options]
 
-  dev         [--port 4200] [--open]        Dev server with rebuild on change
+  dev         [--port 4200] [--open] [--server script.ts]
+                                            Dev server with rebuild on change; --server runs the game's own server beside it
+  services    [--port 4250] [--data file.json] [--apple-audience bundle.id] [--google-audience client-id]
+                                            Run the reference player service (guest sign-in, cloud saves, account linking)
   gallery     [dirs...] [--port 4200]       Serve the demo and every starter behind one menu
   build       [--report] [--target native]  Bundle into dist/ (native: one script + prebaked atlas)
   export web  [--single-file] [--out path]  Web build; single-file inlines JS into HTML
@@ -78,6 +81,8 @@ async function main(): Promise<void> {
       return (await import("./commands/atlas.ts")).atlas(args);
     case "art":
       return (await import("./commands/art.ts")).art(args);
+    case "services":
+      return (await import("./commands/services.ts")).services(args);
     case "new":
       return (await import("./commands/new.ts")).scaffold(args);
     case "migrate":

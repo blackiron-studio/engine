@@ -6,6 +6,7 @@ pub mod audio;
 pub mod bundle;
 pub mod input;
 pub mod js;
+pub mod net;
 pub mod script;
 pub mod storage;
 pub mod text;
@@ -136,6 +137,10 @@ impl App {
         #[cfg(target_os = "android")]
         for (id, json) in android::take_purchase_answers() {
             js.purchase(id, &json);
+        }
+        let net_events = js.state.borrow_mut().net.poll();
+        for e in net_events {
+            js.net(e.id, e.kind, &e.data, e.code);
         }
         js.tick(now);
         #[cfg(target_os = "android")]
