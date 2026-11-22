@@ -237,11 +237,6 @@ defineSprite("shadow", { w: 28, h: 14, origin: [0.5, 0.5], density: D }, (p) => 
 defineSprite("contact", { w: 38, h: 18, origin: [0.5, 0.5], density: D }, (p) => {
   pen(p).ellipse(19, 9, 18, 8.5, radial(19, 9, 18, [[0, "#0d1218b0"], [0.45, "#0d121870"], [1, "#0d121800"]], 8.5));
 });
-defineSprite("scorch", { w: 70, h: 36, origin: [0.5, 0.5], density: D }, (p) => {
-  const v = pen(p);
-  v.ellipse(35, 18, 34, 17, radial(35, 18, 34, [[0, "#14100ddd"], [0.5, "#1d1611a0"], [1, "#1d161100"]], 17));
-  texture(p, (x, y, c) => mul(c, 0.85 + hash01(Math.floor(x * 2), Math.floor(y * 2), 91) * 0.3));
-});
 defineSprite("reticle", { w: 40, h: 20, origin: [0.5, 0.5], density: D }, (p) => {
   const v = pen(p);
   v.stroke(path().ellipse(20, 10, 16, 8), 1.4, "#ffe9b0");
@@ -373,12 +368,6 @@ defineSprite("op.down", { w: 48, h: 30, origin: [0.5, 0.7], density: D }, (p) =>
 defineSprite("spark", { w: 6, h: 6, origin: [0.5, 0.5], density: D }, (p) => {
   pen(p).circle(3, 3, 3, radial(3, 3, 3, [[0, "#fffbe6"], [0.35, "#ffd27a"], [1, "#ffb34a00"]]));
 });
-defineSprite("tracer", { w: 5, h: 5, origin: [0.5, 0.5], density: D }, (p) => {
-  pen(p).circle(2.5, 2.5, 2.5, radial(2.5, 2.5, 2.5, [[0, "#fffef0"], [0.4, "#ffe7a0cc"], [1, "#ffcf6000"]]));
-});
-defineSprite("bolt", { w: 14, h: 14, origin: [0.5, 0.5], density: D }, (p) => {
-  pen(p).circle(7, 7, 7, radial(7, 7, 7, [[0, "#ffffff"], [0.25, "#ff9a86"], [0.6, "#ff3a2a88"], [1, "#ff201000"]]));
-});
 defineSprite("flame", { w: 22, h: 22, origin: [0.5, 0.5], density: D }, (p) => {
   pen(p).circle(11, 11, 11, radial(11, 11, 11, [[0, "#fff4d0"], [0.3, "#ffc04a"], [0.65, "#ff5a1e99"], [1, "#c0200000"]]));
 });
@@ -395,6 +384,26 @@ defineSprite("grenade", { w: 9, h: 9, origin: [0.5, 0.5], density: D }, (p) => {
   const v = pen(p);
   v.circle(4.5, 4.8, 3.8, radial(3.4, 3.6, 4.5, [[0, "#9db07c"], [0.6, "#4e5e3c"], [1, "#2a3320"]]));
   v.rect(3.5, 0.4, 2, 1.6, "#c9c9c9");
+});
+// Streak art points along +x: pools turn it along each spark's flight and stretch it with speed.
+defineSprite("spark.streak", { w: 10, h: 4, origin: [0.75, 0.5], density: D }, (p) => {
+  const v = pen(p);
+  v.fill(path().moveTo(0, 2).lineTo(7.5, 0.6).ellipseArc(7.5, 2, 1.4, 1.4, -Math.PI / 2, Math.PI / 2).lineTo(0, 2).close(), linear(0, 0, 10, 0, [[0, "#ff9a3a00"], [0.55, "#ffcf70cc"], [1, "#fffbe6"]]));
+});
+defineSprite("bolt.streak", { w: 16, h: 10, origin: [0.7, 0.5], density: D }, (p) => {
+  const v = pen(p);
+  v.ellipse(8, 5, 8, 5, radial(11, 5, 9, [[0, "#ffffff"], [0.3, "#ffb0a0"], [0.65, "#ff3a2a88"], [1, "#ff201000"]], 5));
+});
+// Decals are painted as seen straight on; the Decals node lays them on floors and walls.
+defineSprite("hole", { w: 12, h: 12, origin: [0.5, 0.5], density: D }, (p) => {
+  const v = pen(p);
+  v.circle(6, 6, 5.6, radial(6, 6, 5.6, [[0, "#2a241ecc"], [0.4, "#3a332b88"], [0.7, "#d8cbb044"], [1, "#d8cbb000"]]));
+  v.circle(6, 6, 1.7, "#120f0c");
+});
+defineSprite("scorch.flat", { w: 64, h: 64, origin: [0.5, 0.5], density: 2 }, (p) => {
+  const v = pen(p);
+  v.circle(32, 32, 31, radial(32, 32, 31, [[0, "#120d0ae8"], [0.45, "#1d1611b0"], [0.8, "#1d161140"], [1, "#1d161100"]]));
+  texture(p, (x, y, c) => mul(c, 0.8 + hash01(Math.floor(x * 1.5), Math.floor(y * 1.5), 57) * 0.4));
 });
 defineSprite("muzzle", { w: 18, h: 18, origin: [0.5, 0.5], density: D }, (p) => {
   const v = pen(p);

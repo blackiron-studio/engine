@@ -46,6 +46,9 @@ pub mod n {
     pub const VZ: usize = 27;
     /// Added to the depth key under a projection.
     pub const DEPTH_BIAS: usize = 28;
+    /// With FLAG_ALIGN or on its own: the sprite's x scale grows by this much per unit of
+    /// on-screen speed, so fast nodes draw as streaks.
+    pub const STRETCH: usize = 29;
 }
 
 pub const FLAG_ALIVE: u32 = 1;
@@ -57,6 +60,8 @@ pub const FLAG_FLIP_Y: u32 = 32;
 pub const FLAG_EXPIRES: u32 = 64;
 /// Draw a blob shadow on the ground under the node (projected layers).
 pub const FLAG_SHADOW: u32 = 128;
+/// Turn the sprite's +x axis along its velocity as drawn on screen; ROT is added on top.
+pub const FLAG_ALIGN: u32 = 256;
 
 pub const FLOOR_NONE: u32 = 0;
 /// Stop at z = 0.

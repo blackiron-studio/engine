@@ -2,11 +2,13 @@
 // stick aim (twin-stick, with aim assist on the stick), the cursor picks the ground on the
 // height map so shots rise onto raised pads, grenades show their arc before they leave the
 // hand, fog of war and each turret's sight cone tint the cells, and every hit has a spark,
-// a sound and, for the big ones, a hit-stop and a shake.
+// a sound and, for the big ones, a hit-stop and a shake. Shots are travelling tracer beams,
+// bolts leave trails and carry a light, sparks streak along their flight, flashes light the
+// yard, and hits leave marks on the walls and floor.
 
 import { AimAssist, TwinStickAim, pickGround, screenDirToWorld } from "@blackiron-studio/engine/combat";
 import type { DrawContext } from "@blackiron-studio/engine/scene";
-import { Anchor, Button, IsoTileMap, Label, Node2D, Scene, Sprite, SpritePool } from "@blackiron-studio/engine/scene";
+import { Anchor, Beams, Button, Decals, IsoTileMap, Label, LightLayer, LightPool, Node2D, Scene, Sprite, SpritePool, Trails } from "@blackiron-studio/engine/scene";
 import { PauseScene } from "@blackiron-studio/engine/shell";
 import { CELL, TILE } from "../art.ts";
 import { UI_FONT, title } from "../main.ts";
@@ -19,7 +21,9 @@ const FOG_SEEN = 0x77818d;
 const CONE = 0xff9a7a;
 const CONE_ALERT = 0xff5a46;
 const INK = 0x0c1116;
-const TRACER_STEP = 14;
+/** Ambient light: a little cool and dim, so flashes can brighten; post brightness gives the level back. */
+const AMBIENT = 0xb0b6c4;
+const BRIGHTNESS = 1.34;
 
 const mulTint = (a: number, b: number): number => {
   const r = (((a >> 16) & 255) * ((b >> 16) & 255)) / 255;
@@ -53,6 +57,10 @@ export class PlayScene extends Scene {
   private bolts!: SpritePool;
   private nades!: SpritePool;
   private arc!: SpritePool;
+  private beams!: Beams;
+  private trails!: Trails;
+  private decals!: Decals;
+  private lights!: LightPool;
   private reticle!: Sprite;
   private lock!: Sprite;
   private blastRing!: Sprite;
@@ -84,8 +92,10 @@ export class PlayScene extends Scene {
     this.post.bloom = 0.24;
     this.post.bloomThreshold = 0.78;
     this.post.vignette = 0.24;
+    this.post.brightness = BRIGHTNESS;
     const y = this.yard;
     this.map = this.world.add(new IsoTileMap({ data: y.map, elevation: (c, r) => levelsOf(y.map.get(c, r)), tile: TILE, tiles: ISO_TILES, faces: { left: "wall.left", right: "wall.right" } }));
+    this.decals = this.world.add(new Decals({ capacity: 180, cell: CELL, seed: 17 }));
     this.tints = new Uint32Array(y.cols * y.rows).fill(0xffffffff);
     this.cone = new Uint8Array(y.cols * y.rows);
     this.coneScratch = new Uint8Array(y.cols * y.rows);
@@ -103,7 +113,9 @@ export class PlayScene extends Scene {
     this.debris = this.world.add(new SpritePool({ capacity: 160, sprite: "chip", gravityZ: -520, floor: "bounce", smooth: true }));
     this.smoke = this.world.add(new SpritePool({ capacity: 96, sprite: "smoke", gravityZ: 26, smooth: true }));
     this.fx = this.world.add(new SpritePool({ capacity: 640, sprite: "spark", additive: true, smooth: true, gravityZ: -160 }));
-    this.bolts = this.world.add(new SpritePool({ capacity: 96, sprite: "bolt", additive: true, smooth: true }));
+    this.bolts = this.world.add(new SpritePool({ capacity: 96, sprite: "bolt.streak", additive: true, smooth: true, align: "velocity", stretch: 0.0022 }));
+    this.trails = this.world.add(new Trails({ capacity: 96, time: 0.16, width: 5, endWidth: 0.6, color: 0xffb4a4, endColor: 0xff3a2a, alpha: 0.9, endAlpha: 0, minStep: 3 }));
+    this.beams = this.world.add(new Beams({ capacity: 96, segment: 20 }));
     this.nades = this.world.add(new SpritePool({ capacity: 8, sprite: "grenade", smooth: true, shadow: true }));
     this.arc = this.world.add(new SpritePool({ capacity: 80, sprite: "dot", additive: true, smooth: true }));
 
@@ -121,6 +133,9 @@ export class PlayScene extends Scene {
     this.camera.zoom = 1.3;
     Object.assign(this.cameraGround, { x: y.player.x, y: y.player.y, z: 0 });
     this.camera.follow(this.cameraGround, 6);
+
+    // Last in the world, as light layers go: flashes and the bolts' glow.
+    this.lights = this.world.add(new LightLayer(AMBIENT)).add(new LightPool({ capacity: 24 }));
 
     this.hud = this.ui.add(new Hud(this));
     this.retint(true);
@@ -277,6 +292,7 @@ export class PlayScene extends Scene {
             for (const s of this.barrels.get(f.row * y.cols + f.col) ?? []) s.destroy();
             this.barrels.delete(f.row * y.cols + f.col);
           }
+          if (f.destroyed) this.decals.freeCell(f.col, f.row);
           const wood = f.from === CRATE || f.from === CRATE_SPLIT;
           this.burst(x, yy, Math.max(4, top * 0.6), f.destroyed ? 18 : 6, wood ? "splinter" : "chip", 130);
           if (f.destroyed && f.from !== BARREL) this.puff(x, yy, top * 0.5, 4);
@@ -315,6 +331,10 @@ export class PlayScene extends Scene {
           audio.play("clink");
           break;
         case "bolt":
+          if (y.fog.sees(f.x, f.y)) {
+            this.trails.push(f.id, f.x, f.y, f.z);
+            this.lights.track(f.id, f.x, f.y, f.z, { color: 0xff5a3a, radius: 58, intensity: 0.9, fade: 0.08 });
+          }
           break;
         case "empty":
           audio.play("click");
@@ -325,6 +345,7 @@ export class PlayScene extends Scene {
         if (!muzzles.has(key)) {
           muzzles.add(key);
           this.fx.spawn({ sprite: "muzzle", x: f.x0, y: f.y0, z: f.z + 2, life: 0.05, scale: f.weapon === "shotgun" ? 1.4 : 1 });
+          this.lights.flash(f.x0, f.y0, f.z + 4, { color: 0xffc27a, radius: f.weapon === "shotgun" ? 150 : 105, intensity: 1, life: f.weapon === "shotgun" ? 0.09 : 0.05 });
           audio.play(f.weapon);
           this.camera.shake(f.weapon === "shotgun" ? 2.2 : 0.6, 0.08);
         }
@@ -333,25 +354,34 @@ export class PlayScene extends Scene {
   }
 
   private tracer(f: Extract<Fx, { kind: "shot" }>): void {
-    const len = Math.hypot(f.x1 - f.x0, f.y1 - f.y0);
-    const n = Math.max(1, Math.floor(len / TRACER_STEP));
     const bolt = f.weapon === "bolt";
     if (!bolt) {
-      for (let i = 1; i <= n; i++) {
-        const t = i / n;
-        this.fx.spawn({ sprite: "tracer", x: f.x0 + (f.x1 - f.x0) * t, y: f.y0 + (f.y1 - f.y0) * t, z: f.z, life: 0.03 + t * 0.05, alpha: 0.4 + t * 0.6, scale: 0.8 });
-      }
+      // A travelling tracer: a short bright section that leaves the barrel and reaches the hit.
+      const shotgun = f.weapon === "shotgun";
+      this.beams.spawn(f.x0, f.y0, f.z, f.x1, f.y1, f.z1, shotgun
+        ? { speed: 2100, head: 34, width: 1.5, color: 0xffe9b8, glow: 0xff9a3a, glowWidth: 3, glowAlpha: 0.4 }
+        : { speed: 2600, head: 88, width: 2.2, color: 0xfff3d0, glow: 0xffa040, glowWidth: 3.2, glowAlpha: 0.5 });
     }
     if (f.hit === "none") return;
     const back = Math.atan2(f.y0 - f.y1, f.x0 - f.x1);
     const sparks = f.hit === "sentry" ? 8 : f.hit === "operative" ? 3 : 5;
     for (let i = 0; i < sparks; i++) {
       const a = back + (Math.random() - 0.5) * 1.8;
-      const v = 40 + Math.random() * 90;
-      this.fx.spawn({ sprite: bolt ? "bolt" : "spark", x: f.x1, y: f.y1, z: f.z, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 30 + Math.random() * 60, life: 0.15 + Math.random() * 0.15, scale: bolt ? 0.35 : 0.5 + Math.random() * 0.4 });
+      const v = 60 + Math.random() * 110;
+      this.fx.spawn({ sprite: bolt ? "bolt.streak" : "spark.streak", x: f.x1, y: f.y1, z: f.z1, vx: Math.cos(a) * v, vy: Math.sin(a) * v, vz: 30 + Math.random() * 70, life: 0.15 + Math.random() * 0.15, scale: bolt ? 0.45 : 0.6 + Math.random() * 0.4, align: "velocity", stretch: 0.012 });
     }
-    if (f.hit === "brick" || f.hit === "wall") this.burst(f.x1, f.y1, f.z, 3, "chip", 70);
-    if (f.hit === "crate") this.burst(f.x1, f.y1, f.z, 3, "splinter", 70);
+    if (f.hit === "brick" || f.hit === "wall") this.burst(f.x1, f.y1, f.z1, 3, "chip", 70);
+    if (f.hit === "crate") this.burst(f.x1, f.y1, f.z1, 3, "splinter", 70);
+    if (f.hit === "wall" || f.hit === "brick" || f.hit === "crate") this.markHit(f.x1, f.y1, f.z1, f.nx, f.ny, bolt);
+  }
+
+  /** A bullet hole, or a bolt's scorch, on the face the shot went into. */
+  private markHit(x: number, y: number, z: number, nx: number, ny: number, bolt: boolean): void {
+    const at = this.map.surfaceAt(x, y, z, nx, ny);
+    if (!at.visible) return;
+    this.decals.mark(at.x, at.y, at.z, bolt
+      ? { sprite: "scorch.flat", normal: at.normal, scale: [0.14, 0.2], randomRot: true, alpha: 0.8, stay: 10, fade: 3 }
+      : { sprite: "hole", normal: at.normal, scale: [0.75, 1.1], randomRot: true, stay: 14, fade: 3 });
   }
 
   private burst(x: number, y: number, z: number, count: number, sprite: string, speed: number): void {
@@ -378,8 +408,10 @@ export class PlayScene extends Scene {
     this.fx.spawn({ sprite: "flame", x, y, z: z + 14, life: 0.18, scale: 4 * k });
     this.puff(x, y, z + 8, Math.round(10 * k));
     this.burst(x, y, z + 4, Math.round(10 * k), "chip", radius * 1.6);
-    const scorch = this.ground("scorch", x + (Math.random() - 0.5) * 6, y + (Math.random() - 0.5) * 6, this.yard.heightAt(x, y), (radius / 70) * (0.8 + Math.random() * 0.3));
-    scorch.alpha = 0.85;
+    const sx = x + (Math.random() - 0.5) * 6;
+    const sy = y + (Math.random() - 0.5) * 6;
+    this.decals.mark(sx, sy, this.yard.heightAt(sx, sy), { sprite: "scorch.flat", scale: (radius / 52) * (0.8 + Math.random() * 0.3), randomRot: true, alpha: 0.85, stay: 40, fade: 8 });
+    this.lights.flash(x, y, z + 12, { color: 0xff9a4a, radius: radius * 3.2, intensity: 1, life: 0.45, curve: "quad" });
   }
 
   private pop(text: string, x: number, y: number, z: number, color: number): void {
@@ -431,7 +463,7 @@ export class PlayScene extends Scene {
       sp.body.tint = y.fog.isVisible(s.col, s.row) ? 0xffffff : FOG_SEEN;
     }
     this.bolts.freeAll();
-    for (const b of y.bolts) if (y.fog.sees(b.x, b.y)) this.bolts.spawn({ x: b.x, y: b.y, z: b.z });
+    for (const b of y.bolts) if (y.fog.sees(b.x, b.y)) this.bolts.spawn({ x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.slope * Math.hypot(b.vx, b.vy) });
     this.nades.freeAll();
     for (const g of y.grenadesInFlight) {
       const blink = g.fuse < 0.5 && Math.floor(g.fuse * 16) % 2 === 0;

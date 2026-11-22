@@ -126,8 +126,9 @@ export interface Operative extends CombatTarget2D {
 }
 
 export type Fx =
-  | { kind: "shot"; weapon: string; x0: number; y0: number; x1: number; y1: number; z: number; hit: "wall" | "brick" | "crate" | "barrel" | "sentry" | "operative" | "none" }
-  | { kind: "bolt"; x: number; y: number; z: number }
+  /** z is the height at the muzzle and z1 where the shot ended; nx, ny the face it hit, zero when it hit no wall. */
+  | { kind: "shot"; weapon: string; x0: number; y0: number; x1: number; y1: number; z: number; z1: number; nx: number; ny: number; hit: "wall" | "brick" | "crate" | "barrel" | "sentry" | "operative" | "none" }
+  | { kind: "bolt"; id: number; x: number; y: number; z: number; vx: number; vy: number }
   | { kind: "blast"; x: number; y: number; z: number; radius: number }
   | { kind: "tile"; col: number; row: number; from: number; to: number; destroyed: boolean }
   | { kind: "hurt"; target: "operative" | "sentry"; x: number; y: number; z: number; amount: number; killed: boolean }
@@ -399,7 +400,7 @@ export class Yard {
     }
     for (const s of this.sentries) this.updateSentry(s, dt);
     for (const hit of this.bolts.update(dt)) this.boltHit(hit);
-    for (const b of this.bolts) this.fx.push({ kind: "bolt", x: b.x, y: b.y, z: b.z });
+    for (const b of this.bolts) this.fx.push({ kind: "bolt", id: b.id, x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy });
     for (let i = this.grenadesInFlight.length - 1; i >= 0; i--) {
       const g = this.grenadesInFlight[i];
       for (const e of g.t.step(dt, this.ground)) if (e.kind !== "rest") this.fx.push({ kind: "bounce", x: e.x, y: e.y, z: e.z });
@@ -417,11 +418,14 @@ export class Yard {
     const result = hitscanShot(this.world, def, { angle, age: 0, damage, index: 0, pellet: 0, recoil: 0 }, x, y, { team: PLAYER_TEAM, source, z, slope });
     const x1 = result ? result.hit.x : x + Math.cos(angle) * def.range;
     const y1 = result ? result.hit.y : y + Math.sin(angle) * def.range;
-    this.fx.push({ kind: "shot", weapon: def.id, x0: x, y0: y, x1, y1, z, hit: this.surface(result) });
+    const z1 = z + slope * (result ? result.hit.distance : def.range);
+    const wall = result?.hit.wall ?? null;
+    this.fx.push({ kind: "shot", weapon: def.id, x0: x, y0: y, x1, y1, z, z1, nx: wall ? wall.nx : 0, ny: wall ? wall.ny : 0, hit: this.surface(result) });
   }
 
   private boltHit(hit: ProjectileImpact2D): void {
-    this.fx.push({ kind: "shot", weapon: "bolt", x0: hit.projectile.px, y0: hit.projectile.py, x1: hit.hit.x, y1: hit.hit.y, z: hit.projectile.z, hit: this.surface(hit) });
+    const wall = hit.hit.wall ?? null;
+    this.fx.push({ kind: "shot", weapon: "bolt", x0: hit.projectile.px, y0: hit.projectile.py, x1: hit.hit.x, y1: hit.hit.y, z: hit.projectile.z, z1: hit.projectile.z, nx: wall ? wall.nx : 0, ny: wall ? wall.ny : 0, hit: this.surface(hit) });
   }
 
   private surface(r: ImpactResult2D | null): Extract<Fx, { kind: "shot" }>["hit"] {

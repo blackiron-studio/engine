@@ -34,6 +34,10 @@ export interface SpritePoolOptions {
   floor?: "none" | "stop" | "bounce";
   /** Draw blob shadows under every node in projected layers. */
   shadow?: boolean;
+  /** Default for spawns: turn each sprite along its velocity (see `SpawnOptions.align`). */
+  align?: "velocity" | "none";
+  /** Default for spawns: streak length per unit of on-screen speed (see `SpawnOptions.stretch`). */
+  stretch?: number;
 }
 
 export interface SpawnOptions {
@@ -71,6 +75,16 @@ export interface SpawnOptions {
   vz?: number;
   shadow?: boolean;
   depthBias?: number;
+  /**
+   * "velocity" turns the sprite's +x axis along its movement as drawn, through the camera's
+   * projection, every frame; `rot` is added on top. Draw the art pointing right.
+   */
+  align?: "velocity" | "none";
+  /**
+   * Lengthen the sprite with speed: its x scale is multiplied by 1 + speed * stretch, speed in
+   * on-screen units (before zoom) per second, so faster nodes draw as longer streaks.
+   */
+  stretch?: number;
 }
 
 export interface NodeState {
@@ -254,6 +268,8 @@ export class SpritePool extends Node2D {
     if (o.z !== undefined) d[b + N.Z] = o.z;
     if (o.vz !== undefined) d[b + N.VZ] = o.vz;
     if (o.depthBias !== undefined) d[b + N.DEPTH_BIAS] = o.depthBias;
+    const stretch = o.stretch ?? (fresh ? this.opts.stretch : undefined);
+    if (stretch !== undefined) d[b + N.STRETCH] = stretch;
     let flags = d[b + N.FLAGS] | F.ALIVE;
     const setFlag = (bit: number, on: boolean | undefined) => {
       if (on === undefined) return;
@@ -265,6 +281,8 @@ export class SpritePool extends Node2D {
     setFlag(F.FLIP_Y, o.flipY);
     setFlag(F.HIDDEN, o.hidden);
     setFlag(F.SHADOW, o.shadow ?? (fresh ? this.opts.shadow : undefined));
+    const align = o.align ?? (fresh ? this.opts.align : undefined);
+    if (align !== undefined) setFlag(F.ALIGN, align === "velocity");
     if (o.life !== undefined) {
       d[b + N.LIFE] = o.life;
       flags |= F.EXPIRES;

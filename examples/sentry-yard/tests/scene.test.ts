@@ -1,6 +1,7 @@
 // The scenes headless: the art bakes, the yard draws, shooting a barrel retiles and removes its
-// sprite, a grenade shows its arc while held, fog tints only what changed, and the end card
-// appears once every sentry is down.
+// sprite, a grenade shows its arc while held, fog tints only what changed, shots send tracers
+// and leave holes, bolts carry trails and lights, a broken tile takes its marks with it, and
+// the end card appears once every sentry is down.
 
 import { beforeAll, expect, test } from "bun:test";
 import { App } from "@blackiron-studio/engine/app";
@@ -29,7 +30,7 @@ async function game() {
 }
 
 test("every sprite the yard names is painted", () => {
-  for (const name of ["slab", "wall.left", "brick.cracked.right", "crate.split.top", "pad", "barrel", "sentry.0", "sentry.7", "sentry.wreck", "op.3.a", "op.down", "blast.ring", "scorch", "reticle", "lock"]) {
+  for (const name of ["slab", "wall.left", "brick.cracked.right", "crate.split.top", "pad", "barrel", "sentry.0", "sentry.7", "sentry.wreck", "op.3.a", "op.down", "blast.ring", "scorch.flat", "hole", "spark.streak", "bolt.streak", "reticle", "lock"]) {
     expect(atlas.has(name)).toBe(true);
   }
 });
@@ -97,6 +98,63 @@ test("standing still writes no tints once the yard has settled", async () => {
     };
     for (let i = 0; i < 30; i++) app.frame(1 / 60);
     expect(writes).toBe(0);
+  } finally {
+    app.destroy();
+  }
+});
+
+test("rifle fire sends travelling tracers and leaves holes on the wall it hits", async () => {
+  const { app, state } = await game();
+  try {
+    const y = state.yard;
+    y.player.health.hp = 1e6;
+    y.player.x = 11.5 * 32;
+    y.player.y = 19.5 * 32;
+    const [ax, ay] = [12.5 * 32, 16 * 32 - 1];
+    state.readControls = () => ({ moveX: 0, moveY: 0, aim: Math.atan2(ay - y.player.y, ax - y.player.x), aimZ: 18, aimDist: Math.hypot(ax - y.player.x, ay - y.player.y), fire: true });
+    let tracers = 0;
+    for (let i = 0; i < 40; i++) {
+      app.frame(1 / 60);
+      tracers = Math.max(tracers, state.beams.count);
+    }
+    expect(tracers).toBeGreaterThan(0);
+    expect(state.decals.count).toBeGreaterThan(2);
+    expect(state.lights.count + state.beams.count).toBeGreaterThan(0);
+  } finally {
+    app.destroy();
+  }
+});
+
+test("sentry bolts carry a trail and a light while they fly", async () => {
+  const { app, state } = await game();
+  try {
+    const y = state.yard;
+    const s = y.sentries.find((q: { col: number; row: number }) => q.col === 8 && q.row === 8);
+    s.base = s.facing = Math.atan2(3, 2);
+    y.player.health.hp = 1e6;
+    y.player.x = 11.5 * 32;
+    y.player.y = 12.5 * 32;
+    let seen = false;
+    for (let i = 0; i < 180 && !seen; i++) {
+      app.frame(1 / 60);
+      if (y.bolts.count > 0 && state.trails.count > 0 && state.lights.count > 0) seen = true;
+    }
+    expect(seen).toBe(true);
+  } finally {
+    app.destroy();
+  }
+});
+
+test("a broken tile takes its own marks with it, not its neighbour's", async () => {
+  const { app, state } = await game();
+  try {
+    // Crates at (7, 10) and (8, 10): a mark on (7, 10)'s +x face sits on their shared edge.
+    state.decals.mark(8 * 32, 10.5 * 32, 8, { sprite: "hole", normal: [1, 0, 0] });
+    state.decals.mark(8.5 * 32, 10.5 * 32, 16, { sprite: "hole" });
+    expect(state.decals.count).toBe(2);
+    state.yard.world.damageTile(8, 10, 1000, "explosive");
+    for (let i = 0; i < 3; i++) app.frame(1 / 60);
+    expect(state.decals.count).toBe(1);
   } finally {
     app.destroy();
   }

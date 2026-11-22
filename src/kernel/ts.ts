@@ -1053,7 +1053,24 @@ export class TsKernel implements Kernel {
       const alpha = d[o + N.ALPHA] * alphaMul;
       const add = flags & F.ADDITIVE ? 1 : opFlags & 3;
       const smooth = flags & F.SMOOTH ? 1 : slotOf(opFlags);
-      const rot = d[o + N.ROT];
+      let rot = d[o + N.ROT];
+      const stretch = d[o + N.STRETCH];
+      if (flags & F.ALIGN || stretch !== 0) {
+        // The velocity as drawn: through the projection, or the table's own space when flat.
+        const vx = d[o + N.VX];
+        const vy = d[o + N.VY];
+        const vz = d[o + N.VZ];
+        let dx = vx;
+        let dy = vy;
+        if (this.proj) {
+          const p = this.proj.p;
+          dx = p[0] * vx + p[1] * vy + p[2] * vz;
+          dy = p[4] * vx + p[5] * vy + p[6] * vz;
+        }
+        const speed = Math.sqrt(dx * dx + dy * dy);
+        if (flags & F.ALIGN && speed > 1e-9) rot += Math.atan2(dy, dx);
+        sx *= 1 + speed * stretch;
+      }
       let cos = 1;
       let sin = 0;
       if (rot !== 0) {

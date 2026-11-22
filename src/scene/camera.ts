@@ -188,4 +188,26 @@ export class Camera2D {
     const [px, py] = this.projected(wx, wy, z);
     return [m[0] * px + m[4], m[3] * py + m[5]];
   }
+
+  /**
+   * How a world direction looks on screen, in screen pixels: the projection's linear part and
+   * the zoom, without the camera's position. A flat world ignores `dz`, as its drawing does.
+   */
+  screenVector(dx: number, dy: number, dz = 0): [number, number] {
+    const p = this.projectionMatrix();
+    if (!p) return [dx * this.zoom, dy * this.zoom];
+    return [(p[0] * dx + p[1] * dy + p[2] * dz) * this.zoom, (p[4] * dx + p[5] * dy + p[6] * dz) * this.zoom];
+  }
+
+  /** On-screen angle of a world direction, in radians (0 points right, positive turns down). */
+  screenAngle(dx: number, dy: number, dz = 0): number {
+    const [x, y] = this.screenVector(dx, dy, dz);
+    return Math.atan2(y, x);
+  }
+
+  /** On-screen length of a world direction, in screen pixels. */
+  screenLength(dx: number, dy: number, dz = 0): number {
+    const [x, y] = this.screenVector(dx, dy, dz);
+    return Math.hypot(x, y);
+  }
 }

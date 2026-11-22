@@ -40,6 +40,10 @@ title, and Continue resumes from that save.
 | `pickGround`, `screenDirToWorld` | Mouse aim onto raised blocks; stick directions follow the screen |
 | `TwinStickAim`, `AimAssist` | Mouse or stick, whichever moved last; gentle pull on a stick only |
 | `Thrown2D`, `predictThrow`, `launchVelocity` | The grenade arc drawn while aiming is the path it takes |
+| `Beams` | Rifle and shotgun tracers that travel from the barrel to the hit |
+| `SpritePool` `align` and `stretch`, `Trails` | Sentry bolts and sparks point where they fly; bolts leave a red trail |
+| `LightPool` | Muzzle and explosion flashes; each bolt carries a moving glow |
+| `Decals`, `IsoTileMap.surfaceAt` | Bullet holes and scorch on wall faces, crates and the ground; a broken tile takes its marks |
 
 `src/yard.ts` is the whole game rule set with no rendering. It runs headless in
 `tests/yard.test.ts`. `src/scenes/play.ts` turns its events into sprites, sound and screen
@@ -49,15 +53,17 @@ simulation never loads the art.
 ## Art
 
 Every sprite is painted in code in `src/art.ts`. That covers the slabs, walls, crates,
-barrels, the eight-way sentries and operative, and the effects. Nothing is imported, and
-there is no generated art.
+barrels, the eight-way sentries and operative, and the effects, including the spark and bolt
+streaks, the bullet hole and the scorch mark. Nothing is imported, and there is no generated art.
 
 ## Validation
 
-`bun test` here runs 15 tests:
+`bun test` here runs 18 tests:
 
 - The simulation: spotting, cover, barrel chains, raised targets, grenade prediction, saves.
 - The scenes headless: the art, the title, retiling, the grenade arc, fog writes, the end card.
+- The shot effects: tracers and bullet holes, bolts with a trail and a light, and a broken
+  tile clearing its own marks.
 
 ## Not included
 

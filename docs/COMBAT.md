@@ -138,4 +138,5 @@ grid into the ground a throw bounces on (opaque cells are walls).
 ## Not included yet
 
 Perception (hearing, suspicion), AI movement (steering, flow fields, cover search), an
-encounter director, decals, triggers and interactables are the next batch.
+encounter director, triggers and interactables are the next batch. Tracers, trails, flashes
+and decals are in [shot effects](EFFECTS.md).

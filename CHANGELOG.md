@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.20.0 — Shot effects (2026-11-22)
+
+- `SpritePool` takes `align: "velocity"` and `stretch` as pool defaults or per spawn:
+  - The kernel turns each node along its velocity as drawn, through the projection, every frame.
+  - It lengthens the node by `1 + speed * stretch`.
+  - New node word `STRETCH` (29) and flag `ALIGN` (256) carry these, with the same results in the WebAssembly, native and TypeScript kernels. The kernel binaries were rebuilt. `KERNEL_VERSION` is unchanged because older streams leave both at zero.
+- `Camera2D.screenVector`, `screenAngle` and `screenLength` return a world direction (with height) as it appears on screen.
+- `Beams` draws glowing strips between two world points at their own heights:
+  - A core over a glow, emissive and additive.
+  - Cut into segments that each sort at their own depth.
+  - Whole beams fade and thin over their life; travelling sections move from A to B.
+  - Handles support `move`, `free` and `alive`.
+- `Trails` draws keyed, tapered ribbons from the last positions pushed:
+  - Width, colour and alpha change along the trail, by age and distance.
+  - A trail retracts once its key stops being pushed.
+- `LightPool` sits inside a `LightLayer` and holds a fixed number of lights:
+  - `flash` lights die along a curve.
+  - `track` lights follow something and fade once untracked.
+  - When full, the dimmest light gives way.
+- `Decals` keeps marks in a ring that stay and then fade:
+  - Marks lie on the ground or stand on wall faces, squashed by the projection.
+  - Rotation and size can be random, from a seed.
+  - Marks sort with the tile they lie on.
+  - `freeCell` and `freeWhere` remove marks.
+- `IsoTileMap.surfaceAt` turns a hit point and face normal into the cell and the point snapped onto that face or top, and reports whether the map draws the face.
+- Sentry Yard uses all of them:
+  - Travelling rifle and shotgun tracers.
+  - Bolts that point where they fly, with trails and a red glow.
+  - Muzzle and explosion flashes.
+  - Bullet holes and scorch marks on walls, crates and the ground; a broken tile takes its marks with it.
+  - The ambient light is a little dimmer and post brightness raised to match, so flashes have room to brighten. Its tests went from 15 to 18.
+- See [docs/EFFECTS.md](docs/EFFECTS.md).
+
 ## 0.19.0 — Combat, line of sight and aiming (2026-11-22)
 
 - Line of sight in core (`core/sight.ts`):

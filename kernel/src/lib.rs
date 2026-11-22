@@ -19,7 +19,7 @@ pub mod physics;
 #[cfg(feature = "render")]
 pub mod render;
 
-use nodes::{n, NodeTable, FLAG_ADDITIVE, FLAG_ALIVE, FLAG_FLIP_X, FLAG_FLIP_Y, FLAG_HIDDEN, FLAG_SHADOW, FLAG_SMOOTH, NODE_WORDS};
+use nodes::{n, NodeTable, FLAG_ADDITIVE, FLAG_ALIGN, FLAG_ALIVE, FLAG_FLIP_X, FLAG_FLIP_Y, FLAG_HIDDEN, FLAG_SHADOW, FLAG_SMOOTH, NODE_WORDS};
 
 use std::f64::consts::PI;
 
@@ -159,6 +159,12 @@ impl Projection {
     fn project(&self, x: f64, y: f64, z: f64) -> (f64, f64, f64) {
         let p = &self.p;
         (p[0] * x + p[1] * y + p[2] * z + p[3], p[4] * x + p[5] * y + p[6] * z + p[7], p[8] * x + p[9] * y + p[10] * z + p[11])
+    }
+
+    /// A ground direction through the projection's linear part (before the camera).
+    fn direction(&self, x: f64, y: f64, z: f64) -> (f64, f64) {
+        let p = &self.p;
+        (p[0] * x + p[1] * y + p[2] * z, p[4] * x + p[5] * y + p[6] * z)
     }
 
     /// Screen position of a ground point after the camera.
@@ -1030,7 +1036,21 @@ impl Kernel {
             let alpha = d[n::ALPHA] * alpha_mul;
             let add = if flags & FLAG_ADDITIVE != 0 { 1 } else { op_flags & 3 };
             let smooth = if flags & FLAG_SMOOTH != 0 { 1 } else { (op_flags >> 2) & 7 };
-            let rot = d[n::ROT] as f64;
+            let mut rot = d[n::ROT] as f64;
+            let stretch = d[n::STRETCH] as f64;
+            if flags & FLAG_ALIGN != 0 || stretch != 0.0 {
+                // The velocity as drawn: through the projection, or the table's own space when flat.
+                let (vx, vy, vz) = (d[n::VX] as f64, d[n::VY] as f64, d[n::VZ] as f64);
+                let (dx, dy) = match self.proj {
+                    Some(pr) => pr.direction(vx, vy, vz),
+                    None => (vx, vy),
+                };
+                let speed = (dx * dx + dy * dy).sqrt();
+                if flags & FLAG_ALIGN != 0 && speed > 1e-9 {
+                    rot += dy.atan2(dx);
+                }
+                sx *= 1.0 + speed * stretch;
+            }
             let (cos, sin) = if rot != 0.0 { (rot.cos(), rot.sin()) } else { (1.0, 0.0) };
             let (m, tx, ty) = match self.proj {
                 Some(pr) => {

@@ -31,6 +31,19 @@ export interface IsoTileMapOptions {
   cell?: number;
 }
 
+/** A point on the map's surfaces: see `IsoTileMap.surfaceAt`. */
+export interface IsoSurface {
+  col: number;
+  row: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Outward normal: [0, 0, 1] on a top, [±1, 0, 0] or [0, ±1, 0] on a face. */
+  normal: [number, number, number];
+  top: boolean;
+  visible: boolean;
+}
+
 interface Instance {
   region: Region;
   gx: number;
@@ -135,6 +148,34 @@ export class IsoTileMap extends Node2D {
   heightAt(x: number, y: number): number {
     const { col, row } = this.cellAt(x, y);
     return this.elevationAt(col, row) * this.tile.rise;
+  }
+
+  /**
+   * Where a hit lands on the map's surfaces, for decals and impact effects. Give the hit point
+   * in the map's ground space, its height, and the face normal the ray entered through (as
+   * `castGridRay` and combat traces report; leave it zero for a hit on the ground). The point
+   * is snapped onto the face, or onto the cell's top when the hit is above it. `visible` is
+   * false for faces this map does not draw (those facing away from the camera, or below a
+   * neighbour's floor).
+   */
+  surfaceAt(x: number, y: number, z: number, nx = 0, ny = 0): IsoSurface {
+    const rise = this.tile.rise;
+    if (nx === 0 && ny === 0) {
+      const { col, row } = this.cellAt(x, y);
+      return { col, row, x, y, z: this.heightAt(x, y), normal: [0, 0, 1], top: true, visible: this.walkable(col, row) };
+    }
+    // The cell behind the face the ray came through.
+    const { col, row } = this.cellAt(x - Math.sign(nx) * 0.01, y - Math.sign(ny) * 0.01);
+    const top = this.elevationAt(col, row) * rise;
+    if (z >= top) return { col, row, x, y, z: top, normal: [0, 0, 1], top: true, visible: this.walkable(col, row) };
+    const fx = nx > 0 ? (col + 1) * this.cell : nx < 0 ? col * this.cell : x;
+    const fy = ny > 0 ? (row + 1) * this.cell : ny < 0 ? row * this.cell : y;
+    const sx = Math.sign(nx);
+    const sy = Math.sign(ny);
+    // Faces drawn are +x and +y, down to the neighbour's floor.
+    const bottom = this.elevationAt(col + sx, row + sy) * rise;
+    const drawn = sx >= 0 && sy >= 0 && (sx > 0 || sy > 0) && this.walkable(col, row);
+    return { col, row, x: fx, y: fy, z: Math.max(0, z), normal: [sx, sy, 0], top: false, visible: drawn && z >= bottom };
   }
 
   /** Whether a cell holds a tile at all. */

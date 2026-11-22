@@ -49,9 +49,12 @@ export const NODE = {
   W: 8, H: 9, OX: 10, OY: 11, U0: 12, V0: 13, U1: 14, V1: 15,
   TINT: 16, ALPHA: 17, FLAGS: 18, LIFE: 19, FRAME: 20, FRAME_COUNT: 21, FPS: 22, FRAME_BASE: 23, BODY: 24, USER: 25,
   Z: 26, VZ: 27, DEPTH_BIAS: 28,
+  /** X scale gained per unit of on-screen speed: fast nodes draw as streaks. */
+  STRETCH: 29,
 } as const;
 
-export const NODE_FLAG = { ALIVE: 1, ADDITIVE: 2, SMOOTH: 4, HIDDEN: 8, FLIP_X: 16, FLIP_Y: 32, EXPIRES: 64, SHADOW: 128 } as const;
+/** ALIGN turns a node's +x axis along its velocity as drawn on screen, with ROT added on top. */
+export const NODE_FLAG = { ALIVE: 1, ADDITIVE: 2, SMOOTH: 4, HIDDEN: 8, FLIP_X: 16, FLIP_Y: 32, EXPIRES: 64, SHADOW: 128, ALIGN: 256 } as const;
 
 /** What happens to a node's height at zero. */
 export const NODE_FLOOR = { NONE: 0, STOP: 1, BOUNCE: 2 } as const;

@@ -25,6 +25,8 @@ navigation, demonstrated by Signal Breach. See [FPS APIs and validation](docs/FP
 
 Version 0.19 adds line of sight, fog of war and a generic 2D/2.5D combat layer: weapons, projectiles, destructible tiles, explosions, aiming on isometric maps and arcing throws. **Sentry Yard** (`examples/sentry-yard`) shows it in one small isometric game; see [combat, sight and aiming](docs/COMBAT.md).
 
+Version 0.20 adds shot effects: particles that point and stretch along their flight, travelling beams, trails, pooled flash and tracked lights, and decals that lie on the ground or on wall faces. Sentry Yard uses all of them; see [shot effects](docs/EFFECTS.md).
+
 Version 0.16 extends the shared FPS controller, combat and weapon layer to native hosts, adds native mouse capture and portable sign textures, and makes exports preserve the previous package on build failure. See [the native/export upgrade](docs/ENGINE-UPGRADE-0.16.md) for validation and remaining limits.
 
 The [current roadmap](docs/ROADMAP.md) defines the remaining work toward Godot/Unity
@@ -255,6 +257,18 @@ from, and `DestructibleGrid` tiles that crack, break and chain through a tile ma
 lines sticks up with the screen. `TwinStickAim` and `AimAssist` handle mouse and stick, and
 `predictThrow` draws the exact path a grenade will take. **Sentry Yard**
 (`examples/sentry-yard`) uses all of it. See [docs/COMBAT.md](docs/COMBAT.md).
+
+## Shot effects (0.20)
+
+`SpritePool` nodes can point along their velocity as drawn (`align: "velocity"`) and
+stretch with speed (`stretch`). Both run in the kernel, so sparks and bolts become streaks
+at no script cost on flat and projected maps. `Beams` draws glowing strips between two
+points at their own heights, either whole or as a section that travels. `Trails` draws
+tapered ribbons behind anything that pushes its position each frame. `LightPool` flashes
+and tracks short-lived lights and drops the dimmest when full. `Decals` leaves marks that
+fade on the ground or squashed onto wall faces, and `IsoTileMap.surfaceAt` finds the face a
+hit landed on. `camera.screenAngle` and `screenLength` give a world direction as it looks on
+screen. Sentry Yard uses all of them. See [docs/EFFECTS.md](docs/EFFECTS.md).
 
 ## Kernel
 
