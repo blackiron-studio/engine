@@ -2,6 +2,7 @@ struct Uniforms {
   vp: mat4x4<f32>, model: mat4x4<f32>, normal: mat4x4<f32>, light: mat4x4<f32>,
   color: vec4<f32>, material: vec4<f32>, emission: vec4<f32>, eye: vec4<f32>, ambient: vec4<f32>, ground: vec4<f32>, sun: vec4<f32>, sunColor: vec4<f32>, fog: vec4<f32>, maps: vec4<f32>, flags: vec4<f32>,
   points: array<vec4<f32>,8>, pointColors: array<vec4<f32>,8>,
+  uvRect: vec4<f32>, glow: vec4<f32>,
 };
 @group(0) @binding(0) var<uniform> u: Uniforms;
 @group(0) @binding(1) var baseMap: texture_2d<f32>;
@@ -17,24 +18,24 @@ struct Vertex { @location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, 
 struct Instance {
   @location(3) model0:vec4<f32>, @location(4) model1:vec4<f32>, @location(5) model2:vec4<f32>, @location(6) model3:vec4<f32>,
   @location(7) normal0:vec4<f32>, @location(8) normal1:vec4<f32>, @location(9) normal2:vec4<f32>, @location(10) normal3:vec4<f32>,
-  @location(11) color:vec4<f32>, @location(12) mirror:f32,
+  @location(11) color:vec4<f32>, @location(12) mirror:f32, @location(13) uvRect:vec4<f32>, @location(14) glow:f32,
 };
-struct Out { @builtin(position) clip:vec4<f32>, @location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) shadow:vec4<f32>, @location(4) color:vec4<f32>, @location(5) @interpolate(flat) mirror:f32 };
+struct Out { @builtin(position) clip:vec4<f32>, @location(0) position:vec3<f32>, @location(1) normal:vec3<f32>, @location(2) uv:vec2<f32>, @location(3) shadow:vec4<f32>, @location(4) color:vec4<f32>, @location(5) @interpolate(flat) mirror:f32, @location(6) @interpolate(flat) glow:f32 };
 fn clipDepth(p:vec4<f32>)->vec4<f32>{return vec4(p.xy,(p.z+p.w)*0.5,p.w);}
 @vertex fn vs(v:Vertex)->Out {
-  var o:Out;let p=u.model*vec4(v.position,1.0);o.clip=clipDepth(u.vp*p);o.position=p.xyz;o.normal=(u.normal*vec4(v.normal,0.0)).xyz;o.uv=v.uv;o.shadow=u.light*p;o.color=u.color;o.mirror=u.flags.w;return o;
+  var o:Out;let p=u.model*vec4(v.position,1.0);o.clip=clipDepth(u.vp*p);o.position=p.xyz;o.normal=(u.normal*vec4(v.normal,0.0)).xyz;o.uv=u.uvRect.xy+v.uv*u.uvRect.zw;o.shadow=u.light*p;o.color=u.color;o.mirror=u.flags.w;o.glow=u.glow.x;return o;
 }
 @vertex fn depth_vs(v:Vertex)->Out {
-  var o:Out;let p=u.model*vec4(v.position,1.0);o.clip=clipDepth(u.light*p);o.position=p.xyz;o.normal=v.normal;o.uv=v.uv;o.shadow=vec4(0.0);o.color=u.color;o.mirror=u.flags.w;return o;
+  var o:Out;let p=u.model*vec4(v.position,1.0);o.clip=clipDepth(u.light*p);o.position=p.xyz;o.normal=v.normal;o.uv=u.uvRect.xy+v.uv*u.uvRect.zw;o.shadow=vec4(0.0);o.color=u.color;o.mirror=u.flags.w;o.glow=0.0;return o;
 }
 @vertex fn vs_instanced(v:Vertex,i:Instance)->Out {
   let model=mat4x4<f32>(i.model0,i.model1,i.model2,i.model3);
   let normal=mat4x4<f32>(i.normal0,i.normal1,i.normal2,i.normal3);
-  var o:Out;let p=model*vec4(v.position,1.0);o.clip=clipDepth(u.vp*p);o.position=p.xyz;o.normal=(normal*vec4(v.normal,0.0)).xyz;o.uv=v.uv;o.shadow=u.light*p;o.color=i.color;o.mirror=i.mirror;return o;
+  var o:Out;let p=model*vec4(v.position,1.0);o.clip=clipDepth(u.vp*p);o.position=p.xyz;o.normal=(normal*vec4(v.normal,0.0)).xyz;o.uv=i.uvRect.xy+v.uv*i.uvRect.zw;o.shadow=u.light*p;o.color=i.color;o.mirror=i.mirror;o.glow=i.glow;return o;
 }
 @vertex fn depth_vs_instanced(v:Vertex,i:Instance)->Out {
   let model=mat4x4<f32>(i.model0,i.model1,i.model2,i.model3);
-  var o:Out;let p=model*vec4(v.position,1.0);o.clip=clipDepth(u.light*p);o.position=p.xyz;o.normal=v.normal;o.uv=v.uv;o.shadow=vec4(0.0);o.color=i.color;o.mirror=i.mirror;return o;
+  var o:Out;let p=model*vec4(v.position,1.0);o.clip=clipDepth(u.light*p);o.position=p.xyz;o.normal=v.normal;o.uv=i.uvRect.xy+v.uv*i.uvRect.zw;o.shadow=vec4(0.0);o.color=i.color;o.mirror=i.mirror;o.glow=0.0;return o;
 }
 @fragment fn depth_fs(v:Out) {
   let texel=textureSample(baseMap,baseSampler,v.uv);
@@ -79,6 +80,6 @@ fn brdf(n:vec3<f32>,v:vec3<f32>,l:vec3<f32>,radiance:vec3<f32>,base:vec3<f32>,ro
     for(var i=0u;i<8u;i++){if(f32(i)>=u.flags.x){break;}let delta=u.points[i].xyz-v.position;let dist=length(delta);let range=u.points[i].w;let falloff=pow(clamp(1.0-pow(dist/range,4.0),0.0,1.0),2.0)/(1.0+dist*dist);let direction=delta/max(dist,0.0001);lighting+=u.ground.w*u.pointColors[i].rgb*falloff*max(dot(n,direction),0.0);color+=brdf(n,view,direction,u.pointColors[i].rgb*falloff,base,rough,metal);}
     if(u.material.z>0.5){color=linear(palette*lighting);}
   }
-  color+=emission;if(u.material.w>0.5){color=aces(color*max(0.01,u.eye.w));}
+  color+=emission+base*v.glow;if(u.material.w>0.5){color=aces(color*max(0.01,u.eye.w));}
   let fog=clamp(1.0-exp(-max(0.0,u.fog.w)*length(u.eye.xyz-v.position)),0.0,1.0);color=mix(color,linear(u.fog.rgb),fog);color=pow(max(color,vec3(0.0)),vec3(1.0/2.2));let opacity=select(1.0,alpha,u.flags.y>0.5);return vec4(color*opacity,opacity);
 }

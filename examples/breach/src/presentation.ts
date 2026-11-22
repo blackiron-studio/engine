@@ -21,6 +21,9 @@ import {
 } from "@blackiron-studio/engine/three";
 import { noise } from "@blackiron-studio/engine/art";
 import { RELAYS, SOLIDS } from "./level.ts";
+import { type DroneModel, type Model, barrierFrame, console_, crateCaps, drone as droneModel, drum, pillarCollars, pulseRifle, rifleMag, scatterPump, scattergun, signFrame } from "./models.ts";
+
+type V3 = [number, number, number];
 
 /** Palette shared by the world and the HUD: storm slate, station cyan, relay amber. */
 export const P = {
@@ -36,6 +39,20 @@ export const P = {
   ground: 0x4f5559,
   hazard: 0xe8ac2a,
 };
+
+/** A drone in the scene (see BreachArt.drone). */
+export interface DroneVisual {
+  root: Node3D;
+  rig: Node3D;
+  frame: Node3D;
+  core: Mesh3D;
+  coreScale: V3;
+  rotors: { node: Node3D; chunk: Node3D }[];
+  chunks: { node: Node3D; center: V3; radius: number }[];
+  muzzles: V3[];
+  eye: V3;
+  scale: number;
+}
 
 // ------------------------------------------------------------------ baked surface cache
 // Textures are baked once per process and shared by every BreachScene (restarts are instant).
@@ -71,6 +88,9 @@ function bake(key: string, size: number, bump: number, fn: (u: number, v: number
   baked.set(key, s);
   return s;
 }
+
+/** A solid part's colour, roughness and metalness. */
+export type Finish = [color: number, roughness: number, metallic: number];
 
 function baseSurface(key: string, kind: SurfaceKind, o: SurfaceOptions): SurfaceTextures {
   let s = baked.get(key);
@@ -218,6 +238,10 @@ export class BreachArt {
   readonly cylinder: Geometry3D;
   readonly ring: Geometry3D;
   private materials = new Map<string, Material3D>();
+  /** Built geometry per model, shared by every mount of it in this scene. */
+  private built = new Map<Model, { g: Geometry3D; m: Material3D; glow: boolean }[]>();
+  private models = new Map<string, Model>();
+  private drones: (DroneModel | undefined)[] = [];
   private boxes = new Map<string, Geometry3D>();
   private cylinders = new Map<string, Geometry3D>();
   readonly root: Node3D;
@@ -229,6 +253,13 @@ export class BreachArt {
   readonly beacons: Mesh3D[] = [];
   readonly weaponRoot = new Node3D();
   readonly weaponModels: Node3D[] = [];
+  /** The part that moves on each gun: the rifle's magazine, the scattergun's pump. */
+  readonly weaponParts: Node3D[] = [];
+  /** Each gun's own glow material (vents and strips), so firing can heat it up. */
+  readonly weaponGlows: Material3D[] = [];
+  /** Muzzles and ejection ports in gun space. */
+  readonly muzzles: V3[] = [[0, 0, -0.81], [0, 0, -0.79]];
+  readonly ports: V3[] = [[0.07, 0.015, -0.24], [0.08, 0.0, -0.2]];
   readonly muzzle: Mesh3D;
   readonly muzzleLight: PointLight3D;
   readonly s: Record<string, Material3D>;
@@ -342,11 +373,12 @@ export class BreachArt {
           shape: { kind: "box", halfExtents: [0.35, 4, 0.4] },
         });
         this.tbox(root, sg * 13, 7.4, z, 1.8, 0.18, 1.1, s.panelOrange, 0.5, 0.02);
+        this.mount(root, this.model("pillar", pillarCollars), [sg * 13, 0, z]);
         this.box(root, sg * 13, 7.28, z, 1.2, 0.04, 0.12, P.amber, true).castShadow = false;
       }
       for (let i = 0; i < pillars.length - 1; i++)
         for (const off of [-0.35, 0.35]) {
-          const c = root.add(new Mesh3D(own(tubeGeometry(catenary([sg * 13 + off, 7.55, pillars[i]], [sg * 13 + off, 7.55, pillars[i + 1]], 0.55 + (off > 0 ? 0.25 : 0)), 0.03, 5)), this.mat(0x111417)));
+          const c = root.add(new Mesh3D(own(tubeGeometry(catenary([sg * 13 + off, 7.55, pillars[i]], [sg * 13 + off, 7.55, pillars[i + 1]], 0.55 + (off > 0 ? 0.25 : 0)), 0.03, 5)), this.mat(0x111417, false, 0.55, 0.25)));
           c.castShadow = false;
         }
       // Gallery railings leave the staircase opening clear.
@@ -443,20 +475,17 @@ export class BreachArt {
     for (const [i, p] of RELAYS.entries()) {
       const node = root.add(new Node3D()).setPosition(p.x, p.y, p.z);
       this.relays.push(node);
-      this.tbox(node, 0, 0.55, 0, 1.4, 1.1, 1.2, s.panel, 0.6, 0.04);
-      this.tbox(node, 0, 1.14, 0, 1.65, 0.16, 1.4, s.bare, 0.6, 0.03);
+      this.mount(node, this.model("console", console_));
       this.tbox(node, 0, 0.08, 0, 1.6, 0.16, 1.4, s.hazard, 1, 0.02);
       const lamp = new Material3D({ color: P.amber, emissive: P.amber, emissiveIntensity: 0.25, shading: "unlit", toneMapped: false });
       this.relayLamps.push(lamp);
-      const screen = node.add(new Mesh3D(this.cube, lamp)).setPosition(0, 1.31, 0).setScale(0.9, 0.13, 0.7);
+      const screen = node.add(new Mesh3D(this.cube, lamp)).setPosition(0, 1.255, 0).setScale(0.9, 0.03, 0.7);
       screen.castShadow = false;
       this.mesh(node, this.ring, 0, 2.7, 0, 0.65, 0.65, 0.65, P.orange, true).castShadow = false;
       const beam = this.mesh(node, this.cylinder, 0, 2.05, 0, 0.05, 1.3, 0.05, P.amber, true);
       beam.castShadow = false;
       this.relayBeams.push(beam);
-      for (const sx of [-0.62, 0.62]) this.mesh(node, this.cylinder, sx, 1.95, 0, 0.035, 1.5, 0.035, 0x2a3036);
-      this.box(node, 0, 2.7, 0, 1.3, 0.04, 0.04, 0x2a3036);
-      for (let k = 0; k <= i; k++) this.box(node, -0.3 + k * 0.3, 0.65, 0.611, 0.12, 0.3, 0.025, P.chalk, true).castShadow = false;
+      for (let k = 0; k <= i; k++) this.box(node, -0.3 + k * 0.3, 0.65, 0.69, 0.12, 0.3, 0.025, P.chalk, true).castShadow = false;
       const light = node.add(new PointLight3D(P.amber, 14, 8)).setPosition(0, 2.2, 0.6);
       this.relayLights.push(light);
       physics.createBody({
@@ -503,6 +532,7 @@ export class BreachArt {
       c.rotation.y = ry;
       const band = this.tbox(root, x, y + h * 0.82, z, w + 0.04, 0.12, d + 0.04, s.hazard, 1.6, 0);
       band.rotation.y = ry;
+      this.mount(root, this.model(`caps/${w}/${h}/${d}`, () => crateCaps(w, h, d)), [x, y, z], ry);
     };
     crate(-30, 0, 27, 2.4, 2.4, 2.4, true, 0.1);
     crate(-30, 2.4, 27, 2.2, 2, 2.2, false, -0.2);
@@ -516,8 +546,8 @@ export class BreachArt {
       [21.6, 22.6],
       [22.4, 23.6],
     ] as const) {
-      this.mesh(root, this.cylinder, x, 0.55, z, 0.38, 1.1, 0.38, x < 0 ? 0x2f5a6a : 0xb5582a);
-      this.mesh(root, this.cylinder, x, 0.82, z, 0.4, 0.06, 0.4, 0x1a1f23);
+      const color = x < 0 ? 0x2f5a6a : 0xb5582a;
+      this.mount(root, this.model(`drum/${color}`, () => drum(color)), [x, 0, z], x * 1.7);
     }
     // Storage tanks behind the south wall.
     for (const x of [-16, 16]) {
@@ -543,44 +573,21 @@ export class BreachArt {
 
     // ------------------------------------------------------------ first-person weapons
     this.root.add(this.weaponRoot);
-    const gm = this.mat(0x2b3138, false, 0.45, 0.55),
-      poly = this.mat(0x14181c, false, 0.7, 0.05),
-      paint = this.mat(0xd96e30, false, 0.45, 0.2),
-      bone = this.mat(0x8f8c84, false, 0.5, 0.05),
-      chrome = this.mat(0x9aa3ab, false, 0.22, 0.9);
-    const part = (gun: Node3D, m: Material3D, x: number, y: number, z: number, w: number, h: number, d: number) =>
-      gun.add(new Mesh3D(this.cube, m)).setPosition(x, y, z).setScale(w, h, d);
-    for (let i = 0; i < 2; i++) {
-      const gun = this.weaponRoot.add(new Node3D());
+    const guns = [pulseRifle(), scattergun()],
+      moving = [rifleMag(), scatterPump()];
+    for (const [i, model] of guns.entries()) {
+      const gun = this.mount(this.weaponRoot, model);
+      this.weaponParts.push(this.mount(gun, moving[i]));
+      // Give this gun's glowing inserts a material of their own.
+      const glow = this.mat(i ? P.amber : P.cyan, true);
+      const heat = new Material3D({ color: glow.color, shading: "unlit", toneMapped: false, emissive: glow.emissive, emissiveIntensity: glow.emissiveIntensity });
+      const swap = (n: Node3D) => {
+        if (n instanceof Mesh3D && n.material === glow) n.material = heat;
+        for (const c of n.children) if (c instanceof Node3D) swap(c);
+      };
+      swap(gun);
+      this.weaponGlows.push(heat);
       this.weaponModels.push(gun);
-      part(gun, gm, 0, -0.04, -0.18, 0.2, 0.18, 0.57);
-      part(gun, i === 0 ? paint : bone, 0, 0.045, -0.2, 0.215, 0.05, 0.5);
-      part(gun, poly, 0, -0.21, 0.03, 0.11, 0.28, 0.16).rotation.x = -0.2;
-      part(gun, gm, 0, -0.19, -0.2, 0.13, 0.24, 0.15).rotation.x = 0.12;
-      part(gun, poly, 0, 0.085, -0.2, 0.06, 0.03, 0.44);
-      for (let k = 0; k < 6; k++) part(gun, gm, 0, 0.105, -0.38 + k * 0.06, 0.07, 0.012, 0.025);
-      if (i === 0) {
-        gun.add(new Mesh3D(this.cylinder, chrome)).setPosition(0, 0.0, -0.6).setScale(0.03, 0.34, 0.03).rotation.x = Math.PI / 2;
-        part(gun, poly, 0, 0.0, -0.55, 0.12, 0.11, 0.26);
-        for (let k = 0; k < 4; k++) part(gun, gm, 0.062, 0.0, -0.64 + k * 0.05, 0.01, 0.06, 0.022);
-        part(gun, poly, 0, 0.13, -0.14, 0.065, 0.06, 0.13);
-        part(gun, gm, 0, 0.135, -0.215, 0.075, 0.075, 0.025);
-        this.box(gun, 0, 0.14, -0.074, 0.04, 0.03, 0.006, P.cyan, true);
-        this.box(gun, 0.096, -0.02, -0.05, 0.012, 0.11, 0.08, P.cyan, true);
-      } else {
-        for (const x of [-0.055, 0.055]) {
-          const b = gun.add(new Mesh3D(this.cylinder, chrome)).setPosition(x, 0, -0.5).setScale(0.045, 0.36, 0.045);
-          b.rotation.x = Math.PI / 2;
-        }
-        part(gun, poly, 0, -0.06, -0.4, 0.22, 0.09, 0.22);
-        for (let k = 0; k < 4; k++) this.box(gun, -0.09 + k * 0.06, -0.035, -0.12, 0.035, 0.035, 0.07, P.red, true);
-        this.box(gun, 0, 0.055, -0.62, 0.025, 0.02, 0.02, P.amber, true);
-      }
-      this.box(gun, 0.105, 0, -0.22, 0.008, 0.045, 0.2, i === 0 ? P.cyan : P.amber, true);
-      for (let k = 0; k < 5; k++) part(gun, gm, 0.108, -0.05, -0.34 + k * 0.05, 0.012, 0.04, 0.012);
-      part(gun, i === 0 ? gm : paint, -0.02, -0.2, 0.22, 0.13, 0.14, 0.3).rotation.x = -0.24;
-      part(gun, poly, -0.03, -0.13, 0.06, 0.13, 0.1, 0.17);
-      part(gun, poly, -0.02, -0.29, 0.34, 0.12, 0.05, 0.08).rotation.x = -0.24;
       gun.visible = i === 0;
     }
     this.muzzle = this.mesh(this.weaponRoot, this.sphere, 0, 0, -0.78, 0.06, 0.06, 0.2, 0xffe2a8, true);
@@ -632,6 +639,7 @@ export class BreachArt {
     this.tbox(root, x, y, z, w, h, d, reactor ? s.hex : s.panel, 0.55, 0.05);
     this.tbox(root, x, y + h / 2 + 0.06, z, w + 0.12, 0.12, d + 0.12, s.bare, 0.6, 0.03);
     if (!reactor) this.tbox(root, x, y + h / 2 + 0.125, z, w - 0.1, 0.01, d - 0.1, s.grate, 0.6, 0);
+    this.mount(root, this.model(`barrier/${w}/${h}/${d}`, () => barrierFrame(w, h, d)), [x, y, z]);
     this.tbox(root, x, y - h / 2 + 0.11, z, w + 0.04, 0.22, d + 0.04, s.hazard, 1.2, 0);
     for (const side of [-1, 1]) {
       this.box(root, x + side * (w / 2 + 0.012), y + 0.1, z, 0.04, 0.05, d * 0.7, reactor ? P.cyan : P.amber, true).castShadow = false;
@@ -646,7 +654,7 @@ export class BreachArt {
   }
 
   private paint(x: number, z: number, w: number, d: number, color: number): void {
-    const m = this.root.add(new Mesh3D(this.cube, this.mat(color, false, 0.75, 0))).setPosition(x, 0.004, z).setScale(w, 0.008, d);
+    const m = this.root.add(new Mesh3D(this.cube, this.finish([color, 0.75, 0]))).setPosition(x, 0.004, z).setScale(w, 0.008, d);
     m.castShadow = false;
   }
 
@@ -712,6 +720,7 @@ export class BreachArt {
       ? this.box(this.root, x + facing * 0.03, y, z, 0.05, h + 0.1, w + 0.1, 0x1a1f24)
       : this.box(this.root, x, y, z + (south ? 0.03 : -0.03), w + 0.1, h + 0.1, 0.05, 0x1a1f24);
     frame.castShadow = false;
+    this.mount(this.root, this.model(`sign/${w}/${h}`, () => signFrame(w, h)), [x, y, z], south ? Math.PI : facing ? (-facing * Math.PI) / 2 : 0);
   }
 
   /**
@@ -732,33 +741,94 @@ export class BreachArt {
   mesh(parent: Node3D, g: Geometry3D, x: number, y: number, z: number, w: number, h: number, d: number, color: number, glow = false): Mesh3D {
     return parent.add(new Mesh3D(g, this.mat(color, glow))).setPosition(x, y, z).setScale(w, h, d);
   }
+  finish([color, roughness, metallic]: Finish): Material3D {
+    return this.mat(color, false, roughness, metallic);
+  }
   box(parent: Node3D, x: number, y: number, z: number, w: number, h: number, d: number, color: number, glow = false): Mesh3D {
     return this.mesh(parent, this.cube, x, y, z, w, h, d, color, glow);
   }
-  drone(heavy: boolean): { root: Node3D; core: Mesh3D; rotor: Node3D } {
-    const root = this.root.add(new Node3D()),
-      rotor = root.add(new Node3D()),
-      hull = this.mat(heavy ? 0x2a3036 : 0xbfc4c6, false, heavy ? 0.4 : 0.35, heavy ? 0.7 : 0.35),
-      armour = this.mat(heavy ? 0xd2652a : 0x3a444d, false, 0.45, 0.4),
-      dark = this.mat(0x111518, false, 0.6, 0.3);
-    const add = (g: Geometry3D, m: Material3D, x: number, y: number, z: number, w: number, h: number, d: number) =>
-      root.add(new Mesh3D(g, m)).setPosition(x, y, z).setScale(w, h, d);
-    add(this.sphere, hull, 0, 0, 0, 0.66, 0.43, 0.54);
-    add(this.cube, dark, 0, 0, -0.4, 0.62, 0.2, 0.25);
-    add(this.cube, armour, 0, 0.25, -0.05, 0.5, 0.08, 0.6);
-    const core = this.mesh(root, this.sphere, 0, 0, -0.56, 0.2, 0.11, 0.08, P.red, true);
-    this.box(root, 0, -0.02, -0.535, 0.5, 0.025, 0.02, P.red, true);
-    for (const s of [-1, 1]) {
-      add(this.cube, armour, s * 0.75, -0.06, 0, 0.65, 0.19, 0.48);
-      add(this.cube, dark, s * 0.75, 0.05, 0, 0.5, 0.04, 0.34);
-      rotor.add(new Mesh3D(this.ring, dark)).setPosition(s * 0.93, 0.12, 0).setScale(0.36, 0.36, 0.36);
-      this.box(rotor, s * 0.93, 0.12, 0, 0.62, 0.015, 0.06, 0x111518);
-      add(this.cube, dark, s * 0.76, -0.35, -0.1, 0.12, 0.4, 0.18);
-      this.box(root, s * 0.76, -0.56, -0.1, 0.06, 0.04, 0.06, P.red, true);
+  /**
+   * A drone: a root that the game places and turns, a `rig` under it for banking and recoil,
+   * and the modelled body in chunks (`chunks`, each a node at its tumbling centre) that fly
+   * apart when it is destroyed. The blades spin in each duct (`rotors`, spun by the game) and
+   * the eye glows (`core`). Heavy drones are a size up.
+   */
+  drone(heavy: boolean): DroneVisual {
+    const dm = (this.drones[heavy ? 1 : 0] ??= droneModel(heavy));
+    const root = this.root.add(new Node3D());
+    const rig = root.add(new Node3D());
+    const scale = heavy ? 1.14 : 1;
+    const frame = rig.add(new Node3D()).setScale(scale);
+    const chunks = dm.chunks.map((c) => {
+      const node = frame.add(new Node3D()).setPosition(...c.center);
+      this.mount(node, c.model, [-c.center[0], -c.center[1], -c.center[2]]);
+      return { node, center: c.center, radius: c.radius * scale };
+    });
+    // Rotors, the eye and the lights ride on the chunk nearest them.
+    const near = (p: V3) => chunks.reduce((a, b) => (Math.hypot(p[0] - b.center[0], p[1] - b.center[1], p[2] - b.center[2]) < Math.hypot(p[0] - a.center[0], p[1] - a.center[1], p[2] - a.center[2]) ? b : a));
+    const local = (p: V3, c: (typeof chunks)[number]): V3 => [p[0] - c.center[0], p[1] - c.center[1], p[2] - c.center[2]];
+    const rotors = dm.ducts.map((at) => {
+      const c = near(at);
+      return { node: this.mount(c.node, dm.blades, local(at, c)), chunk: c.node };
+    });
+    const ec = near(dm.eye.at);
+    const core = this.mesh(ec.node, this.sphere, ...local(dm.eye.at, ec), ...dm.eye.scale, P.red, true);
+    for (const l of dm.lights) {
+      const c = near(l);
+      this.mesh(c.node, this.sphere, ...local(l, c), 0.032, 0.032, 0.032, P.red, true).castShadow = false;
     }
-    add(this.cube, dark, 0, 0.39, 0.1, 0.05, 0.32, 0.05);
-    this.mesh(root, this.sphere, 0, 0.57, 0.1, 0.06, 0.06, 0.06, P.red, true);
-    return { root, core, rotor };
+    return { root, rig, frame, core, coreScale: dm.eye.scale, rotors, chunks, muzzles: dm.muzzles, eye: dm.eye.at, scale };
+  }
+  /** A spent casing (rifle) or shotgun shell, about to be thrown out of the port. */
+  casing(shell: boolean): Node3D {
+    const n = new Node3D(),
+      brass = this.mat(0xc8a050, false, 0.3, 0.9);
+    const add = (y: number, r: number, h: number, m: Material3D) => {
+      const c = n.add(new Mesh3D(this.cylinder, m)).setPosition(0, y, 0).setScale(r, h, r);
+      c.castShadow = false;
+    };
+    if (shell) {
+      add(0.007, 0.0125, 0.05, this.mat(0xa82a24, false, 0.5, 0.1));
+      add(-0.024, 0.0135, 0.014, brass);
+    } else {
+      add(0, 0.0065, 0.03, brass);
+      add(0.017, 0.0045, 0.006, this.mat(0x6a5a40, false, 0.4, 0.8));
+    }
+    return n;
+  }
+  /** A model made once per scene by `make`, under `key`. */
+  private model(key: string, make: () => Model): Model {
+    let m = this.models.get(key);
+    if (!m) this.models.set(key, (m = make()));
+    return m;
+  }
+  /**
+   * Put a model in `parent` at `at`, turned `ry` about y. Its geometry is built on first use
+   * and shared; each part takes its finish on its surfaces and on its chamfers, and
+   * glowing inserts take the glow material.
+   */
+  mount(parent: Node3D, model: Model, at: V3 = [0, 0, 0], ry = 0): Node3D {
+    let list = this.built.get(model);
+    if (!list) {
+      list = [];
+      const own = (g: Geometry3D) => this.scene.resources.own(g);
+      for (const p of model.parts) {
+        const { body, edge } = p.shape.build();
+        const [color, roughness, metallic] = p.finish;
+        if (body) list.push({ g: own(body), m: this.mat(color, false, roughness, metallic), glow: false });
+        if (edge) list.push({ g: own(edge), m: this.mat(color, false, roughness, metallic), glow: false });
+      }
+      for (const gl of model.glows) {
+        const { body, edge } = gl.shape.build();
+        for (const g of [body, edge]) if (g) list.push({ g: own(g), m: this.mat(gl.color, true), glow: true });
+      }
+      this.built.set(model, list);
+    }
+    const node = parent.add(new Node3D()).setPosition(at[0], at[1], at[2]);
+    node.rotation.y = ry;
+    for (const { g, m, glow } of list) if (glow) node.add(new Mesh3D(g, m)).castShadow = false;
+    else node.add(new Mesh3D(g, m));
+    return node;
   }
   navigation(): NavigationGrid3D {
     return new NavigationGrid3D(48, 56, 1, -24, -31, (x, z) => {

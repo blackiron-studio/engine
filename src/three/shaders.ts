@@ -5,19 +5,23 @@ layout(location=1) in vec3 aNormal;
 layout(location=7) in vec2 aUV;
 out vec2 vUV;
 layout(location=2) in mat4 aModel;
-layout(location=6) in vec3 aTint;
+layout(location=6) in vec4 aTint;
+layout(location=8) in float aGlow;
+layout(location=9) in vec4 aUVRect;
 uniform highp int uShading;
 uniform mat4 uViewProjection;
 uniform mat4 uLightMatrix;
 out vec3 vPosition;
 out vec3 vNormal;
 out vec4 vShadow;
-flat out vec3 vTint;
+flat out vec4 vTint;
+flat out float vGlow;
 void main(){
   vec4 world=aModel*vec4(aPosition,1.0);
   vPosition=world.xyz;
-  vUV=aUV;
+  vUV=aUVRect.xy+aUV*aUVRect.zw;
   vTint=aTint;
+  vGlow=aGlow;
   if(uShading==2){
     vNormal=vec3(0.0);
     vShadow=vec4(0.0);
@@ -34,8 +38,9 @@ layout(location=0) in vec3 aPosition;
 layout(location=7) in vec2 aUV;
 out vec2 vUV;
 layout(location=2) in mat4 aModel;
+layout(location=9) in vec4 aUVRect;
 uniform mat4 uViewProjection;
-void main(){vUV=aUV;gl_Position=uViewProjection*aModel*vec4(aPosition,1.0);}
+void main(){vUV=aUVRect.xy+aUV*aUVRect.zw;gl_Position=uViewProjection*aModel*vec4(aPosition,1.0);}
 `;
 export const DEPTH3D_FRAG = `#version 300 es
 precision highp float;
@@ -52,7 +57,8 @@ in vec2 vUV;
 in vec3 vPosition;
 in vec3 vNormal;
 in vec4 vShadow;
-flat in vec3 vTint;
+flat in vec4 vTint;
+flat in float vGlow;
 layout(location=0) out vec4 outColor;
 uniform vec3 uColor;
 uniform float uRoughness;
@@ -129,15 +135,16 @@ void finishColor(vec3 color){
 }
 void main(){
   vec4 texel=uMaps.x>0.5?texture(uMap,vUV):vec4(1.0);
-  float alpha=texel.a*uOpacity;
+  float alpha=texel.a*uOpacity*vTint.a;
   if(uAlphaCutoff>=0.0 && alpha<uAlphaCutoff)discard;
   surfaceAlpha=uBlendAlpha>0.5?alpha:1.0;
   vec4 mr=uMaps.z>0.5?texture(uMetallicRoughnessMap,vUV):vec4(1.0);
   roughness=clamp(uRoughness*mr.g,0.04,1.0);
   metallic=clamp(uMetallic*mr.b,0.0,1.0);
   emission=uEmissive*(uMaps.w>0.5?linearColor(texture(uEmissiveMap,vUV).rgb):vec3(1.0));
-  vec3 palette=uColor*vTint*texel.rgb;
+  vec3 palette=uColor*vTint.rgb*texel.rgb;
   vec3 base=linearColor(palette);
+  emission+=base*vGlow;
   // A uniform branch avoids normal, BRDF, point-light, and shadow work for unlit
   // markings, particles, and effects; this is not a final mix after all lighting.
   if(uShading==2){finishColor(base+emission);return;}

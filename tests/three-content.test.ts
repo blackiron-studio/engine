@@ -102,7 +102,7 @@ test("native mesh protocol retains static uploads, refreshes texture versions an
   const first = JSON.parse(encoder.encode(scene.collectFrame3D()));
   expect(first.geometries.length).toBe(1);
   expect(first.textures.length).toBe(1);
-  expect(first.meshes[0].uniforms.length).toBe(172);
+  expect(first.meshes[0].uniforms.length).toBe(180);
   const second = JSON.parse(encoder.encode(scene.collectFrame3D()));
   expect(second.geometries.length).toBe(0);
   expect(second.textures.length).toBe(0);

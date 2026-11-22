@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.22.0 — 3D effects (2026-11-22)
+
+- `Mesh3D` gains per-instance `opacity`, `glow` and `uvRect`, next to `tint`:
+  - `opacity` multiplies the material's; a mesh below 1 draws blended, and 0 skips it.
+  - `glow` adds the mesh's own colour as emission, so it feeds bloom.
+  - `uvRect` is the texture window the mesh shows (u, v, width, height).
+- Blended meshes batch: after the back-to-front sort, neighbours with the same geometry, material and flags draw as one instanced call. The same holds on WebGL2 and on the native wgpu renderer:
+  - The tint is now RGBA, with new glow and texture-window instance attributes.
+  - The native uniform packet grew to 180 floats, and there is an instanced blended pipeline.
+- `Effects3D` pools 3D effect sprites:
+  - Kinds are `billboard`, `streak` (stretched along the motion, optionally never longer than the path flown) and `flat` (lying on a normal).
+  - Over its life a sprite moves through one to three colours, a size curve and a fade in and out.
+  - It takes gravity, drag, spin and glow, and can follow a node.
+  - `decal` puts long-lived marks in their own ring.
+  - `EffectHandle3D` supports `moveTo`, `opacity` and `free`.
+  - When the pool is full, sprites that end by themselves are reused first.
+  - Sprites face the scene's camera as the frame is drawn, and all of them draw in one call.
+- `EffectAtlas3D` packs effect textures painted in code into one image:
+  - `standard()` holds glow, dot, smoke ×3, fire ×2, star ×2, flame, ring, scorch and streak.
+  - `standardEffectCells` and custom painters extend it.
+  - `apply` points any mesh at a cell.
+- `LightPool3D` keeps a few point lights for flashes with a falloff curve, optionally riding a node. When all are busy, the light closest to finished gives way.
+- `Debris3D` launches a part out of its model, keeping its pose and scale:
+  - The part tumbles and falls, bounces off the level through a ray cast (or a flat floor) and scrapes to rest.
+  - Emitters let it trail smoke or fire. `onStep` and `onBounce` are hooks.
+  - It sinks away at the end of its life. At capacity the oldest piece goes.
+- `Spring` (core) is a damped spring on one number:
+  - `kick`, `step(dt, target)`, `reset`, `settled` and `Spring.critical`.
+  - It is stepped in slices of at most 6 ms, so it moves the same at any frame rate.
+- `FirstPersonLook`:
+  - `punch(pitch, yaw)` kicks the view, and `land(speed)` dips the eye. Both settle in `update(dt)`.
+  - `apply` adds both to the camera, and `viewForward()` gives the punched direction.
+  - `forward()`, the aim, is unchanged.
+- `ShapeBuilder3D` builds hard-surface parts in one material:
+  - `box`, `extrude` (side, plan or front outlines) and `lathe`, with rim bevels, cut or smoothed corners and placement.
+  - `build()` returns body and edge-strip geometry, and `buildOne()` merges them.
+  - `arcPoints` and `mirrorOutline` help draw outlines.
+- `eulerFromBasis` turns an orthonormal basis into `Node3D` Euler angles.
+- Signal Breach:
+  - The guns, drones and props are modelled with `ShapeBuilder3D` (`src/models.ts`).
+  - Its effects are recipes on the new APIs (`src/fx.ts`): muzzle flashes and smoke, tracers, impacts and scorches, drone charges, bolts and muzzle flashes, damage smoke, and explosions that break drones into burning debris.
+  - Recoil, sway and hit jolts are springs, and the view punches and dips.
+  - Its effects are seeded.
+- Tests:
+  - `tests/effects3d.test.ts` (17 tests).
+  - A WebGL2 check: 242 sprites in one draw, with glow and the texture window checked by pixel.
+  - A native batching test.
+- See [docs/EFFECTS3D.md](docs/EFFECTS3D.md).
+
 ## 0.21.0 — Turning (2026-11-22)
 
 - `defineDirections(name, { views, mirror, deadZone })`:

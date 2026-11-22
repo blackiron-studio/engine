@@ -63,6 +63,23 @@ export class Vec3 {
   }
 }
 export type Mat4 = Float32Array;
+/**
+ * Euler XYZ angles (as `Node3D.rotation` and `mat4Compose` use them) for an orthonormal basis given
+ * as its three axes, column after column: x axis in [0..2], y axis in [3..5], z axis in [6..8].
+ */
+export function eulerFromBasis(basis: ArrayLike<number>, out = new Vec3()): Vec3 {
+  const zx = Math.max(-1, Math.min(1, basis[6]));
+  out.y = Math.asin(zx);
+  if (Math.abs(zx) < 0.99999) {
+    out.x = Math.atan2(-basis[7], basis[8]);
+    out.z = Math.atan2(-basis[3], basis[0]);
+  } else {
+    // Looking straight along x: roll and pitch are the same turn, so put it all in x.
+    out.x = Math.atan2(basis[5], basis[4]);
+    out.z = 0;
+  }
+  return out;
+}
 export const mat4Identity = (): Mat4 =>
   new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 /** Column-major out = a * b. Both inputs may alias out. */

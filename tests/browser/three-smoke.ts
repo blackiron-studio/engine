@@ -10,6 +10,7 @@ import {
   Material3D,
   Mesh3D,
   PointLight3D,
+  Effects3D,
 } from "../../src/three/index.ts";
 const errors: string[] = [];
 window.onerror = (event) => {
@@ -129,6 +130,59 @@ async function run(): Promise<void> {
       errors.push("Shadow map did not darken scene pixels " + shadowPixels);
     scene.environment.shadows = true;
     draw();
+    // Effect sprites: 240 of mixed cells, opacities and glows draw as one blended batch, and each
+    // keeps its own colour, opacity, glow and cell.
+    scene.world3D.clear();
+    scene.environment.shadows = false;
+    scene.environment.fogDensity = 0;
+    scene.camera3D.position.set(0, 0, 6);
+    scene.camera3D.lookAt(0, 0, 0);
+    post.bloom = 0;
+    post.vignette = 0;
+    const fx = scene.world3D.add(new Effects3D({ capacity: 256, decals: 8, seed: 3 }));
+    const textures = ["smoke", "fire", "glow", "star", "ring", "dot"];
+    for (let i = 0; i < 240; i++) {
+      const a = i * 2.4,
+        r = 1.6 + (i % 7) * 0.12;
+      fx.spawn({
+        texture: textures[i % textures.length],
+        kind: i % 11 === 0 ? "streak" : "billboard",
+        position: { x: Math.cos(a) * r, y: Math.sin(a) * r * 0.8, z: (i % 5) * 0.1 - 2 },
+        velocity: i % 11 === 0 ? { x: 0, y: 8, z: 0 } : undefined,
+        lifetime: 10,
+        size: 0.3,
+        colors: [0xffaa44 + i],
+        opacity: 0.3 + (i % 4) * 0.2,
+        glow: i % 3,
+      });
+    }
+    fx.decal({ texture: "scorch", position: { x: 2.4, y: -1.8, z: -2 }, normal: { x: 0, y: 0, z: 1 }, lifetime: 10, size: 0.5, colors: [0x101010] });
+    const probe = fx.spawn({ texture: "glow", position: { x: 0, y: 0, z: 0 }, lifetime: 10, size: 1.2, colors: [0x804020] });
+    fx.update(0.016);
+    draw();
+    const effectCalls = renderer.stats3D.drawCalls,
+      effectMeshes = renderer.stats3D.meshes;
+    if (effectCalls !== 1) errors.push("Effect sprites did not batch: " + effectCalls + " calls for " + effectMeshes);
+    const solid = pixel(400, 300);
+    probe.opacity = 0.4;
+    fx.update(0.016);
+    draw();
+    const faded = pixel(400, 300);
+    const probeMesh = (fx.children as Mesh3D[]).find((m) => m.visible && m.tint === 0x804020)!;
+    probe.opacity = 1;
+    fx.update(0.016);
+    probeMesh.glow = 3;
+    draw();
+    const glowing = pixel(400, 300);
+    probeMesh.glow = 0;
+    probeMesh.uvRect.splice(0, 4, 0, 0, 0.004, 0.004);
+    draw();
+    const emptyCell = pixel(400, 300);
+    // The probe is a dim orange (0x804020) over the dark clear colour.
+    if (!(solid[0] > 100 && solid[0] > solid[1] * 1.6 && solid[1] > solid[2])) errors.push("Effect sprite colour " + solid);
+    if (!(faded[0] < solid[0] - 30 && faded[0] > 30)) errors.push("Per-sprite opacity " + faded + " vs " + solid);
+    if (!(glowing[0] > solid[0] + 40 && glowing[1] > solid[1] + 20)) errors.push("Per-sprite glow " + glowing + " vs " + solid);
+    if (!(emptyCell[0] < 40)) errors.push("Per-sprite texture window " + emptyCell);
     const result = {
       graphics,
       palette,
@@ -139,6 +193,7 @@ async function run(): Promise<void> {
       first,
       second,
       hud,
+      effects: { calls: effectCalls, meshes: effectMeshes, solid, faded, glowing, emptyCell },
       stats: renderer.stats3D,
       renderer: gl.getParameter(gl.RENDERER),
     };

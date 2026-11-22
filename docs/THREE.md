@@ -61,7 +61,9 @@ robot.tint = 0x8debd9;
 
 `Mesh3D.tint` defaults to white and multiplies the material's base colour per instance. It does not mutate the shared material or change its emissive colour. Opaque meshes with different tints still batch when their geometry, material and rendering flags match. Animate `tint` for hit flashes or reuse a single material for many coloured cuboids. Per-instance tint is recorded by the headless fake too.
 
-The renderer supports a directional sun, up to eight ranked point lights, and distance fog. Transparent meshes sort back to front and do not write depth; intersecting transparent geometry still needs care.
+`Mesh3D.opacity`, `glow` and `uvRect` (0.22) are per-instance too: opacity multiplies the material's, glow adds the mesh's own colour as emission so it feeds bloom, and `uvRect` picks the texture window it shows. A mesh below full opacity draws blended.
+
+The renderer supports a directional sun, up to eight ranked point lights, and distance fog. Transparent meshes sort back to front and do not write depth; intersecting transparent geometry still needs care. Since 0.22, neighbours in that back-to-front order that share geometry, material and flags draw as one instanced batch, so effect sprites from one atlas cost one draw call. See [3D effects](EFFECTS3D.md).
 
 A `PointLight3D(color, intensity, range)` is a regular 3D node. `environment.shadows` enables the directional depth map with PCF filtering. Tune `shadowMapSize`, `shadowExtent`, `shadowTarget` and `shadowBias` for the visible scene. This is one directional shadow volume, not cascaded shadows. Opaque rendering uses real GPU depth testing. WebGL2 supports up to 4× MSAA according to GPU support; the current native mesh pass is single-sample.
 

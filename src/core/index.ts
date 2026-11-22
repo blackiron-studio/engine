@@ -9,3 +9,4 @@ export * as grid from "./grid.ts";
 export * as hex from "./hex.ts";
 export * from "./sight.ts";
 export * from "./heading.ts";
+export * from "./spring.ts";

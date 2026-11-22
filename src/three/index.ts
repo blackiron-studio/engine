@@ -16,3 +16,8 @@ export * from "./character.ts";
 export * from "./combat.ts";
 export * from "./navigation.ts";
 export * from "./procedural.ts";
+export * from "./effect-atlas.ts";
+export * from "./effect-sprites.ts";
+export * from "./light-pool.ts";
+export * from "./debris.ts";
+export * from "./shape-builder.ts";

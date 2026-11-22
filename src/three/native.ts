@@ -65,7 +65,7 @@ export class Native3DEncoder {
       const viewmodel = mesh.renderLayer === "viewmodel";
       const g = mesh.geometry,
         m = mesh.material;
-      if (g.disposed || m.opacity <= 0) continue;
+      if (g.disposed || m.opacity <= 0 || mesh.opacity <= 0) continue;
       const inverse = mat4Identity();
       if (!mat4Invert(inverse, mesh.worldMatrix)) continue;
       usedGeometry.add(g);
@@ -116,7 +116,7 @@ export class Native3DEncoder {
         color.map((v, i) => v * tint[i]),
         64,
       );
-      u[67] = m.opacity;
+      u[67] = m.opacity * Math.max(0, Math.min(1, mesh.opacity));
       u.set(
         [
           m.roughness,
@@ -147,7 +147,7 @@ export class Native3DEncoder {
           mm[0] * (mm[5] * mm[10] - mm[9] * mm[6]) -
           mm[4] * (mm[1] * mm[10] - mm[9] * mm[2]) +
           mm[8] * (mm[1] * mm[6] - mm[5] * mm[2]);
-      const blend = m.opacity < 1 || m.alphaMode === "BLEND";
+      const blend = m.opacity < 1 || m.alphaMode === "BLEND" || mesh.opacity < 1;
       u.set(
         [lights.length, blend ? 1 : 0, m.doubleSided ? 1 : 0, det < 0 ? 1 : 0],
         104,
@@ -159,11 +159,14 @@ export class Native3DEncoder {
           108 + i * 4,
         );
       }
-      // Point colors have a separate vector array in the packet (the uniform is extended below).
-      const uniforms = new Float32Array(172);
+      // Point colors have a separate vector array in the packet (the uniform is extended below),
+      // then the per-instance texture window and glow.
+      const uniforms = new Float32Array(180);
       uniforms.set(u.subarray(0, 140));
       for (let i = 0; i < lights.length; i++)
         uniforms.set(rgb(lights[i].color, lights[i].intensity), 140 + i * 4);
+      uniforms.set(mesh.uvRect, 172);
+      uniforms[176] = Math.max(0, mesh.glow);
       meshes.push({
         geometry: g.id,
         maps,

@@ -29,6 +29,8 @@ Version 0.20 adds shot effects: particles that point and stretch along their fli
 
 Version 0.21 adds turning: figures painted from several directions (mirrored or not) turn at a limited speed through their views, blend between them, and keep named points such as a muzzle on the painting. Sentry Yard uses it; see [turning](docs/TURNING.md).
 
+Version 0.22 adds 3D effects: pooled effect sprites (billboards, streaks, flat marks) that draw in one batch from one atlas, scorch decals, light flashes, debris that tumbles and bounces, a `Spring`, a view punch and landing dip, and a hard-surface shape builder. Signal Breach uses all of them; see [3D effects](docs/EFFECTS3D.md).
+
 Version 0.16 extends the shared FPS controller, combat and weapon layer to native hosts, adds native mouse capture and portable sign textures, and makes exports preserve the previous package on build failure. See [the native/export upgrade](docs/ENGINE-UPGRADE-0.16.md) for validation and remaining limits.
 
 The [current roadmap](docs/ROADMAP.md) defines the remaining work toward Godot/Unity
@@ -282,6 +284,18 @@ catch-up when far behind. An `AnimatedSprite` with a `heading` or a `turn` shows
 it through the camera. A dead zone stops flicker at boundaries, and a 60 ms blend hides view
 changes. `definePoints` puts named points on frames, and `pointInWorld` returns where one is
 after mirroring, so a muzzle flash leaves the painted barrel. See [docs/TURNING.md](docs/TURNING.md).
+
+## 3D effects (0.22)
+
+`Mesh3D` carries `opacity`, `glow` and a texture window (`uvRect`) per instance, and blended
+neighbours that share geometry and material now draw as one instanced batch on WebGL2 and
+native. `Effects3D` pools billboard, streak and flat sprites from one code-painted atlas, with
+colour, size and opacity over life, gravity, drag, glow and nodes to ride on, plus a separate
+decal ring for scorch marks. `LightPool3D` flashes a few point lights. `Debris3D` takes parts out
+of a model and lets them tumble, bounce off the level, smoke and sink. `Spring` (core) drives
+recoil and jolts at any frame rate, and `FirstPersonLook.punch` and `land` kick and dip the view.
+`ShapeBuilder3D` builds bevelled boxes, extrusions and lathes with edge strips. Signal Breach uses
+all of it. See [docs/EFFECTS3D.md](docs/EFFECTS3D.md).
 
 ## Kernel
 

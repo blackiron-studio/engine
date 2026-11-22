@@ -24,8 +24,8 @@ import {
   MESH3D_FRAG,
   MESH3D_VERT,
 } from "./shaders.ts";
-/** Four matrix columns plus RGB tint, all per instance. */
-const INSTANCE_FLOATS = 19;
+/** Four matrix columns, RGB tint and opacity, glow, then the texture window: all per instance. */
+const INSTANCE_FLOATS = 25;
 const INSTANCE_STRIDE = INSTANCE_FLOATS * Float32Array.BYTES_PER_ELEMENT;
 
 interface Program {
@@ -48,6 +48,8 @@ interface Group {
   receiveShadow: boolean;
   mirrored: boolean;
   depth: number;
+  /** Drawn blended, back to front: the material is see-through or a mesh's own opacity is below 1. */
+  blend: boolean;
 }
 /** Internal WebGL stage. Writes directly into Blackiron's existing scene target before its 2D HUD. */
 export class WebGL3DStage {
@@ -177,8 +179,14 @@ export class WebGL3DStage {
       gl.vertexAttribDivisor(2 + i, 1);
     }
     gl.enableVertexAttribArray(6);
-    gl.vertexAttribPointer(6, 3, gl.FLOAT, false, INSTANCE_STRIDE, 64);
+    gl.vertexAttribPointer(6, 4, gl.FLOAT, false, INSTANCE_STRIDE, 64);
     gl.vertexAttribDivisor(6, 1);
+    gl.enableVertexAttribArray(8);
+    gl.vertexAttribPointer(8, 1, gl.FLOAT, false, INSTANCE_STRIDE, 80);
+    gl.vertexAttribDivisor(8, 1);
+    gl.enableVertexAttribArray(9);
+    gl.vertexAttribPointer(9, 4, gl.FLOAT, false, INSTANCE_STRIDE, 84);
+    gl.vertexAttribDivisor(9, 1);
     const uv = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, uv);
     gl.bufferData(gl.ARRAY_BUFFER, geometry.uvs, gl.STATIC_DRAW);
@@ -299,10 +307,12 @@ export class WebGL3DStage {
       transparent: Group[] = [];
     const center = new Vec3();
     for (const mesh of meshes) {
+      const blend = mesh.material.opacity < 1 || mesh.material.alphaMode === "BLEND" || mesh.opacity < 1;
       if (
         mesh.geometry.disposed ||
         mesh.material.opacity <= 0 ||
-        (shadow && (mesh.renderLayer === "viewmodel" || !mesh.castShadow || mesh.material.alphaMode === "BLEND" || mesh.material.opacity < 1))
+        mesh.opacity <= 0 ||
+        (shadow && (mesh.renderLayer === "viewmodel" || !mesh.castShadow || blend))
       )
         continue;
       const m = mesh.worldMatrix;
@@ -330,7 +340,7 @@ export class WebGL3DStage {
         stats.meshes++;
         stats.triangles += mesh.geometry.indices.length / 3;
       }
-      if (!shadow && (mesh.material.opacity < 1 || mesh.material.alphaMode === "BLEND")) {
+      if (!shadow && blend) {
         transparent.push({
           geometry: mesh.geometry,
           material: mesh.material,
@@ -338,6 +348,7 @@ export class WebGL3DStage {
           receiveShadow: mesh.receiveShadow,
           mirrored,
           depth: center.distanceTo(eye),
+          blend: true,
         });
         continue;
       }
@@ -350,13 +361,29 @@ export class WebGL3DStage {
           receiveShadow: mesh.receiveShadow,
           mirrored,
           depth: 0,
+          blend: false,
         };
         map.set(key, group);
       }
       group.meshes.push(mesh);
     }
     transparent.sort((a, b) => b.depth - a.depth);
-    return [...map.values(), ...transparent];
+    // Back to front, then neighbours that share geometry, material and state draw as one instanced
+    // call: instances keep their order, so blending stays correct inside the run.
+    const runs: Group[] = [];
+    for (const t of transparent) {
+      const last = runs[runs.length - 1];
+      if (
+        last &&
+        last.geometry === t.geometry &&
+        last.material === t.material &&
+        last.receiveShadow === t.receiveShadow &&
+        last.mirrored === t.mirrored
+      )
+        last.meshes.push(t.meshes[0]);
+      else runs.push(t);
+    }
+    return [...map.values(), ...runs];
   }
   private draw(group: Group): void {
     const gl = this.gl,
@@ -380,6 +407,9 @@ export class WebGL3DStage {
       this.instanceData[offset + 16] = ((mesh.tint >> 16) & 255) / 255;
       this.instanceData[offset + 17] = ((mesh.tint >> 8) & 255) / 255;
       this.instanceData[offset + 18] = (mesh.tint & 255) / 255;
+      this.instanceData[offset + 19] = Math.max(0, Math.min(1, mesh.opacity));
+      this.instanceData[offset + 20] = Math.max(0, mesh.glow);
+      this.instanceData.set(mesh.uvRect, offset + 21);
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferSubData(
@@ -580,7 +610,7 @@ export class WebGL3DStage {
         ["uMap", "uNormalMap", "uMetallicRoughnessMap", "uEmissiveMap"].forEach((name, slot) => gl.uniform1i(u[name], slot));
         gl.uniform4fv(u.uMaps, maps.map(map => map && !map.disposed ? 1 : 0));
         gl.uniform1f(u.uAlphaCutoff, material.alphaMode === "MASK" ? material.alphaCutoff : -1);
-        gl.uniform1f(u.uBlendAlpha, material.alphaMode === "BLEND" || material.opacity < 1 ? 1 : 0);
+        gl.uniform1f(u.uBlendAlpha, group.blend ? 1 : 0);
         color(u.uColor, material.color);
         gl.uniform1f(
           u.uRoughness,
@@ -606,7 +636,7 @@ export class WebGL3DStage {
         gl.uniform1f(u.uLambertAmbient, Math.max(0, material.lambertAmbient));
         gl.uniform1f(u.uLambertDiffuse, Math.max(0, material.lambertDiffuse));
         gl.uniform1f(u.uReceiveShadow, group.receiveShadow ? 1 : 0);
-        if (material.opacity < 1 || material.alphaMode === "BLEND") {
+        if (group.blend) {
           gl.enable(gl.BLEND);
           gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
           gl.depthMask(false);

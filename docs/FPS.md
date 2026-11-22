@@ -9,7 +9,10 @@ The 0.16 upgrade runs the shared mission on native Rust Rapier and wgpu as well 
 | Reusable engine system | Signal Breach supplies |
 |---|---|
 | `PointerLockInput` / `NativePointerLockInput` | Canvas capture request from a user gesture; fire bindings and pause policy |
-| `FirstPersonLook` | Sensitivity/FOV defaults, recoil and weapon sway |
+| `FirstPersonLook` (`punch`, `land`, `update`) | Sensitivity/FOV defaults, recoil, weapon sway, how hard each shot and landing kicks the view |
+| `Spring` | Gun kick, sway and drone hit jolts (stiffness and damping per motion) |
+| `Effects3D`, `LightPool3D`, `Debris3D` | Muzzle flashes, tracers, impacts, bolts, explosions and the pieces a drone breaks into (`src/fx.ts`) |
+| `ShapeBuilder3D` | Gun, drone, crate and console models (`src/models.ts`) |
 | `CharacterController3D` | Capsule dimensions, move/sprint speed and jumping tuning |
 | `Weapon3D` | Rifle/scattergun definitions, models, sounds and feedback |
 | `CombatWorld3D` | Damage handlers, team policy and health rules |

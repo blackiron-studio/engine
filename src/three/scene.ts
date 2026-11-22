@@ -12,6 +12,21 @@ export class Mesh3D extends Node3D {
   renderLayer: "world" | "viewmodel" = "world";
   /** Per-instance 0xRRGGBB base-color multiplier. Sharing a material still batches different tints. */
   tint = 0xffffff;
+  /**
+   * Per-instance opacity, multiplied with the material's. Below 1 the mesh draws blended (and casts no
+   * shadow); 0 skips it. Sharing a material still batches different opacities.
+   */
+  opacity = 1;
+  /**
+   * Per-instance glow: adds the mesh's own colour (material colour × tint × texture) as emission at
+   * this strength, after lighting, so it feeds bloom. 0 adds nothing. Sharing a material still batches.
+   */
+  glow = 0;
+  /**
+   * Per-instance texture window `[u, v, width, height]` applied to every map: picks a cell of an atlas
+   * or a flipbook frame without a material of its own, so the meshes still batch.
+   */
+  readonly uvRect: [number, number, number, number] = [0, 0, 1, 1];
   castShadow = true;
   receiveShadow = true;
   /** Disable bounding-sphere frustum rejection for special procedural geometry. */
@@ -130,7 +145,8 @@ export class Scene3D extends Scene {
       if (
         node instanceof Mesh3D &&
         !node.geometry.disposed &&
-        node.material.opacity > 0
+        node.material.opacity > 0 &&
+        node.opacity > 0
       )
         this.meshList.push(node);
       if (node instanceof PointLight3D && node.intensity > 0 && node.range > 0)

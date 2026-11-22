@@ -82,6 +82,7 @@ pub struct MeshStage {
     transparent: wgpu::RenderPipeline,
     shadow_pipeline: wgpu::RenderPipeline,
     instanced_opaque: wgpu::RenderPipeline,
+    instanced_transparent: wgpu::RenderPipeline,
     instanced_shadow: wgpu::RenderPipeline,
     depth: Option<(wgpu::Texture, wgpu::TextureView, u32, u32)>,
     msaa_color: Option<(wgpu::Texture, wgpu::TextureView, u32, u32)>,
@@ -89,13 +90,17 @@ pub struct MeshStage {
     draws: Vec<Draw>,
     shadows: bool,
 }
-const INSTANCE_FLOATS: usize = 37;
+/// Uniform floats per mesh: the shader block, the point colours, then the texture window and glow.
+const UNIFORM_FLOATS: usize = 180;
+const INSTANCE_FLOATS: usize = 42;
+/// Neighbours that differ only in per-instance values draw as one instanced call. Blended meshes
+/// arrive sorted back to front and instances keep their order, so blended runs batch too.
 fn same_batch(a: &MeshData, b: &MeshData) -> bool {
-    if a.blend || b.blend || a.geometry != b.geometry || a.maps != b.maps || a.shadow != b.shadow || a.viewmodel != b.viewmodel {
+    if a.blend != b.blend || a.geometry != b.geometry || a.maps != b.maps || a.shadow != b.shadow || a.viewmodel != b.viewmodel {
         return false;
     }
     a.uniforms.iter().zip(&b.uniforms).enumerate().all(|(i, (x, y))| {
-        (16..48).contains(&i) || (64..68).contains(&i) || i == 107 || x == y
+        (16..48).contains(&i) || (64..68).contains(&i) || i == 107 || (172..177).contains(&i) || x == y
     })
 }
 fn batch_meshes(meshes: Vec<MeshData>) -> Vec<Vec<MeshData>> {
@@ -117,6 +122,7 @@ fn instance_data(group: &[MeshData]) -> Vec<f32> {
         data.extend_from_slice(&mesh.uniforms[16..48]);
         data.extend_from_slice(&mesh.uniforms[64..68]);
         data.push(mesh.uniforms[107]);
+        data.extend_from_slice(&mesh.uniforms[172..177]);
     }
     data
 }
@@ -180,7 +186,7 @@ impl Packet {
             }
         }
         for m in &p.meshes {
-            if m.uniforms.len() != 172 || m.uniforms.iter().any(|v| !v.is_finite()) {
+            if m.uniforms.len() != UNIFORM_FLOATS || m.uniforms.iter().any(|v| !v.is_finite()) {
                 return Err("Invalid 3D uniforms".into());
             }
         }
@@ -261,7 +267,7 @@ impl MeshStage {
             let instance_attributes = wgpu::vertex_attr_array![
                 3=>Float32x4, 4=>Float32x4, 5=>Float32x4, 6=>Float32x4,
                 7=>Float32x4, 8=>Float32x4, 9=>Float32x4, 10=>Float32x4,
-                11=>Float32x4, 12=>Float32
+                11=>Float32x4, 12=>Float32, 13=>Float32x4, 14=>Float32
             ];
             let vertex_layout = wgpu::VertexBufferLayout { array_stride: 32, step_mode: wgpu::VertexStepMode::Vertex, attributes: &wgpu::vertex_attr_array![0=>Float32x3,1=>Float32x3,2=>Float32x2] };
             let instance_layout = wgpu::VertexBufferLayout { array_stride: (INSTANCE_FLOATS * 4) as u64, step_mode: wgpu::VertexStepMode::Instance, attributes: &instance_attributes };
@@ -279,6 +285,7 @@ impl MeshStage {
         let transparent = pipeline(true, false, false);
         let shadow_pipeline = pipeline(false, true, false);
         let instanced_opaque = pipeline(false, false, true);
+        let instanced_transparent = pipeline(true, false, true);
         let instanced_shadow = pipeline(false, true, true);
         let white = Self::texture(
             device,
@@ -305,6 +312,7 @@ impl MeshStage {
             transparent,
             shadow_pipeline,
             instanced_opaque,
+            instanced_transparent,
             instanced_shadow,
             depth: None,
             msaa_color: None,
@@ -660,7 +668,7 @@ impl MeshStage {
         for d in self.draws.iter().filter(|d| d.viewmodel == viewmodel) {
             let g = &self.geometries[&d.geometry];
             pass.set_pipeline(if d.instances.is_some() {
-                &self.instanced_opaque
+                if d.blend { &self.instanced_transparent } else { &self.instanced_opaque }
             } else if d.blend {
                 &self.transparent
             } else {
@@ -681,7 +689,7 @@ impl MeshStage {
             self.textures.len(),
             self.geometries.values().map(|g| g.bytes).sum::<usize>()
                 + self.textures.values().map(|t| t.bytes).sum::<usize>()
-                + self.draws.len() * 688
+                + self.draws.len() * UNIFORM_FLOATS * 4
                 + self.draws.iter().filter_map(|d| d.instances.as_ref().map(|i| i.2)).sum::<usize>()
                 + self
                     .depth
@@ -708,7 +716,7 @@ mod tests {
         let adapter=pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default())).expect("GPU adapter required");
         let (device,queue)=pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(),None)).unwrap();
         let mut stage=MeshStage::new(&device,&queue,1);
-        let packet=||Packet {version:1,geometries:vec![GeometryData{id:1,positions:vec![0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],normals:vec![0.0;9],uvs:vec![0.0;6],indices:vec![0,1,2]}],textures:vec![],meshes:vec![MeshData{geometry:1,maps:[0;4],uniforms:vec![0.0;172],blend:false,shadow:true,viewmodel:false}],shadows:true,shadow_size:128};
+        let packet=||Packet {version:1,geometries:vec![GeometryData{id:1,positions:vec![0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],normals:vec![0.0;9],uvs:vec![0.0;6],indices:vec![0,1,2]}],textures:vec![],meshes:vec![MeshData{geometry:1,maps:[0;4],uniforms:vec![0.0;UNIFORM_FLOATS],blend:false,shadow:true,viewmodel:false}],shadows:true,shadow_size:128};
         stage.submit(&device,&queue,packet()).unwrap();
         let uniform=stage.draws[0].uniform.clone();let bind=stage.draws[0].main.clone();let vertex=stage.geometries[&1].vertices.clone();
         for _ in 0..120 { stage.submit(&device,&queue,packet()).unwrap(); }
@@ -731,7 +739,7 @@ mod tests {
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None)).unwrap();
         device.push_error_scope(wgpu::ErrorFilter::Validation);
         let mut stage = MeshStage::new(&device, &queue, 4);
-        let mut uniforms = vec![0.0; 172];
+        let mut uniforms = vec![0.0; UNIFORM_FLOATS];
         for offset in [0, 16, 32, 48] { for diagonal in 0..4 { uniforms[offset + diagonal * 5] = 1.0; } }
         uniforms[64..67].fill(1.0);
         uniforms[67] = 1.0;
@@ -797,7 +805,8 @@ mod tests {
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default(), None)).unwrap();
         device.push_error_scope(wgpu::ErrorFilter::Validation);
         let mut stage = MeshStage::new(&device, &queue, 1);
-        let mut first = vec![0.0; 172];
+        let mut first = vec![0.0; UNIFORM_FLOATS];
+        first[174] = 1.0; first[175] = 1.0;
         for offset in [0, 16, 32, 48] { for diagonal in 0..4 { first[offset + diagonal * 5] = 1.0; } }
         first[28] = -0.5;
         first[64] = 1.0; first[67] = 1.0;
@@ -863,9 +872,39 @@ mod tests {
         assert!(pollster::block_on(device.pop_error_scope()).is_none());
     }
     #[test]
+    fn blended_neighbours_batch_in_order_and_split_on_state() {
+        let mesh = |x: f32, alpha: f32, glow: f32, blend: bool, maps: [u32; 4]| {
+            let mut uniforms = vec![0.0; UNIFORM_FLOATS];
+            uniforms[28] = x;
+            uniforms[67] = alpha;
+            uniforms[70] = 2.0;
+            uniforms[174] = 1.0;
+            uniforms[175] = 1.0;
+            uniforms[176] = glow;
+            MeshData { geometry: 1, maps, uniforms, blend, shadow: false, viewmodel: false }
+        };
+        let groups = batch_meshes(vec![
+            mesh(0.0, 1.0, 0.0, false, [0; 4]),
+            mesh(1.0, 0.8, 0.0, true, [3, 0, 0, 0]),
+            mesh(2.0, 0.4, 2.0, true, [3, 0, 0, 0]),
+            mesh(3.0, 0.2, 1.0, true, [3, 0, 0, 0]),
+            mesh(4.0, 0.5, 0.0, true, [4, 0, 0, 0]),
+            mesh(5.0, 0.5, 0.0, true, [3, 0, 0, 0]),
+        ]);
+        assert_eq!(groups.iter().map(|g| g.len()).collect::<Vec<_>>(), vec![1, 3, 1, 1]);
+        let data = instance_data(&groups[1]);
+        assert_eq!(data.len(), 3 * INSTANCE_FLOATS);
+        // Back-to-front order survives, with each instance's own offset, opacity and glow.
+        let at = |i: usize, f: usize| data[i * INSTANCE_FLOATS + f];
+        assert_eq!([at(0, 12), at(1, 12), at(2, 12)], [1.0, 2.0, 3.0]);
+        assert_eq!([at(0, 35), at(1, 35), at(2, 35)], [0.8, 0.4, 0.2]);
+        assert_eq!([at(0, 41), at(1, 41), at(2, 41)], [0.0, 2.0, 1.0]);
+        assert_eq!([at(0, 39), at(0, 40)], [1.0, 1.0]);
+    }
+    #[test]
     fn coalescing_retains_referenced_pending_resources_only() {
         let first=r#"{"version":1,"geometries":[{"id":1,"positions":[0,0,0,1,0,0,0,1,0],"normals":[0,0,1,0,0,1,0,0,1],"uvs":[0,0,1,0,0,1],"indices":[0,1,2]}],"textures":[],"meshes":[]}"#;
-        let next=serde_json::json!({"version":1,"geometries":[],"textures":[],"meshes":[{"geometry":1,"maps":[0,0,0,0],"uniforms":vec![0;172],"blend":false,"shadow":false}]}).to_string();
+        let next=serde_json::json!({"version":1,"geometries":[],"textures":[],"meshes":[{"geometry":1,"maps":[0,0,0,0],"uniforms":vec![0;UNIFORM_FLOATS],"blend":false,"shadow":false}]}).to_string();
         let merged=Packet::parse(&coalesce(first,&next).unwrap()).unwrap();
         assert_eq!(merged.geometries.len(),1);assert_eq!(merged.meshes.len(),1);
         let empty=r#"{"version":1,"geometries":[],"textures":[],"meshes":[]}"#;

@@ -11,6 +11,8 @@ import {
   Weapon3D,
   Projectile3D,
   Particles3D,
+  CameraShake3D,
+  Material3D,
   Vec3,
   Mesh3D,
   Node3D,
@@ -18,7 +20,9 @@ import {
   type DamageEvent3D,
   type NavigationGrid3D,
 } from "@blackiron-studio/engine/three";
-import { BreachArt, P } from "./presentation.ts";
+import { BreachArt, P, type DroneVisual } from "./presentation.ts";
+import { Spring } from "@blackiron-studio/engine/core";
+import { type BoltFx, Fx, type MuzzleFlash, TRACER_SPEED, mixColor, rand, randDir, seedRandom } from "./fx.ts";
 import {
   BreachRun,
   SPAWN,
@@ -30,10 +34,15 @@ import {
 interface Enemy {
   id: number;
   health: number;
+  maxHealth: number;
   heavy: boolean;
+  /** Placed and turned by the game. */
   node: Node3D;
+  /** Under `node`: banking, recoil and hit jolts. */
+  rig: Node3D;
   core: Mesh3D;
-  rotor: Node3D;
+  eye: Material3D;
+  visual: DroneVisual;
   body: ReturnType<PhysicsBackend3D["createBody"]>;
   removeTarget: () => void;
   position: Vec3;
@@ -41,15 +50,24 @@ interface Enemy {
   flash: number;
   path: Vec3[];
   repath: number;
+  yaw: number;
+  vel: Vec3;
+  last: Vec3;
+  jolt: [Spring, Spring, Spring];
+  tilt: [Spring, Spring];
+  kick: Spring;
+  /** Seconds of charge left before it fires, or -1. */
+  charge: number;
+  smoke: number;
+  barrel: number;
+  rotor: number;
 }
 interface Bolt {
   shot: Projectile3D;
-  mesh: Mesh3D;
+  fx: BoltFx;
 }
-interface Trail {
-  mesh: Mesh3D;
-  time: number;
-}
+/** How long a drone's eye charges before it fires. */
+const CHARGE = { light: 0.45, heavy: 0.6 };
 interface Settings {
   sensitivity: number;
   invertY: boolean;
@@ -78,7 +96,22 @@ export class BreachScene extends Scene3D {
   readonly enemies: Enemy[] = [];
   readonly bolts: Bolt[] = [];
   readonly particles: Particles3D;
-  private trails: Trail[] = [];
+  readonly fx: Fx;
+  private readonly flashes: MuzzleFlash[];
+  // First-person gun motion: springs kicked by each shot, sway from the mouse, and blends for
+  // sprinting and drawing the gun.
+  private readonly gunKick = { back: new Spring(260, 22), lift: new Spring(200, 18), pitch: new Spring(240, 20), roll: new Spring(160, 12), yaw: new Spring(180, 16) };
+  private readonly sway = { x: new Spring(90, 14), y: new Spring(90, 14) };
+  private readonly shake = new CameraShake3D("breach");
+  private heat = 0;
+  private sprintBlend = 0;
+  private raise = 1;
+  private pumpTime = -1;
+  private pumpEjected = true;
+  private lastLook = { yaw: 0, pitch: 0 };
+  private wasGrounded = true;
+  private fallSpeed = 0;
+  private ventSmoke = 0;
   weaponIndex = 0;
   recoil = 0;
   stride = 0;
@@ -100,6 +133,8 @@ export class BreachScene extends Scene3D {
     settings: Settings,
   ) {
     super(1280, 720);
+    // Every run plays its effects from the same seed.
+    seedRandom("signal-breach");
     this.name = "signal-breach";
     this.settings = settings;
     this.physics3D = physicsWorld;
@@ -155,6 +190,10 @@ export class BreachScene extends Scene3D {
       this.world3D.add(new Particles3D(220, "breach")),
     );
     this.particles.floor = null;
+    this.fx = new Fx(this.world3D);
+    this.fx.cast = (o, d, len) => this.combat.cast(o, d, len, this.player.collider.handle);
+    this.flashes = this.art.weaponModels.map((g, i) => this.fx.muzzle(g, this.art.muzzles[i], i ? "scatter" : "pulse"));
+    this.lastLook = { yaw: this.look.yaw, pitch: this.look.pitch };
     this.ui.add(new BreachHud(this));
     this.timeScale = 0;
     physicsWorld.step(1 / 60);
@@ -304,13 +343,20 @@ export class BreachScene extends Scene3D {
         sensor: true,
         shape: { kind: "sphere", radius: heavy ? 0.78 : 0.66 },
       });
+      // Each drone's eye has its own material so it can flare as it charges.
+      const eye = new Material3D({ color: P.red, shading: "unlit", toneMapped: false, emissive: P.red, emissiveIntensity: 0.55 });
+      visual.core.material = eye;
+      const toPlayer = this.player.position.clone().sub(p);
       const enemy: Enemy = {
         id: this.nextEnemy++,
         health: heavy ? 100 : 58,
+        maxHealth: heavy ? 100 : 58,
         heavy,
         node: visual.root,
+        rig: visual.rig,
         core: visual.core,
-        rotor: visual.rotor,
+        eye,
+        visual,
         body,
         removeTarget: () => {},
         position: p,
@@ -318,6 +364,16 @@ export class BreachScene extends Scene3D {
         flash: 0,
         path: [],
         repath: 0,
+        yaw: Math.atan2(-toPlayer.x, -toPlayer.z),
+        vel: new Vec3(),
+        last: visual.root.position.clone(),
+        jolt: [new Spring(70, 8), new Spring(70, 8), new Spring(70, 8)],
+        tilt: [new Spring(40, 7), new Spring(40, 7)],
+        kick: new Spring(120, 11),
+        charge: -1,
+        smoke: 0,
+        barrel: 0,
+        rotor: rand(0, 1) * 6,
       };
       enemy.removeTarget = this.combat.register(body.collider(0).handle, {
         takeDamage: (e) => this.damageEnemy(enemy, e),
@@ -344,36 +400,75 @@ export class BreachScene extends Scene3D {
     enemy.health = Math.max(0, enemy.health - e.amount);
     enemy.flash = 0.12;
     this.state.hitMarker = 0.16;
-    this.particles.burst({
-      ...e.point,
-      color: P.cyan,
-      count: 4,
-      speed: 2,
-      lifetime: 0.25,
-      size: 0.045,
-    });
+    // Knocked along the shot and set wobbling (in the drone's own frame).
+    const k = (enemy.heavy ? 0.55 : 1) * Math.min(1.4, e.amount / 22),
+      c = Math.cos(enemy.yaw),
+      sn = Math.sin(enemy.yaw),
+      d = e.direction;
+    enemy.jolt[0].velocity += (d.x * c - d.z * sn) * 2.4 * k;
+    enemy.jolt[1].velocity += d.y * 2.4 * k + 0.3 * k;
+    enemy.jolt[2].velocity += (d.x * sn + d.z * c) * 2.4 * k;
+    enemy.tilt[0].velocity += rand(-6, 6) * k;
+    enemy.tilt[1].velocity += rand(-8, 8) * k;
+    this.particles.burst({ ...e.point, color: 0x39424a, count: 3, speed: 3, lifetime: 0.5, size: 0.035 });
     if (enemy.health === 0) {
       this.state.kills++;
-      enemy.node.visible = false;
       enemy.removeTarget();
       this.physicsWorld.removeBody(enemy.body);
-      this.particles.burst({
-        x: enemy.position.x,
-        y: 1.6,
-        z: enemy.position.z,
-        color: P.orange,
-        count: 26,
-        speed: 5,
-        lifetime: 0.7,
-        size: 0.13,
-      });
-      this.app.audio.play(
-        "breach-break",
-        spatialAudio3D(this.eye, this.look.right(), enemy.node.position),
-      );
+      // It blows when the killing shot's tracer reaches it.
+      const delay = this.eye.distanceTo(e.point) / TRACER_SPEED[this.weaponIndex ? "pellet" : "pulse"],
+        dir = new Vec3().copy(e.direction);
+      this.fx.after(delay, () => this.wreck(enemy, dir));
       if (this.enemies.every((e) => e.health <= 0))
         this.notice("AREA CLEAR / FIND AN AMBER RELAY", 4);
     } else this.app.audio.play("breach-hit", { volume: 0.6 });
+  }
+  /** Blow a drone apart: fireball, its pieces flung out burning, a scorch below, a shake. */
+  private wreck(enemy: Enemy, dir: Vec3): void {
+    const v = enemy.visual,
+      p = enemy.node.getWorldPosition(),
+      s = enemy.heavy ? 1.3 : 1;
+    this.fx.explode(p, s);
+    const dead = this.art.mat(0x1c1412, false, 0.6, 0.3);
+    const darken = (n: Node3D) => {
+      if (n instanceof Mesh3D && n.material.shading === "unlit") n.material = dead;
+      for (const c of n.children) if (c instanceof Node3D) darken(c);
+    };
+    for (const [i, c] of v.chunks.entries()) {
+      darken(c.node);
+      const w = c.node.getWorldPosition(),
+        out = w.clone().sub(p);
+      out.y += 0.15;
+      if (out.length < 0.05) randDir(out);
+      out.normalize();
+      const vel =
+        i === 0
+          ? randDir().multiplyScalar(1.5).add(new Vec3(0, rand(1.5, 3), 0)).add(dir.clone().multiplyScalar(rand(1, 2.5)))
+          : out
+              .multiplyScalar(rand(2.5, 5.5))
+              .add(new Vec3(0, rand(2, 4), 0))
+              .add(dir.clone().multiplyScalar(rand(1, 3)));
+      this.fx.throwPiece(c.node, {
+        vel,
+        spin: randDir().multiplyScalar(rand(5, 12) / (0.5 + c.radius)),
+        radius: c.radius * 0.8,
+        bounce: 0.3,
+        life: rand(7, 10),
+        smoke: i === 0 ? 0.08 : rand(0, 1) < 0.4 ? 0.18 : 0,
+        fire: i === 0 ? 1.6 : rand(0, 1) < 0.35 ? rand(0.4, 0.9) : 0,
+        spinners: v.rotors.filter((r) => r.chunk === c.node).map((r) => r.node),
+        spinRate: 22,
+      });
+    }
+    enemy.node.destroy();
+    const floor = this.combat.cast(p, new Vec3(0, -1, 0), 8, this.player.collider.handle);
+    if (floor) this.fx.scorch(floor.point, floor.normal, 2.5 * s, 0xff7a30, 30);
+    this.particles.burst({ x: p.x, y: p.y, z: p.z, color: 0x2a3036, count: 18, speed: 6, lifetime: 1.1, size: 0.07 });
+    const near = Math.max(0, 1 - this.eye.distanceTo(p) / 28);
+    this.shake.kick(0.06 * near * s, 0.5);
+    this.look.punchPitch.velocity += rand(0.8, 1.6) * near * s;
+    this.look.punchYaw.velocity += rand(-1.4, 1.4) * near * s;
+    this.app.audio.play("breach-break", spatialAudio3D(this.eye, this.look.right(), p));
   }
   private notice(text: string, seconds = 2): void {
     this.state.notice = text;
@@ -447,6 +542,8 @@ export class BreachScene extends Scene3D {
       this.weaponIndex = action === "weapon1" ? 0 : 1;
       for (const w of this.weapons) w.release();
       this.recoil = 0.1;
+      this.raise = 0;
+      this.pumpTime = -1;
     }
     if (action === "interact") this.interact();
   }
@@ -540,6 +637,18 @@ export class BreachScene extends Scene3D {
         this.app.audio.play("breach-step", { volume: 0.4 });
       }
     }
+    // Landing dips the view and the gun; a hard fall dips them more.
+    if (!this.player.grounded) this.fallSpeed = Math.max(this.fallSpeed, -this.player.velocity.y);
+    else if (!this.wasGrounded) {
+      const hard = Math.min(9, this.fallSpeed);
+      this.look.dip.velocity -= 0.35 + hard * 0.12;
+      this.gunKick.lift.velocity -= 0.4 + hard * 0.1;
+      this.fallSpeed = 0;
+    }
+    this.wasGrounded = this.player.grounded;
+    for (const sp of [this.gunKick.back, this.gunKick.lift, this.gunKick.pitch, this.gunKick.roll, this.gunKick.yaw]) sp.step(dt);
+    this.look.update(dt);
+    this.shake.update(dt);
     this.placeCamera();
     for (const w of this.weapons) w.update(dt);
     const weapon = this.weapons[this.weaponIndex],
@@ -549,10 +658,14 @@ export class BreachScene extends Scene3D {
       );
     this.firePressed = false;
     if (directions.length) {
-      this.flash = 0.055;
-      this.recoil = this.weaponIndex ? 0.22 : 0.075;
-      this.look.turn(0, this.weaponIndex ? 0.014 : 0.0028);
-      this.app.audio.play(this.weaponIndex ? "breach-scatter" : "breach-rifle");
+      const scatter = this.weaponIndex === 1;
+      this.flash = scatter ? 0.07 : 0.05;
+      this.recoil = scatter ? 0.22 : 0.075;
+      this.look.turn(0, scatter ? 0.014 : 0.0028);
+      this.app.audio.play(scatter ? "breach-scatter" : "breach-rifle");
+      this.kickGun(scatter);
+      const muzzle = this.muzzleWorld();
+      this.fx.muzzleSmoke(muzzle, this.look.forward(), scatter, this.player.velocity);
       for (const dir of directions) {
         const hit = this.combat.hitscan(
           this.eye,
@@ -567,24 +680,14 @@ export class BreachScene extends Scene3D {
           this.eye
             .clone()
             .add(dir.clone().multiplyScalar(weapon.definition.range));
-        this.tracer(
-          this.eye
-            .clone()
-            .add(this.look.right().multiplyScalar(0.24))
-            .add(new Vec3(0, -0.17, 0)),
-          end,
-          P.cyan,
-          0.06,
-        );
-        if (hit && !hit.target)
-          this.particles.burst({
-            ...hit.point,
-            color: P.chalk,
-            count: 3,
-            speed: 1.8,
-            lifetime: 0.22,
-            size: 0.04,
-          });
+        const delay = this.fx.tracer(muzzle, end, scatter ? "pellet" : "pulse");
+        if (hit) {
+          const at = hit.point.clone(),
+            n = hit.normal.clone(),
+            d = dir.clone();
+          if (hit.target) this.fx.after(delay, () => this.fx.hitDrone(at, n, d, scatter));
+          else this.fx.after(delay, () => this.fx.impact(at, n, d, scatter ? "pellet" : "pulse"));
+        }
       }
     }
     if (
@@ -598,27 +701,17 @@ export class BreachScene extends Scene3D {
     for (let i = this.bolts.length - 1; i >= 0; i--) {
       const b = this.bolts[i];
       const hit = b.shot.step(this.combat, dt);
-      b.mesh.position.copy(b.shot.position);
-      if (hit)
-        this.particles.burst({
-          ...hit.point,
-          color: P.red,
-          count: 5,
-          speed: 1.5,
-          lifetime: 0.25,
-          size: 0.07,
-        });
-      if (!b.shot.alive) {
-        b.mesh.destroy();
-        this.bolts.splice(i, 1);
+      b.fx.move(b.shot.position, b.shot.velocity, dt, s.time);
+      if (hit) {
+        if (hit.collider === this.player.collider.handle) {
+          this.shake.kick(0.06, 0.3);
+          this.look.punchPitch.velocity += rand(-1.2, 1.2);
+          this.look.punchYaw.velocity += rand(-1.5, 1.5);
+        } else this.fx.impact(hit.point, hit.normal, b.shot.velocity.clone().normalize(), "bolt");
       }
-    }
-    for (let i = this.trails.length - 1; i >= 0; i--) {
-      const t = this.trails[i];
-      t.time -= dt;
-      if (t.time <= 0) {
-        t.mesh.destroy();
-        this.trails.splice(i, 1);
+      if (!b.shot.alive) {
+        b.fx.end();
+        this.bolts.splice(i, 1);
       }
     }
     this.nearestRelay = -1;
@@ -640,13 +733,15 @@ export class BreachScene extends Scene3D {
       );
       if (ring instanceof Mesh3D) ring.rotation.z = Math.sin(s.time) * 0.08;
     }
+    this.animateGun(dt);
     this.syncWeapon();
+    this.fx.update(dt);
   }
   private updateEnemies(dt: number): void {
+    const t = this.state.time;
     for (const e of this.enemies) {
       if (e.health <= 0) continue;
       e.flash = Math.max(0, e.flash - dt);
-      e.core.tint = e.flash > 0 ? 0xffffff : P.red;
       e.repath -= dt;
       const delta = this.player.position.clone().sub(e.position),
         distance = Math.hypot(delta.x, delta.z);
@@ -662,80 +757,205 @@ export class BreachScene extends Scene3D {
         e.position.add(d.normalize().multiplyScalar(step));
         if (e.position.distanceTo(target) < 0.15) e.path.shift();
       }
-      const hover = 1.6 + Math.sin(this.state.time * 2.4 + e.id) * 0.13;
-      e.node.position.set(e.position.x, hover, e.position.z);
-      e.node.rotation.y = Math.atan2(-delta.x, -delta.z);
-      e.rotor.rotation.y = this.state.time * 5;
+      // Hover with a slow bob and a sideways weave (the hit body follows, so aim stays true).
+      const side = distance > 0.01 ? 1 / distance : 0,
+        weave = Math.sin(t * 0.9 + e.id * 2.1) * 0.35,
+        hover = 1.6 + Math.sin(t * 2.4 + e.id) * 0.13 + Math.sin(t * 0.83 + e.id * 1.7) * 0.05;
+      e.node.position.set(e.position.x - delta.z * side * weave, hover, e.position.z + delta.x * side * weave);
       e.body.setNextKinematicTranslation(e.node.position);
+      // Velocity from how it actually moved, smoothed.
+      const k = 1 - Math.exp(-dt * 6);
+      e.vel.x += ((e.node.position.x - e.last.x) / dt - e.vel.x) * k;
+      e.vel.y += ((e.node.position.y - e.last.y) / dt - e.vel.y) * k;
+      e.vel.z += ((e.node.position.z - e.last.z) / dt - e.vel.z) * k;
+      e.last.copy(e.node.position);
+      // Turn smoothly to face the player.
+      let turn = Math.atan2(-delta.x, -delta.z) - e.yaw;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn)) * (1 - Math.exp(-dt * 5));
+      e.yaw += turn;
+      e.node.rotation.y = e.yaw;
+      const hurt = e.health / e.maxHealth;
+      // Bank into the motion: nose down when going forward, roll into strafes and turns.
+      const c = Math.cos(e.yaw),
+        sn = Math.sin(e.yaw),
+        forward = -e.vel.x * sn - e.vel.z * c,
+        right = e.vel.x * c - e.vel.z * sn,
+        charging = e.charge >= 0 ? 1 - e.charge / (e.heavy ? CHARGE.heavy : CHARGE.light) : 0;
+      const pitch = Math.max(-0.4, Math.min(0.4, -forward * 0.12 + charging * 0.12)),
+        roll = Math.max(-0.45, Math.min(0.45, -right * 0.14 - (turn / Math.max(dt, 1e-4)) * 0.12));
+      // Badly hurt drones fly unsteadily.
+      if (hurt < 0.3) {
+        e.tilt[0].velocity += rand(-1, 1) * dt * 40;
+        e.tilt[1].velocity += rand(-1, 1) * dt * 60;
+      }
+      e.tilt[0].step(dt, pitch);
+      e.tilt[1].step(dt, roll);
+      for (const j of e.jolt) j.step(dt);
+      e.kick.step(dt);
+      e.rig.position.set(e.jolt[0].value, e.jolt[1].value, e.jolt[2].value + e.kick.value);
+      e.rig.rotation.set(e.tilt[0].value - e.kick.value * 1.6, 0, e.tilt[1].value);
+      // Rotors run faster as it works harder.
+      e.rotor += dt * (16 + Math.hypot(e.vel.x, e.vel.z) * 4 + charging * 6);
+      for (const [i, r] of e.visual.rotors.entries()) r.node.rotation.y = e.rotor * (i % 2 ? -1 : 1);
+      // The eye: flares on hits and while charging, flickers when badly hurt.
+      e.eye.emissiveIntensity = e.flash > 0 ? 2.2 : 0.55 + charging * charging * 3.5 + (hurt < 0.3 ? rand(-0.4, 0.3) : 0);
+      e.eye.color = e.eye.emissive = mixColor(P.red, 0xffe0d8, e.flash > 0 ? 0.8 : charging * 0.6);
+      const eyeScale = 1 + charging * 0.45;
+      e.core.setScale(e.visual.coreScale[0] * eyeScale, e.visual.coreScale[1] * eyeScale, e.visual.coreScale[2]);
+      // Damaged drones smoke, then burn and spit sparks.
+      if (hurt < 0.6) {
+        e.smoke -= dt;
+        if (e.smoke <= 0) {
+          e.smoke = hurt < 0.3 ? 0.045 : 0.1;
+          this.fx.damage(e.visual.frame.localToWorld(new Vec3(rand(-0.25, 0.25), 0.3, rand(-0.1, 0.3))), hurt < 0.3);
+        }
+      }
+      // Fire: lock on, charge the eye (a tell the player can react to), then shoot.
+      const chargeTime = e.heavy ? CHARGE.heavy : CHARGE.light;
       e.cooldown -= dt;
-      if (e.cooldown <= 0 && distance < 34) {
-        const origin = e.node.position.clone(),
-          aim = this.eye.clone().sub(origin).normalize();
-        const hit = this.combat.cast(
-          origin,
-          aim,
-          distance + 2,
-          e.body.collider(0).handle,
-        );
-        if (
-          hit?.collider === this.player.collider.handle &&
-          this.bolts.length < 32
-        ) {
-          const speed = e.heavy ? 11 : 13;
-          const shot = new Projectile3D(
-            origin,
-            aim.multiplyScalar(speed),
-            4,
-            e.heavy ? 12 : 8,
-            e.body.collider(0).handle,
-            "drone",
-          );
-          const mesh = this.art.mesh(
-            this.world3D,
-            this.art.sphere,
-            origin.x,
-            origin.y,
-            origin.z,
-            0.12,
-            0.12,
-            0.12,
-            P.red,
-            true,
-          );
-          mesh.castShadow = false;
-          this.bolts.push({ shot, mesh });
-          this.app.audio.play(
-            "breach-drone",
-            spatialAudio3D(this.eye, this.look.right(), origin, 35),
-          );
+      if (e.charge < 0) {
+        if (e.cooldown <= chargeTime && distance < 34) {
+          const origin = e.node.position.clone(),
+            aim = this.eye.clone().sub(origin).normalize();
+          const hit = this.combat.cast(origin, aim, distance + 2, e.body.collider(0).handle);
+          if (hit?.collider === this.player.collider.handle && this.bolts.length < 32) {
+            e.charge = chargeTime;
+            this.fx.charge(e.visual.frame, new Vec3(e.visual.eye[0], e.visual.eye[1], e.visual.eye[2] - 0.3), chargeTime);
+          } else e.cooldown = chargeTime + 0.25;
+        }
+      } else {
+        e.charge -= dt;
+        if (rand(0, 1) < dt * 16) this.fx.converge(e.visual.frame.localToWorld(new Vec3(...e.visual.eye)), 0.22);
+        if (e.charge <= 0) {
+          e.charge = -1;
+          this.droneFire(e);
           e.cooldown = e.heavy ? 1.5 : 2.3;
-        } else e.cooldown = 0.25;
+        }
       }
     }
   }
-  private tracer(start: Vec3, end: Vec3, color: number, time: number): void {
-    if (this.trails.length >= 40) {
-      this.trails.shift()!.mesh.destroy();
+  /** A drone's shot from one of its twin barrels, alternating. */
+  private droneFire(e: Enemy): void {
+    e.barrel ^= 1;
+    const origin = e.visual.frame.localToWorld(new Vec3(...e.visual.muzzles[e.barrel])),
+      aim = this.eye.clone().sub(origin).normalize();
+    const speed = e.heavy ? 11 : 13;
+    const shot = new Projectile3D(origin, aim.clone().multiplyScalar(speed), 4, e.heavy ? 12 : 8, e.body.collider(0).handle, "drone");
+    this.bolts.push({ shot, fx: this.fx.bolt(origin, shot.velocity, e.heavy) });
+    this.fx.droneFlash(origin.clone().add(aim.clone().multiplyScalar(0.18)), aim);
+    // Recoil: shoved back, nose up, a twitch toward the firing barrel.
+    e.kick.velocity += e.heavy ? 1.6 : 2.2;
+    e.tilt[1].velocity += (e.barrel ? -1 : 1) * 2.5;
+    this.app.audio.play("breach-drone", spatialAudio3D(this.eye, this.look.right(), origin, 35));
+  }
+  /** The kick of one shot on the first-person gun and the view. */
+  private kickGun(scatter: boolean): void {
+    const k = this.gunKick;
+    if (scatter) {
+      k.back.velocity += 2.9;
+      k.pitch.velocity += rand(4.6, 5.6);
+      k.roll.velocity += rand(1.6, 2.8);
+      k.yaw.velocity += rand(-1, 1);
+      k.lift.velocity += 0.8;
+      this.look.punchPitch.velocity += 1.3;
+      this.look.punchYaw.velocity += rand(-0.6, 0.6);
+      this.shake.kick(0.022, 0.18);
+      this.heat = Math.min(1, this.heat + 0.22);
+      this.pumpTime = 0;
+      this.pumpEjected = false;
+    } else {
+      k.back.velocity += 1.15;
+      k.pitch.velocity += rand(1.4, 2.1);
+      k.roll.velocity += rand(-1.3, 1.3);
+      k.yaw.velocity += rand(-0.7, 0.7);
+      k.lift.velocity += 0.22;
+      this.look.punchPitch.velocity += 0.32;
+      this.look.punchYaw.velocity += rand(-0.15, 0.15);
+      this.heat = Math.min(1, this.heat + 0.055);
+      this.eject(0);
     }
-    const direction = end.clone().sub(start),
-      length = direction.length;
-    const mesh = this.art.box(
-      this.world3D,
-      (start.x + end.x) / 2,
-      (start.y + end.y) / 2,
-      (start.z + end.z) / 2,
-      0.018,
-      0.018,
-      length,
-      color,
-      true,
-    );
-    // Transform an identity +Z beam with yaw then pitch via a parent yaw node would allocate;
-    // XYZ rotation can align Z directly with these angles.
-    mesh.rotation.y = Math.asin(direction.x / Math.max(0.0001, length));
-    mesh.rotation.x = Math.atan2(-direction.y, direction.z);
-    mesh.castShadow = false;
-    this.trails.push({ mesh, time });
+    this.sprintBlend *= 0.3;
+    this.flashes[this.weaponIndex].fire();
+  }
+  /** The current gun's muzzle in the world. */
+  private muzzleWorld(): Vec3 {
+    const i = this.weaponIndex;
+    this.syncWeapon();
+    return this.art.weaponModels[i].localToWorld(new Vec3(...this.art.muzzles[i]));
+  }
+  /** Throw a spent casing (rifle) or shell (scattergun) out of the ejection port. */
+  private eject(i: number): void {
+    const gun = this.art.weaponModels[i],
+      port = this.art.ports[i];
+    const at = gun.localToWorld(new Vec3(...port)),
+      out = gun.localToWorld(new Vec3(port[0] + 1, port[1] + rand(0.5, 0.9), port[2] + rand(0.1, 0.4))).sub(at).normalize();
+    const node = this.fx.root.add(this.art.casing(i === 1));
+    node.position.copy(at);
+    node.rotation.set(Math.PI / 2, rand(0, Math.PI), 0);
+    this.fx.throwPiece(node, {
+      vel: out.multiplyScalar(rand(2.2, 3.2)).add(this.player.velocity),
+      spin: randDir().multiplyScalar(rand(14, 26)),
+      radius: i ? 0.014 : 0.008,
+      bounce: 0.45,
+      life: rand(2.5, 3.5),
+    });
+  }
+  /** Per-frame gun motion that is not a spring: heat, sprint, draw, pump and vent smoke. */
+  private animateGun(dt: number): void {
+    const input = this.app.input,
+      speed = Math.hypot(this.player.velocity.x, this.player.velocity.z);
+    const sprinting = input.isDown("sprint") && speed > 5 && this.player.grounded && !input.isDown("fire") && this.flash <= 0;
+    this.sprintBlend += ((sprinting ? 1 : 0) - this.sprintBlend) * (1 - Math.exp(-dt * 8));
+    this.raise = Math.min(1, this.raise + dt / 0.4);
+    this.heat = Math.max(0, this.heat - dt * 0.45);
+    for (const [i, m] of this.art.weaponGlows.entries()) {
+      const h = i === this.weaponIndex ? this.heat : 0;
+      m.emissiveIntensity = 0.55 + h * 2.4;
+      m.color = m.emissive = mixColor(i ? P.amber : P.cyan, 0xffffff, h * 0.45);
+    }
+    for (const f of this.flashes) f.update(dt);
+    // Mouse sway: the gun lags behind the view.
+    const dy = this.look.yaw - this.lastLook.yaw,
+      dp = this.look.pitch - this.lastLook.pitch;
+    this.lastLook = { yaw: this.look.yaw, pitch: this.look.pitch };
+    this.sway.x.velocity -= Math.max(-0.25, Math.min(0.25, dy)) * 9;
+    this.sway.y.velocity -= Math.max(-0.25, Math.min(0.25, dp)) * 9;
+    this.sway.x.step(dt);
+    this.sway.y.step(dt);
+    this.sway.x.value = Math.max(-0.09, Math.min(0.09, this.sway.x.value));
+    this.sway.y.value = Math.max(-0.07, Math.min(0.07, this.sway.y.value));
+    // Scattergun: rack the pump after each shot and throw the shell at the back of the stroke.
+    if (this.pumpTime >= 0) {
+      this.pumpTime += dt;
+      if (!this.pumpEjected && this.pumpTime > 0.3) {
+        this.pumpEjected = true;
+        this.eject(1);
+      }
+      if (this.pumpTime > 0.5) this.pumpTime = -1;
+    }
+    // Hot barrels breathe a little smoke from the vents.
+    if (this.heat > 0.45) {
+      this.ventSmoke -= dt;
+      if (this.ventSmoke <= 0) {
+        this.ventSmoke = 0.09 / this.heat;
+        const gun = this.art.weaponModels[this.weaponIndex],
+          vx = rand(-1, 1) < 0 ? -0.08 : 0.08;
+        this.fx.sprites.spawn({
+          texture: "smoke",
+          variant: 0,
+          position: gun.localToWorld(new Vec3(vx, 0.05, rand(-0.6, -0.45))),
+          velocity: new Vec3(rand(-0.1, 0.1), rand(0.25, 0.45), rand(-0.1, 0.1)).add(this.player.velocity),
+          lifetime: rand(0.6, 0.9),
+          size: 0.03,
+          endSize: 0.16,
+          opacity: 0.18 * this.heat,
+          fadeIn: 0.2,
+          colors: [0xb8c4c8],
+          drag: 1.5,
+          spin: rand(-1, 1),
+        });
+      }
+    }
   }
   private placeCamera(): void {
     if (this.state.phase === "title") {
@@ -760,29 +980,68 @@ export class BreachScene extends Scene3D {
           0,
         ),
       );
+    // The view kicks with each shot and springs back (the look's punch), and dips on landing; the
+    // aim itself only climbs a little.
     this.look.apply(this.camera3D, this.eye);
+    const o = this.shake.offset;
+    this.camera3D.position.add(o);
+    this.camera3D.target.add(o);
     this.syncWeapon();
   }
   private syncWeapon(): void {
     const root = this.art.weaponRoot;
     root.visible = this.state.phase !== "title";
     // yaw parent, pitch child composition matches the look convention.
-    root.position.copy(this.eye);
+    root.position.copy(this.eye).add(this.shake.offset);
+    root.position.y += this.look.dip.value;
     root.rotation.set(0, -this.look.yaw, 0);
+    const k = this.gunKick,
+      t = this.state.time,
+      moving = Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / 6.6) * (this.player.grounded ? 1 : 0.25),
+      ph = this.stride * 1.15,
+      sp = this.sprintBlend,
+      draw = 1 - (1 - this.raise) ** 3,
+      ss = (a: number, b: number, x: number) => {
+        const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
+        return u * u * (3 - 2 * u);
+      };
     for (let i = 0; i < this.art.weaponModels.length; i++) {
       const gun = this.art.weaponModels[i];
       gun.visible = i === this.weaponIndex;
-      const reload = this.weapons[i].reloadRemaining > 0;
+      // Reload: tilt the gun over, swap the cell (rifle) or feed shells (scattergun), settle.
+      const w = this.weapons[i],
+        rt = w.reloadRemaining > 0 ? 1 - w.reloadRemaining / w.definition.reloadSeconds : -1,
+        rl = rt < 0 ? 0 : ss(0, 0.18, rt) * (1 - ss(0.82, 1, rt));
+      let seat = 0,
+        partY = 0,
+        partZ = 0;
+      if (rt >= 0 && i === 0) {
+        seat = Math.exp(-(((rt - 0.64) / 0.035) ** 2));
+        if (rt < 0.4) partY = -0.36 * ss(0.14, 0.36, rt);
+        else partY = -0.3 * (1 - ss(0.42, 0.62, rt));
+        partZ = partY * -0.1;
+      } else if (rt >= 0)
+        for (const at of [0.3, 0.42, 0.54, 0.66]) seat += Math.exp(-(((rt - at) / 0.025) ** 2)) * 0.6;
+      // Scattergun pump stroke: after a shot, and once at the end of a reload.
+      let stroke = 0;
+      if (i === 1) {
+        if (this.pumpTime >= 0) stroke = Math.sin(Math.PI * ss(0.1, 0.46, this.pumpTime));
+        if (rt >= 0) stroke = Math.max(stroke, Math.sin(Math.PI * ss(0.74, 0.92, rt)));
+        partZ = stroke * 0.09;
+      }
+      const part = this.art.weaponParts[i];
+      part.position.set(0, partY, partZ);
+      part.visible = partY > -0.33;
       gun.rotation.set(
-        this.look.pitch + (reload ? -0.7 : this.recoil * 0.5),
-        0,
-        reload ? -0.35 : 0,
+        this.look.pitch + k.pitch.value - sp * 0.32 + rl * 0.18 + seat * 0.05 + this.sway.y.value * 1.5 - (1 - draw) * 0.9 + Math.sin(t * 1.1) * 0.004,
+        k.yaw.value - this.sway.x.value * 1.6 + sp * 0.62 + rl * 0.28,
+        k.roll.value + Math.sin(ph) * 0.02 * moving - this.sway.x.value * 1.2 + sp * 0.32 - rl * 0.6 - stroke * 0.09 + (1 - draw) * 0.3,
       );
       gun.setScale(0.8);
       const offset = new Vec3(
-        0.3 + Math.sin(this.stride) * 0.008,
-        -0.29 - this.recoil * 0.14 + (reload ? -0.22 : 0),
-        -0.65 + this.recoil * 0.22,
+        0.3 + Math.sin(ph) * 0.011 * moving + this.sway.x.value * 0.6 - sp * 0.05 - rl * 0.05,
+        -0.29 + k.lift.value - Math.abs(Math.cos(ph)) * 0.014 * moving + Math.sin(t * 1.7) * 0.0025 + this.sway.y.value * 0.5 - sp * 0.07 - rl * 0.07 + seat * 0.02 - stroke * 0.012 - (1 - draw) * 0.32,
+        -0.65 + k.back.value + sp * 0.05 + rl * 0.03,
       );
       const c = Math.cos(this.look.pitch),
         s = Math.sin(this.look.pitch);
@@ -792,14 +1051,17 @@ export class BreachScene extends Scene3D {
         offset.y * s + offset.z * c,
       );
     }
-    this.art.muzzle.visible = this.flash > 0;
-    this.art.muzzleLight.intensity = this.flash > 0 ? 7 : 0;
-    this.art.muzzleLight.position.copy(this.art.muzzle.position);
-    this.art.muzzle.position.set(
-      0.26,
-      -0.25 * Math.cos(this.look.pitch) + 1.14 * Math.sin(this.look.pitch),
-      -0.25 * Math.sin(this.look.pitch) - 1.14 * Math.cos(this.look.pitch),
-    );
+    // The flash light rides at the live gun's muzzle.
+    const gun = this.art.weaponModels[this.weaponIndex],
+      light = this.art.muzzleLight,
+      lit = this.flashes?.[this.weaponIndex]?.lit ?? 0;
+    if (light.parent !== gun) gun.add(light);
+    const m = this.art.muzzles[this.weaponIndex];
+    light.position.set(m[0], m[1], m[2] - 0.05);
+    light.color = this.weaponIndex ? 0xffa050 : 0x7ff5e4;
+    light.intensity = lit * (this.weaponIndex ? 16 : 8);
+    light.range = this.weaponIndex ? 9 : 6;
+    this.art.muzzle.visible = false;
   }
   get diagnostics() {
     return {
