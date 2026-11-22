@@ -1,0 +1,1 @@
+{"name":"sentry-yard","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"bun ../../cli/blackiron.ts dev","build":"bun ../../cli/blackiron.ts build --report","test":"bun test"}}

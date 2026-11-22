@@ -23,6 +23,8 @@ are the existing games, improved in place. Run `bun run gallery` to play them to
 Version 0.15 adds reusable first-person input, capsule movement, combat, weapons and
 navigation, demonstrated by Signal Breach. See [FPS APIs and validation](docs/FPS.md). Lowline adds reusable arcade vehicle dynamics and circle collision through `@blackiron-studio/engine/physics`; [play and extend the city](examples/lowline/README.md).
 
+Version 0.19 adds line of sight, fog of war and a generic 2D/2.5D combat layer: weapons, projectiles, destructible tiles, explosions, aiming on isometric maps and arcing throws. **Sentry Yard** (`examples/sentry-yard`) shows it in one small isometric game; see [combat, sight and aiming](docs/COMBAT.md).
+
 Version 0.16 extends the shared FPS controller, combat and weapon layer to native hosts, adds native mouse capture and portable sign textures, and makes exports preserve the previous package on build failure. See [the native/export upgrade](docs/ENGINE-UPGRADE-0.16.md) for validation and remaining limits.
 
 The [current roadmap](docs/ROADMAP.md) defines the remaining work toward Godot/Unity
@@ -35,7 +37,8 @@ engine/
   src/
     platform/ the host seam: time, frames, pixel ratio, assets, image decoding, storage;
               WebPlatform, HeadlessPlatform, NativePlatform (talks to a host object)
-    core/     math, seeded rng, tweens, events, fixed-step clock, tile grids, grid and hex helpers
+    core/     math, seeded rng, tweens, events, fixed-step clock, tile grids, grid and hex helpers,
+              line of sight and fog of war on grids
     art/      headless pixel painter, materials, ramps, 5x7 font, sprite registry, autotiles,
               imported PNG and Aseprite sheets, atlas packer
     render/   Renderer contract; WebGL2 (native targets, lights, bloom chain, glyph text,
@@ -45,6 +48,8 @@ engine/
     content/  versioned scenes/prefabs, codecs, undo/redo, resource caches and scopes
     three/    Scene3D, cameras, textured materials, glTF, animation, physics, WebGL2/native meshes
     physics/  PhysicsWorld over the kernel's rapier2d: bodies, colliders, joints, queries
+    combat/   2D/2.5D combat: health, teams and hits, weapons, projectiles, explosions,
+              destructible tiles, aiming on projected maps, arcing throws
     scene/    Node, Node2D, Scene, Camera2D, Sprite, AnimatedSprite, TileMap, ParallaxLayer,
               LightLayer, Light2D, ParticleEmitter, Motes, CloudShadows, Label, Panel,
               NineSlice, Button, Bar, Anchor, Row, Column, Grid, FocusGroup, TouchControls, VirtualSticks,
@@ -69,6 +74,7 @@ engine/
   examples/demo/   Wisp Hollow, the 2D flagship
   examples/lumen/  Lumen Salvage, the 3D flagship
   examples/bench/  the stress scene: tiles, sprites, particles, lights, text
+  examples/sentry-yard/  Sentry Yard: isometric combat, sight and destructible tiles
   tests/           engine tests (bun test)
 ```
 
@@ -236,6 +242,19 @@ a `ServiceProvider`, chosen in `blackiron.json`:
 Providers ship for an in-memory mock, the reference server (`blackiron services`) and Apteva
 Games; `registerProvider` plugs in any other backend. Stores stay synchronous and work
 offline; saves sync in the background. See [docs/SERVICES.md](docs/SERVICES.md).
+
+## Combat, line of sight and aiming (0.19)
+
+`castGridRay`, `canSee` and `visibilityField` answer who sees what on any grid, including
+cells with heights, so a low wall hides a crouching player but not a tall one. `FogOfWar`
+reports only the cells that changed. `@blackiron-studio/engine/combat` adds a combat world
+with teams, `Health` with armour and resistances, data-defined `Weapon2D`s that fire at
+the same rate at any frame rate, pooled `Projectiles2D`, explosions that walls shelter
+from, and `DestructibleGrid` tiles that crack, break and chain through a tile map's own
+`set`. For projected maps, `pickGround` aims onto raised blocks, and `screenDirToWorld`
+lines sticks up with the screen. `TwinStickAim` and `AimAssist` handle mouse and stick, and
+`predictThrow` draws the exact path a grenade will take. **Sentry Yard**
+(`examples/sentry-yard`) uses all of it. See [docs/COMBAT.md](docs/COMBAT.md).
 
 ## Kernel
 

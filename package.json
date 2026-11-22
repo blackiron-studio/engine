@@ -1,6 +1,6 @@
 {
   "name": "@blackiron-studio/engine",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "description": "Blackiron Engine: TypeScript 2D, projected 2.5D and basic 3D game engine with web and native hosts.",
   "type": "module",
   "private": true,
@@ -15,6 +15,7 @@
     "./render": "./src/render/index.ts",
     "./kernel": "./src/kernel/index.ts",
     "./physics": "./src/physics/index.ts",
+    "./combat": "./src/combat/index.ts",
     "./scene": "./src/scene/index.ts",
     "./scene/ui": "./src/scene/ui.ts",
     "./audio": "./src/audio/index.ts",

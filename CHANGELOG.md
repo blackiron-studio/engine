@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.19.0 — Combat, line of sight and aiming (2026-11-22)
+
+- Line of sight in core (`core/sight.ts`):
+  - `castGridRay`: a grid DDA with heights and corner rules.
+  - `canSee`: range, cone and eye heights.
+  - `visibilityField`: symmetric shadowcasting with cones and heights.
+  - `inSightCone`.
+  - `FogOfWar`: visible and explored cells. It reports only the cells that changed and saves the explored cells as a short string.
+- New `@blackiron-studio/engine/combat` module:
+  - `Health`: armour pool, resistances by damage kind, grace window.
+  - `CombatWorld2D`: teams, traces against targets and walls (with height ranges), damage events, knockback, explosions with falloff and wall shelter, chain blasts on the world clock, `nearestEnemy`. `gridWalls` and `physicsWalls` supply the walls.
+  - `Weapon2D`: frame-rate-independent fire with a per-shot age; automatic, semi-automatic, burst, pellets, spread, bloom, recoil, magazines, reload, buffered pulls; seeded spread.
+  - `Projectiles2D`: pooled, swept projectiles with `slope` for shots up or down onto ledges; `hitscanShot` and `slopeTo`.
+  - `DestructibleGrid`: damage stages, broken tiles, resistances, explosive tiles, change events, save and load, over any tile map's `get`/`set`.
+  - Aiming: `pickGround` (height-aware cursor picking), `screenDirToWorld`, `TwinStickAim`, `AimAssist`.
+  - Throws: `Thrown2D` at a fixed 1/120 s step with bounces and rest, plus `predictThrow`, `launchVelocity` and `heightField`. A predicted arc matches the real throw at any frame rate.
+- Sentry Yard (`examples/sentry-yard`): an isometric example game built on all of the above, with fog of war, sentry cones, cover, breakable bricks and crates, chaining barrels, grenades and mouse or gamepad aim. Its art is painted in code. It has 15 tests.
+- Not included yet: perception, AI movement, an encounter director, decals, triggers and interactables. See [docs/COMBAT.md](docs/COMBAT.md).
+
 ## 0.18.0 — Networking and player services (2026-11-19)
 
 - `platform.net`: WebSockets and HTTP requests on every host behind one interface. Web and Bun use `WebSocket` and `fetch`; the Rust host (desktop and Android) uses tungstenite and ureq on rustls with bundled roots; iOS uses URLSession. Native answers arrive through `__blackiron.net`.

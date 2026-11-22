@@ -1,0 +1,18 @@
+{
+  "name": "Sentry Yard",
+  "entry": "src/main.ts",
+  "art": "src/art.ts",
+  "viewport": { "width": 1280, "height": 720, "scale": "fit" },
+  "render": { "scale": "native", "snap": "world" },
+  "renderer": "auto",
+  "fps": false,
+  "seed": 17,
+  "background": "#1b2128",
+  "fonts": ["https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap"],
+  "post": { "bloom": 0.22, "bloomThreshold": 0.8, "vignette": 0.22 },
+  "targets": ["web", "macos", "windows", "linux"],
+  "snapshots": [
+    { "name": "title", "frame": 30 },
+    { "name": "yard", "frame": 90, "taps": ["640,388:5"] }
+  ]
+}
