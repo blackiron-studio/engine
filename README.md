@@ -27,6 +27,8 @@ Version 0.19 adds line of sight, fog of war and a generic 2D/2.5D combat layer: 
 
 Version 0.20 adds shot effects: particles that point and stretch along their flight, travelling beams, trails, pooled flash and tracked lights, and decals that lie on the ground or on wall faces. Sentry Yard uses all of them; see [shot effects](docs/EFFECTS.md).
 
+Version 0.21 adds turning: figures painted from several directions (mirrored or not) turn at a limited speed through their views, blend between them, and keep named points such as a muzzle on the painting. Sentry Yard uses it; see [turning](docs/TURNING.md).
+
 Version 0.16 extends the shared FPS controller, combat and weapon layer to native hosts, adds native mouse capture and portable sign textures, and makes exports preserve the previous package on build failure. See [the native/export upgrade](docs/ENGINE-UPGRADE-0.16.md) for validation and remaining limits.
 
 The [current roadmap](docs/ROADMAP.md) defines the remaining work toward Godot/Unity
@@ -269,6 +271,17 @@ and tracks short-lived lights and drops the dimmest when full. `Decals` leaves m
 fade on the ground or squashed onto wall faces, and `IsoTileMap.surfaceAt` finds the face a
 hit landed on. `camera.screenAngle` and `screenLength` give a world direction as it looks on
 screen. Sentry Yard uses all of them. See [docs/EFFECTS.md](docs/EFFECTS.md).
+
+## Turning (0.21)
+
+`defineDirections` names a figure's painted views and the screen angle each faces, with
+mirroring, so three paintings cover six directions. `defineDirectionalAnimation` gives frames
+per view and falls back along a chain (kick → fire → idle) where a view lacks one. A
+`Heading` turns toward a target at a limited speed, the same at any frame rate, with a fast
+catch-up when far behind. An `AnimatedSprite` with a `heading` or a `turn` shows the view for
+it through the camera. A dead zone stops flicker at boundaries, and a 60 ms blend hides view
+changes. `definePoints` puts named points on frames, and `pointInWorld` returns where one is
+after mirroring, so a muzzle flash leaves the painted barrel. See [docs/TURNING.md](docs/TURNING.md).
 
 ## Kernel
 

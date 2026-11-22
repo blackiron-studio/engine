@@ -1,7 +1,7 @@
 export { DrawContext, type SpriteOptions, type TextOptions } from "./draw.ts";
 export { Node, Node2D } from "./node.ts";
 export { Scene, type FitOptions, CanvasLayer } from "./scene.ts";
-export { Camera2D, type FollowTarget, type ProjectionSpec } from "./camera.ts";
+export { Camera2D, type FollowTarget, type ProjectionSpec, groundDeltaOf } from "./camera.ts";
 export { IsoTileMap, type IsoTile, type IsoTileMapOptions, type IsoSurface } from "./isotilemap.ts";
 export { Sprite, AnimatedSprite } from "./sprite.ts";
 export { TileLayer, type TileLayerOptions } from "./tilelayer.ts";

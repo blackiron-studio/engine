@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.21.0 — Turning (2026-11-22)
+
+- `defineDirections(name, { views, mirror, deadZone })`:
+  - Each painted view names the screen angle it faces; views need not be evenly spaced.
+  - With `mirror`, each view also shows flipped at π − its angle.
+  - `pickDirection` picks the nearest view, with a dead zone (4° by default) so an angle on a boundary never flickers.
+  - `screenAngleOf` turns a world facing into a screen angle through a projection.
+- `defineDirectionalAnimation(name, { directions, frames, fps, loop, hold, events, fallback })`:
+  - Frames are given per painted view.
+  - Views without frames fall back along a chain of animations (`viewFrames`).
+- `definePoints` and `pointOf`: named points per sprite frame, in sprite units from the origin.
+- `Heading` (core): turns toward a target at a limited rate.
+  - The same result at any frame rate.
+  - Fast catch-up when far behind.
+  - Keeps its turning direction for targets straight behind.
+  - `timeToFace`, `towards` and `snap`.
+- `AnimatedSprite`:
+  - `heading` and `turn` select the view through the layer's projection.
+  - `blend` (60 ms) fades the old view out over the new one, just in front in depth.
+  - `direction`, `blending` and `refreshView()`.
+  - `point(name)` and `pointInWorld(name, forward)` give named points after mirroring.
+  - `face(x, y)` also turns the heading.
+  - Four-way sprite sets are unchanged.
+- `Camera2D.groundDelta` and `groundDeltaOf`: the world offset and height that draw at a screen offset from a sprite.
+- Sentry Yard:
+  - The operative and the sentries use direction sets and turn instead of snapping between eight views.
+  - The operative walks on a directional animation.
+  - The muzzle flash and the tracer leave the painted barrel.
+  - It has 19 tests.
+- See [docs/TURNING.md](docs/TURNING.md).
+
 ## 0.20.0 — Shot effects (2026-11-22)
 
 - `SpritePool` takes `align: "velocity"` and `stretch` as pool defaults or per spawn:

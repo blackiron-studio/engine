@@ -7,8 +7,9 @@
 // yard, and hits leave marks on the walls and floor.
 
 import { AimAssist, TwinStickAim, pickGround, screenDirToWorld } from "@blackiron-studio/engine/combat";
+import { Heading } from "@blackiron-studio/engine/core";
 import type { DrawContext } from "@blackiron-studio/engine/scene";
-import { Anchor, Beams, Button, Decals, IsoTileMap, Label, LightLayer, LightPool, Node2D, Scene, Sprite, SpritePool, Trails } from "@blackiron-studio/engine/scene";
+import { AnimatedSprite, Anchor, Beams, Button, Decals, IsoTileMap, Label, LightLayer, LightPool, Node2D, Scene, Sprite, SpritePool, Trails } from "@blackiron-studio/engine/scene";
 import { PauseScene } from "@blackiron-studio/engine/shell";
 import { CELL, TILE } from "../art.ts";
 import { UI_FONT, title } from "../main.ts";
@@ -36,8 +37,11 @@ const mixTint = (a: number, b: number, t: number): number => {
   return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 };
 
-/** Ground direction index 0..7 for an angle, matching the painted eight-way sprites. */
-const dir8 = (a: number): number => ((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8;
+/** Seconds for a half turn: the operative's body follows the aim quickly; sentries swing slower. */
+const HERO_TURN = 0.12;
+const SENTRY_TURN = 0.3;
+/** World units the muzzle flash sits in front of the figure, so it sorts over the body. */
+const MUZZLE_FORWARD = 4;
 
 interface Pop {
   label: Label;
@@ -47,9 +51,9 @@ interface Pop {
 export class PlayScene extends Scene {
   readonly yard: Yard;
   private map!: IsoTileMap;
-  private hero!: Sprite;
+  private hero!: AnimatedSprite;
   private heroShadow!: Sprite;
-  private readonly sentrySprites = new Map<number, { body: Sprite; shadow: Sprite }>();
+  private readonly sentrySprites = new Map<number, { body: AnimatedSprite; shadow: Sprite }>();
   private readonly barrels = new Map<number, Sprite[]>();
   private fx!: SpritePool;
   private smoke!: SpritePool;
@@ -71,7 +75,6 @@ export class PlayScene extends Scene {
   private tints = new Uint32Array(0);
   private cone = new Uint8Array(0);
   private coneScratch = new Uint8Array(0);
-  private stride = 0;
   private moving = false;
   private aimingGrenade = false;
   private grenadeTarget = { x: 0, y: 0 };
@@ -103,12 +106,17 @@ export class PlayScene extends Scene {
 
     for (const s of y.sentries) {
       const shadow = this.ground("contact", s.x, s.y, s.z, 0.75);
-      const body = this.world.add(new Sprite(s.state === "dead" ? "sentry.wreck" : `sentry.${dir8(s.facing)}`, s.x, s.y));
+      const body = this.world.add(new AnimatedSprite(s.state === "dead" ? "sentry.dead" : "sentry.idle", s.x, s.y));
       body.z = s.z;
+      body.turn = new Heading({ angle: s.facing, halfTurn: SENTRY_TURN });
+      body.heading = s.facing;
       this.sentrySprites.set(s.id, { body, shadow });
     }
     this.heroShadow = this.ground("contact", y.player.x, y.player.y, 0, 0.62);
-    this.hero = this.world.add(new Sprite("op.1", y.player.x, y.player.y));
+    this.hero = this.world.add(new AnimatedSprite("op.idle", y.player.x, y.player.y));
+    // The body lags the aim a little but catches up fast past 70°, so it never fires backwards.
+    this.hero.turn = new Heading({ angle: y.player.aim, halfTurn: HERO_TURN, catchUp: 1.2, catchUpHalfTurn: 0.07 });
+    this.hero.heading = y.player.aim;
 
     this.debris = this.world.add(new SpritePool({ capacity: 160, sprite: "chip", gravityZ: -520, floor: "bounce", smooth: true }));
     this.smoke = this.world.add(new SpritePool({ capacity: 96, sprite: "smoke", gravityZ: 26, smooth: true }));
@@ -251,7 +259,8 @@ export class PlayScene extends Scene {
       y.step(dt, this.readControls());
       const moved = Math.hypot(y.player.x - before.x, y.player.y - before.y);
       this.moving = moved > 0.01;
-      this.stride += moved * 0.14;
+      // Stride with the ground covered.
+      this.hero.speed = this.moving && dt > 0 ? Math.min(1.6, Math.max(0.5, moved / dt / 130)) : 1;
     } else {
       y.step(dt, { moveX: 0, moveY: 0, aim: y.player.aim, fire: false });
     }
@@ -344,7 +353,8 @@ export class PlayScene extends Scene {
         const key = `${f.weapon}${Math.round(f.x0)},${Math.round(f.y0)}`;
         if (!muzzles.has(key)) {
           muzzles.add(key);
-          this.fx.spawn({ sprite: "muzzle", x: f.x0, y: f.y0, z: f.z + 2, life: 0.05, scale: f.weapon === "shotgun" ? 1.4 : 1 });
+          const [mx, my, mz] = this.heroMuzzle() ?? [f.x0, f.y0, f.z + 2];
+          this.fx.spawn({ sprite: "muzzle", x: mx, y: my, z: mz, life: 0.05, scale: f.weapon === "shotgun" ? 1.4 : 1 });
           this.lights.flash(f.x0, f.y0, f.z + 4, { color: 0xffc27a, radius: f.weapon === "shotgun" ? 150 : 105, intensity: 1, life: f.weapon === "shotgun" ? 0.09 : 0.05 });
           audio.play(f.weapon);
           this.camera.shake(f.weapon === "shotgun" ? 2.2 : 0.6, 0.08);
@@ -353,12 +363,19 @@ export class PlayScene extends Scene {
     }
   }
 
+  /** Where the operative's painted barrel ends, for the flash and tracer; the shot itself comes from the sim. */
+  private heroMuzzle(): [number, number, number] | null {
+    return this.hero.pointInWorld("muzzle", MUZZLE_FORWARD);
+  }
+
   private tracer(f: Extract<Fx, { kind: "shot" }>): void {
     const bolt = f.weapon === "bolt";
     if (!bolt) {
       // A travelling tracer: a short bright section that leaves the barrel and reaches the hit.
       const shotgun = f.weapon === "shotgun";
-      this.beams.spawn(f.x0, f.y0, f.z, f.x1, f.y1, f.z1, shotgun
+      // The sim fires from the body; the tracer leaves the painted barrel.
+      const [x0, y0, z0] = this.heroMuzzle() ?? [f.x0, f.y0, f.z];
+      this.beams.spawn(x0, y0, z0, f.x1, f.y1, f.z1, shotgun
         ? { speed: 2100, head: 34, width: 1.5, color: 0xffe9b8, glow: 0xff9a3a, glowWidth: 3, glowAlpha: 0.4 }
         : { speed: 2600, head: 88, width: 2.2, color: 0xfff3d0, glow: 0xffa040, glowWidth: 3.2, glowAlpha: 0.5 });
     }
@@ -446,9 +463,8 @@ export class PlayScene extends Scene {
   private syncActors(): void {
     const y = this.yard;
     const p = y.player;
-    const k = dir8(p.aim);
-    const step = Math.sin(this.stride);
-    this.hero.sprite = !y.alive ? "op.down" : this.moving && step > 0.3 ? `op.${k}.a` : this.moving && step < -0.3 ? `op.${k}.b` : `op.${k}`;
+    this.hero.play(!y.alive ? "op.dead" : this.moving ? "op.walk" : "op.idle");
+    this.hero.turn!.target = p.aim;
     this.hero.setPosition(p.x, p.y);
     this.hero.z = p.z;
     this.hero.material = p.flash > 0 ? { kind: "flash", p0: 0.8 } : null;
@@ -456,7 +472,8 @@ export class PlayScene extends Scene {
     this.heroShadow.z = p.z;
     for (const s of y.sentries) {
       const sp = this.sentrySprites.get(s.id)!;
-      sp.body.sprite = s.state === "dead" ? "sentry.wreck" : `sentry.${dir8(s.facing)}`;
+      sp.body.play(s.state === "dead" ? "sentry.dead" : "sentry.idle");
+      sp.body.turn!.target = s.facing;
       sp.body.material = s.flash > 0 ? { kind: "flash", p0: 0.9 } : null;
       const explored = y.fog.isExplored(s.col, s.row);
       sp.body.visible = sp.shadow.visible = explored;

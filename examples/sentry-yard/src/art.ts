@@ -6,7 +6,7 @@
 // One light: low sun from the upper left of the screen. Tops are brightest, faces turned to
 // the lower left are mid-tone, faces turned to the lower right are darkest.
 
-import { type Painter, defineSprite, linear, noise, path, pen, radial } from "@blackiron-studio/engine/art";
+import { type Painter, defineAnimation, defineDirectionalAnimation, defineDirections, definePoints, defineSprite, linear, noise, path, pen, radial } from "@blackiron-studio/engine/art";
 
 import { TILE } from "./units.ts";
 
@@ -355,6 +355,27 @@ for (let k = 0; k < 8; k++) {
   operative(`op.${k}`, k, 0);
   operative(`op.${k}.a`, k, 1);
   operative(`op.${k}.b`, k, -1);
+}
+
+// Turning: both figures are painted from eight ground directions. Each view faces the screen
+// angle its direction draws at, so the sprites pick views (with a dead zone and a short blend)
+// from a heading. The muzzle points are where each painting's barrel ends, from the origin.
+const views: Record<string, number> = {};
+for (let k = 0; k < 8; k++) {
+  const [dx, dy] = screenDir(k);
+  views[k] = Math.atan2(dy, dx);
+}
+defineDirections("op", { views });
+defineDirections("sentry", { views });
+defineDirectionalAnimation("op.idle", { directions: "op", frames: (k) => [`op.${k}`] });
+defineDirectionalAnimation("op.walk", { directions: "op", frames: (k) => [`op.${k}.a`, `op.${k}`, `op.${k}.b`, `op.${k}`], fps: 10 });
+defineDirectionalAnimation("sentry.idle", { directions: "sentry", frames: (k) => [`sentry.${k}`] });
+defineAnimation("op.dead", ["op.down"], 1, false);
+defineAnimation("sentry.dead", ["sentry.wreck"], 1, false);
+for (let k = 0; k < 8; k++) {
+  const [dx, dy] = screenDir(k);
+  for (const f of [`op.${k}`, `op.${k}.a`, `op.${k}.b`]) definePoints(f, { muzzle: [22 * dx, -24.4 + 12 * dy] });
+  definePoints(`sentry.${k}`, { muzzle: [21 * dx, -21.64 + 11 * dy] });
 }
 defineSprite("op.down", { w: 48, h: 30, origin: [0.5, 0.7], density: D }, (p) => {
   const v = pen(p);

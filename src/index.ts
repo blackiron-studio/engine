@@ -31,7 +31,7 @@ export * from "./services/index.ts";
 export * from "./app/index.ts";
 export * from "./shell/index.ts";
 
-export const VERSION = "0.20.0";
+export const VERSION = "0.21.0";
 
 export * from "./three/index.ts";
 

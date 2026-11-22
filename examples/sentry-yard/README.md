@@ -44,6 +44,8 @@ title, and Continue resumes from that save.
 | `SpritePool` `align` and `stretch`, `Trails` | Sentry bolts and sparks point where they fly; bolts leave a red trail |
 | `LightPool` | Muzzle and explosion flashes; each bolt carries a moving glow |
 | `Decals`, `IsoTileMap.surfaceAt` | Bullet holes and scorch on wall faces, crates and the ground; a broken tile takes its marks |
+| `defineDirections`, `Heading`, `AnimatedSprite` turning | The operative and sentries turn through their eight painted views, with a short blend at each change |
+| `definePoints`, `pointInWorld` | The muzzle flash and tracer leave the painted barrel of whichever view is showing |
 
 `src/yard.ts` is the whole game rule set with no rendering. It runs headless in
 `tests/yard.test.ts`. `src/scenes/play.ts` turns its events into sprites, sound and screen
@@ -58,12 +60,14 @@ streaks, the bullet hole and the scorch mark. Nothing is imported, and there is 
 
 ## Validation
 
-`bun test` here runs 18 tests:
+`bun test` here runs 19 tests:
 
 - The simulation: spotting, cover, barrel chains, raised targets, grenade prediction, saves.
 - The scenes headless: the art, the title, retiling, the grenade arc, fog writes, the end card.
 - The shot effects: tracers and bullet holes, bolts with a trail and a light, and a broken
   tile clearing its own marks.
+- Turning: a half turn passes through the views in between, blends, and fires from the
+  painted barrel.
 
 ## Not included
 

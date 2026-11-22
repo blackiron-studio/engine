@@ -210,4 +210,65 @@ export class Camera2D {
     const [x, y] = this.screenVector(dx, dy, dz);
     return Math.hypot(x, y);
   }
+
+  /** The ground offset that draws (u, v) sprite units away on screen; see `groundDeltaOf`. */
+  groundDelta(u: number, v: number, forward = 0): [number, number, number] {
+    return groundDeltaOf(this.projectionMatrix(), u, v, forward);
+  }
+}
+
+/**
+ * The ground offset (dx, dy, dz) that draws (u, v) away on screen, in sprite units (screen
+ * units before zoom): where a point painted on an upright sprite, such as a muzzle, is in the
+ * world. Screen-horizontal offsets slide along the ground and screen-vertical ones become
+ * height (or ground depth when the projection shows no height). `forward` first moves the
+ * point that many world units toward the camera, so something placed there sorts in front of
+ * the figure, and the rest is solved around it. Flat: (u, v, 0).
+ */
+export function groundDeltaOf(p: ProjectionMatrix | null, u: number, v: number, forward = 0): [number, number, number] {
+  if (!p) return [u, v, 0];
+  // Toward the camera: the ground direction that raises the depth key fastest.
+  const fl = Math.hypot(p[8], p[9]);
+  const fx = fl > 1e-9 ? p[8] / fl : 0;
+  const fy = fl > 1e-9 ? p[9] / fl : 0;
+  const x0 = fx * forward;
+  const y0 = fy * forward;
+  const ru = u - (p[0] * x0 + p[1] * y0);
+  const rv = v - (p[4] * x0 + p[5] * y0);
+  // The ground axis with no screen-vertical part, pointing right on screen.
+  let gx = p[5];
+  let gy = -p[4];
+  const gl = Math.hypot(gx, gy);
+  if (gl < 1e-9) {
+    gx = 1;
+    gy = 0;
+  } else {
+    gx /= gl;
+    gy /= gl;
+  }
+  let gu = p[0] * gx + p[1] * gy;
+  if (gu < 0) {
+    gx = -gx;
+    gy = -gy;
+    gu = -gu;
+  }
+  const gv = p[4] * gx + p[5] * gy;
+  // Height for the rest, or the ground axis across it when height does not show.
+  let hx = 0;
+  let hy = 0;
+  let hz = 1;
+  let hu = p[2];
+  let hv = p[6];
+  if (Math.abs(gu * hv - gv * hu) < 1e-9) {
+    hx = -gy;
+    hy = gx;
+    hz = 0;
+    hu = p[0] * hx + p[1] * hy;
+    hv = p[4] * hx + p[5] * hy;
+  }
+  const det = gu * hv - gv * hu;
+  if (Math.abs(det) < 1e-12) return [x0, y0, 0];
+  const s = (ru * hv - hu * rv) / det;
+  const t = (gu * rv - gv * ru) / det;
+  return [x0 + gx * s + hx * t, y0 + gy * s + hy * t, hz * t];
 }

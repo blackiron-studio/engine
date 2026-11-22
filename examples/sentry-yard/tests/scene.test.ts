@@ -1,7 +1,8 @@
 // The scenes headless: the art bakes, the yard draws, shooting a barrel retiles and removes its
 // sprite, a grenade shows its arc while held, fog tints only what changed, shots send tracers
-// and leave holes, bolts carry trails and lights, a broken tile takes its marks with it, and
-// the end card appears once every sentry is down.
+// and leave holes, bolts carry trails and lights, a broken tile takes its marks with it, the
+// operative turns through its views with the flash at the painted barrel, and the end card
+// appears once every sentry is down.
 
 import { beforeAll, expect, test } from "bun:test";
 import { App } from "@blackiron-studio/engine/app";
@@ -120,6 +121,56 @@ test("rifle fire sends travelling tracers and leaves holes on the wall it hits",
     expect(tracers).toBeGreaterThan(0);
     expect(state.decals.count).toBeGreaterThan(2);
     expect(state.lights.count + state.beams.count).toBeGreaterThan(0);
+  } finally {
+    app.destroy();
+  }
+});
+
+test("the operative turns through its views and fires from the painted barrel", async () => {
+  const { app, state } = await game();
+  try {
+    const y = state.yard;
+    y.player.health.hp = 1e6;
+    y.player.x = 11.5 * 32;
+    y.player.y = 19.5 * 32;
+    let aim = 0;
+    state.readControls = () => ({ moveX: 0, moveY: 0, aim, fire: false });
+    for (let i = 0; i < 20; i++) app.frame(1 / 60);
+    const hero = state.hero;
+    const start = hero.direction.view;
+    // A half turn: the body passes through the views in between.
+    aim = Math.PI;
+    const views: string[] = [start];
+    let blended = false;
+    for (let i = 0; i < 30; i++) {
+      app.frame(1 / 60);
+      const v = hero.direction.view;
+      if (v !== views[views.length - 1]) views.push(v);
+      blended ||= hero.blending;
+    }
+    expect(views[views.length - 1]).toBe("4");
+    // Never straight from front to back: it catches up fast while far behind, then steps.
+    expect(views.length).toBeGreaterThanOrEqual(3);
+    for (let i = 1; i < views.length; i++) {
+      const step = Math.abs(Number(views[i]) - Number(views[i - 1]));
+      expect(Math.min(step, 8 - step)).toBeLessThanOrEqual(i === views.length - 1 ? 1 : 2);
+    }
+    expect(blended).toBe(true);
+    // Firing: the flash spawns where the painting's barrel ends.
+    const muzzle = hero.pointInWorld("muzzle", 4);
+    state.readControls = () => ({ moveX: 0, moveY: 0, aim, fire: true });
+    const spawned: { sprite?: string; x: number; y: number; z: number }[] = [];
+    const spawn = state.fx.spawn.bind(state.fx);
+    state.fx.spawn = (o: { sprite?: string; x: number; y: number; z: number }) => {
+      spawned.push(o);
+      return spawn(o);
+    };
+    for (let i = 0; i < 4 && !spawned.some((o) => o.sprite === "muzzle"); i++) app.frame(1 / 60);
+    const flash = spawned.find((o) => o.sprite === "muzzle");
+    expect(flash).toBeDefined();
+    expect(flash!.x).toBeCloseTo(muzzle[0], 3);
+    expect(flash!.y).toBeCloseTo(muzzle[1], 3);
+    expect(flash!.z).toBeCloseTo(muzzle[2], 3);
   } finally {
     app.destroy();
   }

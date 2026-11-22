@@ -13,5 +13,6 @@ export * from "./rows.ts";
 export * as materials from "./materials.ts";
 export * from "./normalize.ts";
 export * from "./spritesets.ts";
+export * from "./directions.ts";
 export * from "./rigs.ts";
 export * from "./tilesets.ts";

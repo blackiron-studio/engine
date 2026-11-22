@@ -5,6 +5,7 @@ import type { SpriteEdge } from "./atlas.ts";
 import { Rng, hashString } from "../core/rng.ts";
 import type { Painter } from "./painter.ts";
 import { type SpriteStyle, defineStyle } from "./style.ts";
+import { resetDirections } from "./directions.ts";
 import { resetAnimationSets } from "./spritesets.ts";
 import { BLOB_MASKS } from "../core/tilemap.ts";
 import { resetRigs } from "./rigs.ts";
@@ -184,6 +185,7 @@ export function resetSpriteRegistry(): void {
   animations.clear();
   defineStyle(null);
   resetAnimationSets();
+  resetDirections();
   resetRigs();
   autotileModes.clear();
 }

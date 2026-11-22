@@ -4,6 +4,7 @@
 // animation; the sprite picks the frames for the way it faces.
 
 import type { Rect } from "../core/math.ts";
+import type { DirectionSet } from "./directions.ts";
 import { type ImageItem, type ImageSpriteSpec, registerAssetLoader } from "./images.ts";
 import { defineAnimation } from "./sprites.ts";
 
@@ -54,10 +55,15 @@ export interface AnimationSetDef {
   /** Sprite name to event name. */
   events: Map<string, string>;
   hold: number;
+  /** Directional animations: the direction set, frames per painted view, and the animation standing in for missing views. */
+  directions?: DirectionSet;
+  views?: Record<string, string[]>;
+  fallback?: string;
 }
 
 const sets = new Map<string, AnimationSetDef>();
 const hitboxes = new Map<string, Rect>();
+const points = new Map<string, Record<string, readonly [number, number]>>();
 
 export function defineAnimationSet(def: AnimationSetDef): AnimationSetDef {
   sets.set(def.name, def);
@@ -79,9 +85,21 @@ export function defineHitbox(sprite: string, rect: Rect): void {
   hitboxes.set(sprite, rect);
 }
 
+/**
+ * Named points on a sprite frame (a muzzle, a hand, a hat), in sprite units from its origin as
+ * painted, before mirroring. Merges with points the frame already has.
+ */
+export function definePoints(sprite: string, named: Record<string, readonly [number, number]>): void {
+  points.set(sprite, { ...points.get(sprite), ...named });
+}
+
+/** A named point of a sprite frame, or undefined. */
+export const pointOf = (sprite: string, name: string): readonly [number, number] | undefined => points.get(sprite)?.[name];
+
 export function resetAnimationSets(): void {
   sets.clear();
   hitboxes.clear();
+  points.clear();
 }
 
 /** The frames a set animation resolves to for a facing, with whether they need mirroring. */
