@@ -109,14 +109,17 @@ export class Scene extends Node {
   get uiWidth(): number { return this.fitDesign?.w ?? this.width / this.autoScale; }
   get uiHeight(): number { return this.fitDesign?.h ?? this.height / this.autoScale; }
 
-  /** The screen this scene is shown on (points, insets, touch, size class); see `App.screen`. */
-  get screen(): ScreenInfo {
+  /**
+   * The screen this scene is shown on (points, insets, touch, size class); see `App.screen`.
+   * Not called `screen`, so games keep that name for their own state ("title", "play", …).
+   */
+  get screenInfo(): ScreenInfo {
     return this._app?.screen ?? describeScreen({ width: this.width, height: this.height, pixelRatio: 1, insets: [0, 0, 0, 0], touch: false, pointsPerUnit: 1 });
   }
 
   /** A small screen (under 600 points across): lay the UI out compactly. */
   get compact(): boolean {
-    return this.screen.compact;
+    return this.screenInfo.compact;
   }
 
   /** The safe-area insets (notch, rounded corners, home bar) in UI units: top, right, bottom, left. */

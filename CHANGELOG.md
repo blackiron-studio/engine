@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.1 — Scenes keep their own `screen` (2026-11-26)
+
+- The scene's screen getter is now `scene.screenInfo`; `app.screen` is unchanged.
+  - Games often keep their menu state in a scene field called `screen`. On 0.23.0 such a scene failed to typecheck (Lanternwatch's `screen: "title" | "play"`).
+- A test covers a scene with its own `screen` field.
+
 ## 0.23.0 — Small screens (2026-11-26)
 
 - `app.screen` and `scene.screen` describe the physical screen:

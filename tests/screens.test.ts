@@ -117,6 +117,21 @@ describe("App.screen and the UI on small screens", () => {
   });
 });
 
+test("a scene may keep its own `screen` field", async () => {
+  // Games often name their menu state `screen`; the engine's getter is `screenInfo`.
+  class Menu extends Scene {
+    screen: "title" | "play" = "title";
+  }
+  const app = await createTestApp({ device: "iphone-15", config: desktopDesign });
+  const scene = new Menu();
+  app.scenes.change(scene);
+  scene.screen = "play";
+  expect(scene.screen).toBe("play");
+  expect(scene.screenInfo.sizeClass).toBe("phone");
+  expect(scene.compact).toBe(true);
+  app.destroy();
+});
+
 describe("auditScreen", () => {
   test("flags text and touch targets too small for a phone, and passes them once the UI grows", async () => {
     const fit = { viewport: { width: 1280, height: 720, scale: "fit" as const } };

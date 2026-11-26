@@ -22,7 +22,7 @@ every button measured in points.
 
 ## The screen
 
-`app.screen`, also `scene.screen`, describes the screen the game is shown on.
+`app.screen`, also `scene.screenInfo`, describes the screen the game is shown on.
 
 | Field | Meaning |
 |---|---|
@@ -41,7 +41,7 @@ Scenes hear about screen changes through `onResize`, even when the logical size 
 For example, a `fit` viewport keeps 1280 × 720 on every screen, but moving from an iPad to an
 iPhone still calls it.
 
-`scene.compact` is a shortcut for `scene.screen.compact`. Use it next to `scene.wide` and
+`scene.compact` is a shortcut for `scene.screenInfo.compact`. Use it next to `scene.wide` and
 `scene.orientation` to pick a layout.
 
 On the web, touch comes from `matchMedia("(pointer: coarse)")`. The insets come from
@@ -180,5 +180,5 @@ device side by side, with the problems listed under each screenshot.
 
 Signal Nine moved first. It used to read `innerWidth` and the native host itself to decide how
 large to draw on a phone. Its `uiScale` is now
-`scene.screen.compact ? legibleScale(scene.screen.pointsPerUnit, 0.85) : 1`. Its phone tests use
+`scene.screenInfo.compact ? legibleScale(scene.screenInfo.pointsPerUnit, 0.85) : 1`. Its phone tests use
 `createTestApp({ device })` instead of faking the window size.
