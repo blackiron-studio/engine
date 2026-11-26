@@ -53,7 +53,7 @@ func blackironLog(_ message: String) {
     /// A synthetic clock in milliseconds (screenshot runs); nil means real time.
     var clock: Double?
     private let defaults = UserDefaults.standard
-    var screen: [String: Any] = ["width": 0, "height": 0, "scale": 1, "insets": [0, 0, 0, 0]]
+    var screen: [String: Any] = ["width": 0, "height": 0, "scale": 1, "insets": [0, 0, 0, 0], "touch": true]
     /// True under the synthetic clock of a screenshot run, so unseeded games stay reproducible.
     var deterministic = false
     /// Frame data captured by the last `submit`, rendered after the script returns.
@@ -433,7 +433,7 @@ final class BlackironRuntime: NSObject {
     }
 
     private func pushScreen() {
-        host.screen = ["width": Double(lastSize.width), "height": Double(lastSize.height), "scale": Double(scale), "insets": [Double(lastInsets.top), Double(lastInsets.right), Double(lastInsets.bottom), Double(lastInsets.left)]]
+        host.screen = ["width": Double(lastSize.width), "height": Double(lastSize.height), "scale": Double(scale), "insets": [Double(lastInsets.top), Double(lastInsets.right), Double(lastInsets.bottom), Double(lastInsets.left)], "touch": true]
     }
 
     /// Drive frames from the display's refresh.

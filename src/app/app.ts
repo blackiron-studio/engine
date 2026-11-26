@@ -22,6 +22,7 @@ import { FixedStep } from "../core/clock.ts";
 import { Rng } from "../core/rng.ts";
 import { Tweens } from "../core/tween.ts";
 import { Profiler } from "./profiler.ts";
+import { type DevicePreset, type Insets, type ScreenAudit, type ScreenInfo, type UIConfig, describeScreen, devicePreset, sameScreen } from "./screen.ts";
 import { ActionMap } from "../input/actions.ts";
 import { GamepadInput } from "../input/gamepad.ts";
 import { Pointer } from "../input/pointer.ts";
@@ -175,6 +176,8 @@ export interface BlackironConfig {
   fps?: boolean;
   /** Stylesheet URLs to load before the first frame, for web fonts. */
   fonts?: string[];
+  /** Small screens: grow the UI to a readable size and set what `auditScreen` accepts. See docs/SCREENS.md. */
+  ui?: UIConfig;
   ios?: IosConfig;
   android?: AndroidConfig;
   /** The player-services backend: `{ "provider": "http", "url": "https://…" }`. See docs/SERVICES.md. */
@@ -252,6 +255,21 @@ export function resolveConfig(overrides: Partial<BlackironConfig> = {}): Blackir
   return merged;
 }
 
+/** `?device=iphone-15` (or `#device=…`) on the web: show the game as on that device. */
+function queryDevice(): string | null {
+  const loc = (globalThis as { location?: Location }).location;
+  if (!loc || typeof loc.search !== "string") return null;
+  const q = new URLSearchParams(loc.search);
+  for (const [k, v] of new URLSearchParams((loc.hash ?? "").replace(/^#/, ""))) q.set(k, v);
+  return q.get("device");
+}
+
+/** The orientation a game asks for on phones, used when a device name gives none. */
+function orientationOf(config: BlackironConfig): "portrait" | "landscape" | undefined {
+  const o = config.ios?.orientation ?? config.android?.orientation;
+  return o === "portrait" || o === "landscape" ? o : undefined;
+}
+
 export type AppMode = "web" | "native" | "headless";
 
 export interface AppOptions {
@@ -265,6 +283,11 @@ export interface AppOptions {
   /** Skip baking and use this atlas. */
   atlas?: Atlas;
   platform?: Platform;
+  /**
+   * Pretend to be this device ("iphone-se", "iphone-15-portrait", … or a preset): its size in
+   * points, notch insets and touch. On the web `?device=iphone-15` does the same.
+   */
+  device?: string | DevicePreset;
 }
 
 export interface PushOptions {
@@ -428,6 +451,11 @@ export class App {
   readonly frameTimes = new Float32Array(FRAME_HISTORY);
   /** Safe-area insets in logical units: top, right, bottom, left. */
   readonly safeInsets: [number, number, number, number] = [0, 0, 0, 0];
+  private screenInfo: ScreenInfo;
+  /** The device being emulated, if any. */
+  private preview: DevicePreset | null = null;
+  private previewFrame: HTMLElement | null = null;
+  private insetProbe: HTMLElement | null = null;
   private frameIndex = 0;
   debug = false;
   /** Whether the frame-rate counter is drawn. */
@@ -466,6 +494,7 @@ export class App {
     this.logicalW = config.viewport.width;
     this.logicalH = config.viewport.height;
     this.view = { x: 0, y: 0, w: this.logicalW, h: this.logicalH };
+    this.screenInfo = describeScreen({ width: this.logicalW, height: this.logicalH, pixelRatio: 1, insets: [0, 0, 0, 0], touch: false, pointsPerUnit: 1 }, config.ui);
     this.draw = new DrawContext(renderer, atlas);
     this.draw.pixelSnap = config.pixelSnap && config.render.snap !== "none";
     // Under a synthetic clock (screenshot tests) an unseeded game still renders the same frame.
@@ -509,6 +538,7 @@ export class App {
     if (mode === "headless") {
       const app = new App(platform, config, null, opts.renderer ?? new FakeRenderer(width, height), atlas, "headless");
       app.renderer.resize(width, height, 1);
+      if (opts.device) app.emulateDevice(opts.device);
       return app;
     }
     if (mode === "native") {
@@ -534,6 +564,8 @@ export class App {
     const kernel = opts.renderer ? undefined : await createKernel(config.kernel, config.kernelOptions);
     const renderer = opts.renderer ?? createRenderer(config.renderer, canvas, width, height, { scale: config.render.scale, fallback: config.fallback, kernel });
     const app = new App(platform, config, canvas, renderer, atlas, "web");
+    const device = opts.device ?? queryDevice();
+    if (device) app.preview = typeof device === "string" ? devicePreset(device, orientationOf(config)) : device;
     app.attachDom();
     app.layout();
     // A console handle: `blackiron.scene`, `blackiron.debug = true`, `blackiron.renderer.stats`.
@@ -549,6 +581,62 @@ export class App {
 
   get height(): number {
     return this.logicalH;
+  }
+
+  /** The screen the game is shown on: size in points, insets, touch, size class, points per unit. */
+  get screen(): ScreenInfo {
+    return this.screenInfo;
+  }
+
+  /**
+   * Show the game as it would look on a device ("iphone-se", "ipad-portrait", …, see `DEVICES`):
+   * its size in points, its notch and home bar and touch input. null goes back to the real
+   * screen. In the browser console: `blackiron.emulateDevice("iphone-15")`.
+   */
+  emulateDevice(device: string | DevicePreset | null): void {
+    this.preview = device === null ? null : typeof device === "string" ? devicePreset(device, orientationOf(this.config)) : device;
+    if (this.mode === "web") return this.layout();
+    const p = this.preview;
+    if (p) this.hostResize(p.width, p.height, p.pixelRatio, p.insets);
+    else if (this.mode === "native") {
+      const s = (this.platform as NativePlatform).host.screen;
+      this.hostResize(s.width, s.height, s.scale, s.insets);
+    } else this.hostResize(this.config.viewport.width, this.config.viewport.height, 1);
+  }
+
+  /**
+   * Draw a frame and measure it: every text's size in points and every control's size, against
+   * `ui.minTextPoints` (11) and, on touch screens, `ui.minTouchPoints` (44). Use it with
+   * `emulateDevice` (or `blackiron screens`) to find what is too small on a phone.
+   */
+  auditScreen(): ScreenAudit {
+    const ui = this.config.ui ?? {};
+    const minTextPoints = ui.minTextPoints ?? 11,
+      minTouchPoints = ui.minTouchPoints ?? 44;
+    const screen = this.screenInfo,
+      ppu = screen.pointsPerUnit;
+    const seen = new Map<string, { text: string; size: number; points: number }>();
+    this.draw.audit = (text, size) => {
+      const key = text.replace(/\s+/g, " ").trim();
+      if (!key) return;
+      const points = size * ppu;
+      const prev = seen.get(key);
+      if (!prev || points < prev.points) seen.set(key, { text: key.length > 60 ? `${key.slice(0, 57)}…` : key, size, points });
+    };
+    try {
+      this.render();
+    } finally {
+      this.draw.audit = null;
+    }
+    const text = [...seen.values()].sort((a, b) => a.points - b.points);
+    const targets = this.scenes
+      .visible()
+      .flatMap((s) => s.measureControls())
+      .map((t) => ({ name: t.name, width: t.width * ppu, height: t.height * ppu }))
+      .sort((a, b) => Math.min(a.width, a.height) - Math.min(b.width, b.height));
+    const smallText = text.filter((t) => t.points < minTextPoints - 1e-6);
+    const smallTargets = screen.touch ? targets.filter((t) => Math.min(t.width, t.height) < minTouchPoints - 1e-6) : [];
+    return { screen, minTextPoints, minTouchPoints, text, smallText, targets, smallTargets, ok: !smallText.length && !smallTargets.length };
   }
 
   get scene(): Scene | null {
@@ -825,12 +913,78 @@ export class App {
     return layoutFor(this.config.viewport, availW, availH);
   }
 
-  private applyLogicalSize(lw: number, lh: number): void {
-    if (lw === this.logicalW && lh === this.logicalH) return;
+  /** Apply a new logical size, resizing every scene; false when it did not change. */
+  private applyLogicalSize(lw: number, lh: number): boolean {
+    if (lw === this.logicalW && lh === this.logicalH) return false;
     this.logicalW = lw;
     this.logicalH = lh;
     this.renderer.setLogicalSize(lw, lh);
     for (const s of this.scenes.all()) s.resize(lw, lh);
+    return true;
+  }
+
+  /** Whether touch is the main input here. */
+  private touchScreen(): boolean {
+    if (this.preview) return this.preview.touch;
+    if (this.mode === "native") return (this.platform as NativePlatform).host.screen.touch === true;
+    if (this.mode === "web") return (globalThis as { matchMedia?: (q: string) => { matches: boolean } }).matchMedia?.("(pointer: coarse)")?.matches ?? false;
+    return false;
+  }
+
+  /**
+   * Update the screen description and the safe insets (in logical units) for a container of
+   * `availW` by `availH` points showing the logical size at `cssW` points wide, offset by
+   * (`viewX`, `viewY`). True when anything changed.
+   */
+  private updateScreen(availW: number, availH: number, cssW: number, lw: number, pixelRatio: number, insets: Readonly<Insets>, viewX: number, viewY: number): boolean {
+    const next = describeScreen({ width: availW, height: availH, pixelRatio, insets, touch: this.touchScreen(), pointsPerUnit: lw > 0 && cssW > 0 ? cssW / lw : 1 }, this.config.ui);
+    const k = lw / Math.max(1, cssW);
+    const safe: Insets = [Math.max(0, insets[0] - viewY) * k, Math.max(0, insets[1] - viewX) * k, Math.max(0, insets[2] - viewY) * k, Math.max(0, insets[3] - viewX) * k];
+    const changed = !sameScreen(this.screenInfo, next) || safe.some((v, i) => Math.abs(v - this.safeInsets[i]) > 1e-6);
+    this.screenInfo = next;
+    for (let i = 0; i < 4; i++) this.safeInsets[i] = safe[i];
+    return changed;
+  }
+
+  /** The safe-area insets the browser reports (CSS env()), in CSS pixels. */
+  private webInsets(): Insets {
+    if (typeof document === "undefined" || typeof getComputedStyle !== "function" || !document.body) return [0, 0, 0, 0];
+    let p = this.insetProbe;
+    if (!p) {
+      p = document.createElement("div");
+      p.style.cssText =
+        "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)";
+      document.body.appendChild(p);
+      this.insetProbe = p;
+      const probe = p;
+      this.cleanups.push(() => probe.remove());
+    }
+    const cs = getComputedStyle(p);
+    return [parseFloat(cs.paddingTop) || 0, parseFloat(cs.paddingRight) || 0, parseFloat(cs.paddingBottom) || 0, parseFloat(cs.paddingLeft) || 0];
+  }
+
+  /** On the web, outline the emulated device and shade its unsafe edges. */
+  private drawPreviewFrame(): void {
+    const p = this.preview;
+    if (typeof document === "undefined" || !document.body) return;
+    if (!p) {
+      this.previewFrame?.remove();
+      this.previewFrame = null;
+      return;
+    }
+    let f = this.previewFrame;
+    if (!f) {
+      f = document.createElement("div");
+      f.setAttribute("aria-hidden", "true");
+      document.body.appendChild(f);
+      this.previewFrame = f;
+      const frame = f;
+      this.cleanups.push(() => frame.remove());
+    }
+    const [t, r, b, l] = p.insets;
+    const band = (css: string) => `<div style="position:absolute;background:rgba(255,64,64,0.18);${css}"></div>`;
+    f.style.cssText = `position:fixed;left:50%;top:50%;width:${p.width}px;height:${p.height}px;transform:translate(-50%,-50%);pointer-events:none;z-index:10;box-shadow:0 0 0 1px rgba(255,255,255,0.45),0 0 0 9999px rgba(0,0,0,0.55);border-radius:${p.touch ? 28 : 0}px`;
+    f.innerHTML = (t ? band(`left:0;right:0;top:0;height:${t}px`) : "") + (b ? band(`left:0;right:0;bottom:0;height:${b}px`) : "") + (l ? band(`left:0;top:0;bottom:0;width:${l}px`) : "") + (r ? band(`right:0;top:0;bottom:0;width:${r}px`) : "");
   }
 
   /** Size the canvas to its container according to the viewport scale mode. */
@@ -838,14 +992,19 @@ export class App {
     const canvas = this.canvas;
     if (!canvas) return;
     const parent = canvas.parentElement;
-    const availW = parent ? parent.clientWidth : window.innerWidth;
-    const availH = parent ? parent.clientHeight : window.innerHeight;
+    const p = this.preview;
+    const availW = p ? p.width : parent ? parent.clientWidth : window.innerWidth;
+    const availH = p ? p.height : parent ? parent.clientHeight : window.innerHeight;
     const { cssW, cssH, lw, lh } = this.computeLayout(availW, availH);
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
     this.view = { x: 0, y: 0, w: cssW, h: cssH };
-    this.applyLogicalSize(lw, lh);
-    this.renderer.resize(cssW, cssH, this.platform.pixelRatio());
+    const ratio = this.platform.pixelRatio();
+    // The page centres the canvas in the window, so letterboxing eats into the insets first.
+    const changed = this.updateScreen(availW, availH, cssW, lw, p ? p.pixelRatio : ratio, p ? p.insets : this.webInsets(), Math.floor((availW - cssW) / 2), Math.floor((availH - cssH) / 2));
+    if (!this.applyLogicalSize(lw, lh) && changed) for (const s of this.scenes.all()) s.resize(lw, lh);
+    this.renderer.resize(cssW, cssH, ratio);
+    this.drawPreviewFrame();
   }
 
   // --- Native host entry points -----------------------------------------------------------
@@ -854,15 +1013,12 @@ export class App {
   hostResize(width: number, height: number, scale: number, insets: [number, number, number, number] = [0, 0, 0, 0]): void {
     const { cssW, cssH, lw, lh } = this.computeLayout(width, height);
     this.view = { x: Math.floor((width - cssW) / 2), y: Math.floor((height - cssH) / 2), w: cssW, h: cssH };
-    this.applyLogicalSize(lw, lh);
+    // Screen facts and insets first, so scenes resizing below see the new ones.
+    const changed = this.updateScreen(width, height, cssW, lw, scale, insets, this.view.x, this.view.y);
+    if (!this.applyLogicalSize(lw, lh) && changed) for (const s of this.scenes.all()) s.resize(lw, lh);
     this.renderer.resize(cssW, cssH, scale);
     const r = this.renderer as Renderer & { setPresentRect?: (x: number, y: number, w: number, h: number) => void };
     r.setPresentRect?.(Math.round(this.view.x * scale), Math.round(this.view.y * scale), Math.round(cssW * scale), Math.round(cssH * scale));
-    const k = this.logicalW / Math.max(1, cssW);
-    this.safeInsets[0] = Math.max(0, insets[0] - this.view.y) * k;
-    this.safeInsets[1] = Math.max(0, insets[1] - this.view.x) * k;
-    this.safeInsets[2] = Math.max(0, insets[2] - this.view.y) * k;
-    this.safeInsets[3] = Math.max(0, insets[3] - this.view.x) * k;
   }
 
   /** A pointer event from the host, in points relative to the view. */

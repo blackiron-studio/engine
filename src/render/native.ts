@@ -117,7 +117,7 @@ export interface BlackironHostApi {
   /** Set by hosts running a synthetic clock (`blackiron verify`), so unseeded games stay reproducible. */
   deterministic?: boolean;
   /** Current screen in points, device scale and safe-area insets (top, right, bottom, left). */
-  screen: { width: number; height: number; scale: number; insets: [number, number, number, number] };
+  screen: { width: number; height: number; scale: number; insets: [number, number, number, number]; touch?: boolean };
 }
 
 interface NativeGlyph {

@@ -3,6 +3,7 @@
 // scene tests do.
 
 import { App, type BlackironConfig } from "../app/app.ts";
+import type { DevicePreset } from "../app/screen.ts";
 import { HeadlessPlatform } from "../platform/headless.ts";
 import type { FakeOp } from "../render/fake.ts";
 import { FakeRenderer } from "../render/fake.ts";
@@ -14,6 +15,8 @@ export interface TestAppOptions {
   seed?: number | string;
   scene?: Scene;
   platform?: HeadlessPlatform;
+  /** Run as on this device ("iphone-se", "iphone-15-portrait", "ipad", …): its points, notch and touch. */
+  device?: string | DevicePreset;
 }
 
 /** A headless App with a deterministic seed, a HeadlessPlatform and a FakeRenderer. */
@@ -22,6 +25,7 @@ export async function createTestApp(opts: TestAppOptions = {}): Promise<App> {
     headless: true,
     platform: opts.platform ?? new HeadlessPlatform(),
     config: { seed: opts.seed ?? 1, viewport: { width: 640, height: 360 }, ...opts.config },
+    device: opts.device,
   });
   if (opts.scene) app.scenes.change(opts.scene);
   return app;

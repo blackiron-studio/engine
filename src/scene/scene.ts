@@ -3,6 +3,7 @@ import { ResourceScope } from "../content/resources.ts";
 // own tweens. The App owns a stack of scenes and drives the active one.
 
 import type { App } from "../app/app.ts";
+import { type Insets, type ScreenInfo, describeScreen } from "../app/screen.ts";
 import type { PhysicsWorld } from "../physics/world.ts";
 import type { Rect } from "../core/math.ts";
 import { Rng } from "../core/rng.ts";
@@ -104,9 +105,59 @@ export class Scene extends Node {
     return this.camera.height;
   }
 
-  /** Logical size used by controls inside the fitted UI layer. */
-  get uiWidth(): number { return this.fitDesign?.w ?? this.width; }
-  get uiHeight(): number { return this.fitDesign?.h ?? this.height; }
+  /** Logical size used by controls inside the fitted (or automatically grown) UI layer. */
+  get uiWidth(): number { return this.fitDesign?.w ?? this.width / this.autoScale; }
+  get uiHeight(): number { return this.fitDesign?.h ?? this.height / this.autoScale; }
+
+  /** The screen this scene is shown on (points, insets, touch, size class); see `App.screen`. */
+  get screen(): ScreenInfo {
+    return this._app?.screen ?? describeScreen({ width: this.width, height: this.height, pixelRatio: 1, insets: [0, 0, 0, 0], touch: false, pointsPerUnit: 1 });
+  }
+
+  /** A small screen (under 600 points across): lay the UI out compactly. */
+  get compact(): boolean {
+    return this.screen.compact;
+  }
+
+  /** The safe-area insets (notch, rounded corners, home bar) in UI units: top, right, bottom, left. */
+  get uiInsets(): Insets {
+    const ins = this._app?.safeInsets ?? [0, 0, 0, 0];
+    const k = this.ui.scaleX || 1;
+    const right = this.width - (this.ui.x + this.uiWidth * k),
+      bottom = this.height - (this.ui.y + this.uiHeight * k);
+    return [Math.max(0, ins[0] - this.ui.y) / k, Math.max(0, ins[1] - right) / k, Math.max(0, ins[2] - bottom) / k, Math.max(0, ins[3] - this.ui.x) / k];
+  }
+
+  /** The part of the UI layer clear of the notch and home bar, in UI units. */
+  get safeRect(): Rect {
+    const [t, r, b, l] = this.uiInsets;
+    return { x: l, y: t, w: Math.max(0, this.uiWidth - l - r), h: Math.max(0, this.uiHeight - t - b) };
+  }
+
+  /**
+   * Visible, enabled controls in the UI layer and their size on screen in logical units, for
+   * `App.auditScreen`.
+   */
+  measureControls(): { name: string; width: number; height: number }[] {
+    const out: { name: string; width: number; height: number }[] = [];
+    for (const c of this.ui.findAllInDrawOrder(Control)) {
+      if (c.disabled || c.w <= 0 || c.h <= 0) continue;
+      let sx = 1,
+        sy = 1,
+        shown = true;
+      for (let n: Node | null = c; n && n !== this; n = n.parent) {
+        if (!n.visible) shown = false;
+        if (n instanceof Node2D) {
+          sx *= Math.abs(n.scaleX);
+          sy *= Math.abs(n.scaleY);
+        }
+      }
+      if (!shown) continue;
+      const label = (c as { text?: unknown }).text;
+      out.push({ name: c.name || (typeof label === "string" && label ? `${c.constructor.name} "${label}"` : c.constructor.name), width: c.w * sx, height: c.h * sy });
+    }
+    return out;
+  }
 
   /** Wider than tall. Lay out a side panel here and a bottom bar otherwise. */
   get wide(): boolean {
@@ -118,6 +169,8 @@ export class Scene extends Node {
   }
 
   private fitDesign: { w: number; h: number; opts: FitOptions } | null = null;
+  /** The scale `ui.minPoints` gave the UI layer (1 when it is off or not needed). */
+  private autoScale = 1;
 
   /**
    * Lay the UI out for a fixed design size: the `ui` layer is scaled to fit the screen and
@@ -134,7 +187,19 @@ export class Scene extends Node {
 
   private applyFit(): number {
     const d = this.fitDesign;
-    if (!d) return 1;
+    if (!d) {
+      // Without a fixed design, `ui.minPoints` grows the UI on small screens; layouts then work
+      // in uiWidth × uiHeight. A scene that scales its UI itself keeps doing so while this is 1.
+      const s = this._app?.config.ui?.minPoints ? this._app.screen.uiScale : 1;
+      if (s !== 1 || this.autoScale !== 1) {
+        this.ui.scale = s;
+        this.ui.x = 0;
+        this.ui.y = 0;
+      }
+      this.autoScale = s;
+      return s;
+    }
+    this.autoScale = 1;
     const k = Math.min(d.opts.max ?? 1, this.width / d.w, this.height / d.h);
     this.ui.scale = k;
     this.ui.x = Math.round((this.width - d.w * k) / 2);

@@ -669,7 +669,14 @@ impl Js {
 }
 
 fn screen_value(s: &Screen) -> Val {
-    Val::Obj(vec![("width".into(), Val::Num(s.width)), ("height".into(), Val::Num(s.height)), ("scale".into(), Val::Num(s.scale)), ("insets".into(), Val::Nums(s.insets.to_vec()))])
+    Val::Obj(vec![
+        ("width".into(), Val::Num(s.width)),
+        ("height".into(), Val::Num(s.height)),
+        ("scale".into(), Val::Num(s.scale)),
+        ("insets".into(), Val::Nums(s.insets.to_vec())),
+        // Phones and tablets: touch is the main input (the engine's App.screen.touch).
+        ("touch".into(), Val::Bool(cfg!(any(target_os = "android", target_os = "ios")))),
+    ])
 }
 
 fn decode_image(bytes: &[u8]) -> Option<(u32, u32, Vec<u8>)> {

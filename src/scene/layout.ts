@@ -17,8 +17,10 @@ export interface AnchorOptions {
   /** Size of the anchored box, so "right" and "bottom" align its far edge. */
   w?: number;
   h?: number;
-  /** Keep this far from the edges, for notches and rounded corners. */
+  /** Keep this far from the edges, as a fixed margin. */
   safe?: number;
+  /** Also stay clear of the notch, rounded corners and home bar on the edges it is anchored to. */
+  safeArea?: boolean;
 }
 
 /**
@@ -33,6 +35,7 @@ export class Anchor extends Node2D {
   w: number;
   h: number;
   safe: number;
+  safeArea: boolean;
 
   constructor(opts: AnchorOptions = {}) {
     super();
@@ -43,18 +46,21 @@ export class Anchor extends Node2D {
     this.w = opts.w ?? 0;
     this.h = opts.h ?? 0;
     this.safe = opts.safe ?? 0;
+    this.safeArea = opts.safeArea ?? false;
   }
 
   /** Recompute the position from the scene's size. Called each frame; cheap. */
   place(width: number, height: number): void {
     const scene = this.scene;
+    let inUI = false;
     if (scene) {
       for (let p: Node | null = this; p; p = p.parent) {
-        if (p === scene.ui) { width = scene.uiWidth; height = scene.uiHeight; break; }
+        if (p === scene.ui) { width = scene.uiWidth; height = scene.uiHeight; inUI = true; break; }
       }
     }
-    this.x = this.ax === "left" ? this.safe + this.dx : this.ax === "right" ? width - this.safe - this.w + this.dx : Math.round((width - this.w) / 2) + this.dx;
-    this.y = this.ay === "top" ? this.safe + this.dy : this.ay === "bottom" ? height - this.safe - this.h + this.dy : Math.round((height - this.h) / 2) + this.dy;
+    const [t, r, b, l] = this.safeArea && scene ? (inUI ? scene.uiInsets : (scene.attachedApp?.safeInsets ?? [0, 0, 0, 0])) : [0, 0, 0, 0];
+    this.x = this.ax === "left" ? this.safe + l + this.dx : this.ax === "right" ? width - this.safe - r - this.w + this.dx : Math.round((width - this.w) / 2) + this.dx;
+    this.y = this.ay === "top" ? this.safe + t + this.dy : this.ay === "bottom" ? height - this.safe - b - this.h + this.dy : Math.round((height - this.h) / 2) + this.dy;
   }
 
   override ready(): void {

@@ -38,6 +38,8 @@ blackiron <command> [options]
   run android [--device serial]             Export, build the APK, install and launch
   verify      [--host desktop|ios|android|all] [--update] [--only name] [--tolerance 0.005] [--js quickjs|v8]
                                             Render every project's snapshots and compare with the goldens
+  screens     [dir] [--devices iphone-se,iphone-15,ipad,laptop] [--steps "..."] [--out dir] [--strict]
+                                            Screenshots on phones, tablets and desktops, with text and touch sizes checked
   atlas       [--out dir] [--split]         Bake sprites headlessly to PNG + JSON
   art import <sheet.png> [--name prefix] [--out assets] [--cell WxH] [--pixel N] [--shrink 2]
                          [--anim walk=down:4,5;up:1;left:2,6;right:3,7] [--mirror attack] [--event attack:9=hit] [--hold hurt=0.4] [--hitbox 9=x,y,w,h]
@@ -77,6 +79,8 @@ async function main(): Promise<void> {
     }
     case "verify":
       return (await import("./commands/verify.ts")).verify(args);
+    case "screens":
+      return (await import("./commands/screens.ts")).screens(args);
     case "atlas":
       return (await import("./commands/atlas.ts")).atlas(args);
     case "art":

@@ -31,6 +31,8 @@ Version 0.21 adds turning: figures painted from several directions (mirrored or 
 
 Version 0.22 adds 3D effects: pooled effect sprites (billboards, streaks, flat marks) that draw in one batch from one atlas, scorch decals, light flashes, debris that tumbles and bounces, a `Spring`, a view punch and landing dip, and a hard-surface shape builder. Signal Breach uses all of them; see [3D effects](docs/EFFECTS3D.md).
 
+Version 0.23 adds small-screen support: the physical screen (points, notch, touch, phone or tablet), a UI layer that grows to stay readable on phones (`ui.minPoints`), safe-area anchors, device emulation in tests and the browser, and `blackiron screens`, which checks text and touch targets on an iPhone, an iPad and a laptop headless. See [small screens](docs/SCREENS.md).
+
 Version 0.16 extends the shared FPS controller, combat and weapon layer to native hosts, adds native mouse capture and portable sign textures, and makes exports preserve the previous package on build failure. See [the native/export upgrade](docs/ENGINE-UPGRADE-0.16.md) for validation and remaining limits.
 
 The [current roadmap](docs/ROADMAP.md) defines the remaining work toward Godot/Unity
@@ -174,6 +176,7 @@ when linking the source package locally. Native validation remains available in 
 | `blackiron export ios [--out dir]` | An Xcode project in `dist/ios/<Name>/`: the Swift and Metal host, the native build as bundle resources, and a `project.yml` for XcodeGen. Open it in Xcode or archive it from the command line. |
 | `blackiron run ios [--device "iPhone 17 Pro"]` | Exports, builds with `xcodebuild` for the simulator, boots the device, installs and launches the app. |
 | `blackiron run desktop [--js v8\|quickjs] [--snapshot out.png]` | Builds the game and the host and opens a window; V8 by default on desktops. |
+| `blackiron screens [--devices iphone-se,iphone-15,ipad,laptop] [--steps "..."] [--strict]` | Runs the game headless on each device (size, notch, touch), saves a screenshot at every `shot:` step and measures text and touch targets in points. Writes `.blackiron/screens/report.json` and an `index.html` contact sheet; `--strict` fails when anything is too small. |
 | `blackiron verify [--host desktop\|ios\|android\|all] [--update]` | Renders every project's `snapshots` scenarios on a host with a fixed clock and scripted taps, and compares the pixels with the goldens in `<project>/snapshots/<host>/`. `--update` accepts the current renders. |
 | `blackiron atlas [--out atlas] [--split]` | Bakes every sprite without a browser into `atlas.png` and `atlas.json`; `--split` also writes one PNG per sprite. |
 | `blackiron new <dir> [--template <name>]` | Scaffolds a project from `templates/<name>`; `--list` shows them. |
@@ -296,6 +299,17 @@ of a model and lets them tumble, bounce off the level, smoke and sink. `Spring` 
 recoil and jolts at any frame rate, and `FirstPersonLook.punch` and `land` kick and dip the view.
 `ShapeBuilder3D` builds bevelled boxes, extrusions and lathes with edge strips. Signal Breach uses
 all of it. See [docs/EFFECTS3D.md](docs/EFFECTS3D.md).
+
+## Small screens (0.23)
+
+`app.screen` says what the game is shown on: points, pixel ratio, safe-area insets, touch, phone,
+tablet or desktop, and how many points one logical unit covers. `"ui": { "minPoints": 0.8 }`
+grows each scene's UI layer on phones so text stays at 11 points or more, the way Unity's
+constant physical size and Unreal's DPI curve do; desktops are unchanged. `Anchor` takes
+`safeArea: true`, and `scene.uiInsets` and `scene.safeRect` give the notch in UI units.
+`createTestApp({ device: "iphone-15" })`, `app.emulateDevice()` and `?device=` show a game on a
+given device, and `blackiron screens` screenshots it on several and measures every text and touch
+target. See [docs/SCREENS.md](docs/SCREENS.md).
 
 ## Kernel
 

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.23.0 — Small screens (2026-11-26)
+
+- `app.screen` and `scene.screen` describe the physical screen:
+  - size in points, pixel ratio and safe-area insets;
+  - whether touch is the main input, and the orientation;
+  - `sizeClass` (phone, tablet, desktop) and `compact` (short side under 600 points);
+  - `pointsPerUnit`, how large one logical unit shows.
+  - Touch comes from `(pointer: coarse)` on the web and from the native hosts (iOS, and the Rust host on Android and iOS), which now report `touch` with the screen.
+  - Scenes get `onResize` when only the screen changes, even if the logical size stays the same.
+- `ui.minPoints` in blackiron.json grows each scene's `ui` layer on small screens until one UI unit shows at least that many points:
+  - `ui.maxScale` caps it (2);
+  - `uiWidth` and `uiHeight` shrink to match, so anchors and rows follow;
+  - desktops and iPads stay at 1;
+  - scenes that set `ui.scale` themselves or call `fitUI` keep control.
+  - 0.8 is the recommended value (14-unit text at 11 points or more).
+- Safe area:
+  - `scene.uiInsets` gives the insets in UI units, and `scene.safeRect` the part of the UI clear of the notch and home bar.
+  - `Anchor` gains `safeArea: true`, which adds the inset on the edges it is anchored to.
+- Devices:
+  - `DEVICES` and `devicePreset()` cover the iPhone SE, iPhone 15, iPhone 15 Pro Max, a small Android phone, iPad mini, iPad, a laptop and a desktop, each with insets for both orientations.
+  - `app.emulateDevice(name | preset | null)` switches device at run time.
+  - `createTestApp({ device })` and `App.create({ device })` start on a device.
+  - `?device=iphone-15` on the dev server shows the device outline and its insets.
+- Measuring:
+  - `app.auditScreen()` reports every piece of text and every control with its size in points.
+  - It flags text under `ui.minTextPoints` (11) and, on touch screens, targets under `ui.minTouchPoints` (44).
+- `blackiron screens` runs the game headless on several devices (by default the iPhone SE, iPhone 15, iPad and a laptop):
+  - it saves a screenshot at each `shot:` step and measures text, touch targets and controls off screen;
+  - it writes `report.json` and an `index.html` contact sheet;
+  - `--strict` fails the run when anything is too small.
+  - `scripts/shoot.ts` uses the same runner and takes `--device`.
+- `legibleScale(pointsPerUnit, minPoints, maxScale)` is exported for games that size things themselves.
+- Signal Nine now uses `scene.screen` and `legibleScale` instead of reading the window and the native host. Its phone tests run on `createTestApp({ device })`.
+- Tests: `tests/screens.test.ts` (8 tests).
+- See [docs/SCREENS.md](docs/SCREENS.md).
+
 ## 0.22.0 — 3D effects (2026-11-22)
 
 - `Mesh3D` gains per-instance `opacity`, `glow` and `uvRect`, next to `tint`:
