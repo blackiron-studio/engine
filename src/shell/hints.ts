@@ -161,14 +161,17 @@ export class HintLayer extends Node2D {
     const text = this.hints.text() || this.lastText;
     if (!text) return;
     this.lastText = text;
+    // The layer's own size: in a UI grown by `ui.minPoints` or fitted with `fitUI`, that is
+    // uiWidth × uiHeight, not the logical size.
+    const area = this.scene?.areaOf(this) ?? { width: ctx.width, height: ctx.height, insets: app.safeInsets };
     // Wrap to the width allowed, so a long hint never runs off a narrow screen.
-    const maxWidth = Math.min(this.opts.maxWidth ?? ctx.width - 40, ctx.width - 40) - 28;
+    const maxWidth = Math.min(this.opts.maxWidth ?? area.width - 40, area.width - 40) - 28;
     const lines = wrapText(text, maxWidth, (t) => ctx.measure(t, 1, 0, font));
     const lineH = font === "pixel" ? 9 : ctx.lineHeight(1, font);
     const w = Math.max(...lines.map((l) => ctx.measure(l, 1, 0, font))) + 28;
     const h = lineH * lines.length + 18;
-    const x = Math.round((ctx.width - w) / 2);
-    const y = Math.round(ctx.height - (this.opts.bottom ?? 48) - h - app.safeInsets[2]);
+    const x = Math.round((area.width - w) / 2);
+    const y = Math.round(area.height - (this.opts.bottom ?? 48) - h - area.insets[2]);
     const p = app.theme.panel;
     ctx.rect(x, y, w, h, p.fill, p.fillAlpha * this.alpha2);
     if (p.border !== null) ctx.frame(x, y, w, h, p.border, this.alpha2);

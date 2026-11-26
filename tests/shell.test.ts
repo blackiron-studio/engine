@@ -7,8 +7,8 @@ import { Scene, Slider, wrapText } from "../src/scene/index.ts";
 import { auditUILayout, createTestApp, stepFrames } from "../src/testkit/index.ts";
 import { ConfirmScene, ControlsScene, Hints, HintLayer, MenuScene, PauseScene, SaveSlotsScene, SettingsScene, TitleScene, bindShellActions, createSaveSlots, createSettings, glyphFor, keyName } from "../src/shell/index.ts";
 
-async function makeApp(): Promise<App> {
-  const app = await App.create({ headless: true, config: { seed: 1, viewport: { width: 640, height: 360 }, fps: false } });
+async function makeApp(width = 640, height = 360): Promise<App> {
+  const app = await App.create({ headless: true, config: { seed: 1, viewport: { width, height }, fps: false } });
   app.input.map({ jump: ["Space", "GamepadA"], left: ["KeyA", "ArrowLeft"], right: ["KeyD", "ArrowRight"] });
   bindShellActions(app);
   app.setTheme({ font: { family: "Instrument Sans", size: 20, weight: 600 } });
@@ -198,7 +198,8 @@ describe("Menus", () => {
   });
 
   test("settings sliders align and pointer positions match their drawn tracks", async () => {
-    const app = await makeApp();
+    // Tall enough for the settings in one column; a 360-unit screen wraps them (see below).
+    const app = await makeApp(1280, 720);
     const settings = createSettings(app);
     const scene = new SettingsScene(settings);
     app.scenes.change(scene);

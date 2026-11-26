@@ -37,6 +37,9 @@ every button measured in points.
 | `pointsPerUnit` | How many points one logical unit covers on screen. |
 | `uiScale` | What `ui.minPoints` grows the UI layer by here (1 when it is off). |
 
+On a touch screen, `app.input.lastDevice` starts as `"touch"` (0.23.2), so hints and prompts
+speak touch before the first tap. A key or a controller switches them as usual.
+
 Scenes hear about screen changes through `onResize`, even when the logical size stays the same.
 For example, a `fit` viewport keeps 1280 × 720 on every screen, but moving from an iPad to an
 iPhone still calls it.
@@ -73,6 +76,34 @@ is Unity's "constant physical size" with a floor, and it plays the role of Unrea
 - A scene that sets its own `ui.scale`, or calls `fitUI`, keeps control:
   - without `minPoints` the engine never touches `ui.scale`;
   - `fitUI` designs are scaled by `fitUI`, not by `minPoints`.
+
+### Inside the grown UI
+
+`ctx.width` and `ctx.height` are always the logical size, and the pointer is always in logical
+units. Inside a grown or fitted `ui` layer, convert:
+
+- `scene.toUI(x, y)` turns a pointer or touch position into UI units;
+- `scene.areaOf(node)` gives the width, height and insets of the layer a node draws in
+  (`uiWidth` × `uiHeight` and `uiInsets` inside `ui`, the logical size elsewhere);
+- `scene.inUI(node)` says whether a node is inside `ui`.
+
+The engine's own UI does this since 0.23.2: `HintLayer`, the menus (dim, panel, rows),
+`VirtualSticks`, `TouchControls` and tooltips. Sticks and touch controls inside `ui` take
+their zones and `size` in UI units, so they grow with the HUD.
+
+### Menus
+
+The shell's menus (`TitleScene`, `PauseScene`, `SettingsScene`, `ControlsScene`, …) fit small
+screens by themselves:
+
+- on a touch screen every row is at least 44 points tall, however small a unit shows;
+- rows keep 20 units clear of each edge;
+- when the rows are taller than the screen they flow into side-by-side columns, evened out,
+  and left and right move between them. The settings menu fits an iPhone SE held sideways in
+  two columns.
+
+`Row` and `Column` do the same for any layout with `wrap` (the longest a line may run) and
+`lineGap`.
 
 ### `fitUI` on phones
 
@@ -134,10 +165,26 @@ Known devices, with sizes and insets in points as iOS reports them to a full-scr
 
 `app.auditScreen()` draws a frame and reports:
 
-- every piece of text with its size in points;
+- every piece of text with its size in points, and whether it is UI text or scenery;
 - every visible, enabled control with its size in points;
-- the text under `ui.minTextPoints` (11);
+- the UI text under `ui.minTextPoints` (11);
 - on touch screens, the controls narrower or shorter than `ui.minTouchPoints` (44).
+
+**Scenery.** Text drawn in the world layer is scenery: a street sign, a label on a map. So is
+text drawn anywhere with `{ scenery: true }`. Small scenery is listed in `smallWorldText` and
+does not fail the screen, since the player need not read it to play. `blackiron screens` shows
+it as a note.
+
+**Targets a game draws itself.** A HUD drawn by hand, not with `Button`s, reports its tap areas
+so they are measured too. Call `reportTarget` from `render`, in `ui` units, on every frame the
+target is shown:
+
+```ts
+override render(ctx: DrawContext): void {
+  ctx.rect(x, y, 120, 56, 0x202830);
+  this.scene?.reportTarget("Garage", x, y, 120, 56);
+}
+```
 
 ```ts
 const app = await createTestApp({ device: "iphone-se", config });
@@ -152,11 +199,12 @@ the same steps on each, saves a screenshot at every `shot:` step, and measures i
 ```sh
 blackiron screens                                    # iPhone SE, iPhone 15, iPad, laptop
 blackiron screens --devices iphone-15-portrait,ipad  # pick devices
-blackiron screens --steps "frames:3;shot:title;key:Enter;frames:90;shot:play"
+blackiron screens --steps "frames:60;shot:title;key:Enter;frames:90;shot:play"  # the default
 blackiron screens --strict                           # exit 1 when anything is too small
 ```
 
-It prints one line per shot. On a game that is not ready for phones yet, a line looks like this:
+It waits a second before the title shot, so a title that fades in is measured. It prints one
+line per shot. On a game that is not ready for phones yet, a line looks like this:
 
 ```
 iphone-15-landscape        play       0.55 pt/unit, UI ×1.00  ✗ 41 texts under 11 pt (smallest 4.9 pt "x3"); 6 touch targets under 44 pt (Button "Reload" 33×16 pt)

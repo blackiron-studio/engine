@@ -17,7 +17,7 @@ export interface VirtualStickSpec {
 
 export interface VirtualSticksOptions {
   sticks: VirtualStickSpec[];
-  /** Radius of full deflection, in viewport units. */
+  /** Radius of full deflection, in the units of the layer the sticks are in (UI units in `ui`). */
   size?: number;
   /** Show and read even without a touch pointer, for tests and mouse play. */
   always?: boolean;
@@ -93,9 +93,15 @@ export class VirtualSticks extends Node2D {
       for (const s of this.st) s.id = null;
       return;
     }
-    const w = this.scene?.width ?? 0;
-    const h = this.scene?.height ?? 0;
-    const touches = app.pointer.touches;
+    const scene = this.scene;
+    if (!scene) return;
+    // Zones, positions and `size` are in the units of the layer the sticks draw in: UI units
+    // inside a `ui` layer that `ui.minPoints` grew, so the sticks grow with the HUD on a phone.
+    const area = scene.areaOf(this);
+    const w = area.width;
+    const h = area.height;
+    const touches = new Map<number, { x: number; y: number }>();
+    for (const [id, t] of app.pointer.touches) touches.set(id, area.ui ? scene.toUI(t.x, t.y) : t);
     for (let i = 0; i < this.st.length; i++) {
       const s = this.st[i];
       if (s.id !== null && !touches.has(s.id)) s.id = null;
@@ -132,8 +138,9 @@ export class VirtualSticks extends Node2D {
 
   override render(ctx: DrawContext): void {
     if (!this.active || this.opacity <= 0) return;
-    const w = ctx.width;
-    const h = ctx.height;
+    const area = this.scene?.areaOf(this);
+    const w = area?.width ?? ctx.width;
+    const h = area?.height ?? ctx.height;
     for (let i = 0; i < this.st.length; i++) {
       const s = this.st[i];
       const [rx, ry] = restOf(this.specs[i]);

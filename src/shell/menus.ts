@@ -5,7 +5,7 @@
 import type { App } from "../app/app.ts";
 import { measureText as measurePixel } from "../art/font.ts";
 import type { DrawContext } from "../scene/draw.ts";
-import { Anchor, Column, FocusGroup } from "../scene/layout.ts";
+import { Anchor, Column, FocusGroup, layoutBox } from "../scene/layout.ts";
 import { Node2D } from "../scene/node.ts";
 import { Scene } from "../scene/scene.ts";
 import { Label } from "../scene/text.ts";
@@ -63,7 +63,13 @@ class Dim extends Node2D {
   }
 
   override render(ctx: DrawContext): void {
-    ctx.rect(0, 0, ctx.width, ctx.height, 0x000000, this.amount);
+    // Cover the whole screen from inside the UI layer, whether `ui.minPoints` grew it or
+    // `fitUI` shrank it into a letterbox.
+    const s = this.scene;
+    if (!s) return ctx.rect(0, 0, ctx.width, ctx.height, 0x000000, this.amount);
+    const kx = s.ui.scaleX || 1,
+      ky = s.ui.scaleY || 1;
+    ctx.rect(-s.ui.x / kx - 1, -s.ui.y / ky - 1, s.width / kx + 2, s.height / ky + 2, 0x000000, this.amount);
   }
 }
 
@@ -73,8 +79,9 @@ class MenuBackdrop extends Node2D {
   override render(ctx: DrawContext): void {
     const column = this.content();
     column.layout();
-    const w = Math.min(ctx.width - 24, column.w + 48);
-    const h = Math.min(ctx.height - 24, column.h + 40);
+    const area = this.scene?.areaOf(this) ?? { width: ctx.width, height: ctx.height };
+    const w = Math.min(area.width - 24, column.w + 48);
+    const h = Math.min(area.height - 24, column.h + 40);
     const x = -w / 2, y = -h / 2;
     const theme = this.scene?.app.theme;
     ctx.rect(x, y, w, h, theme?.panel.fill ?? 0x141225, 0.98);
@@ -86,9 +93,15 @@ class MenuBackdrop extends Node2D {
 /** A vertical menu. Subclasses add rows in `build`; entries come from the options. */
 export class MenuScene extends Scene {
   readonly focus = new FocusGroup([]);
+  /** Title, subtitle, the rows and the footer, top to bottom. */
   protected column!: Column;
+  /** The rows, inside `column`. It flows into a second column when the rows are taller than the screen. */
+  protected list!: Column;
   protected panel!: Node2D;
   protected readonly rows: Control[] = [];
+  /** Rows the menu made itself, which it resizes when the screen changes. */
+  private readonly sized = new Set<Control>();
+  private fitted = "";
   /** Hide the rows while another menu is stacked on top; the dim stays. */
   hideWhenCovered = true;
 
@@ -106,10 +119,13 @@ export class MenuScene extends Scene {
     this.column = anchor.add(new Column({ gap: this.menu.gap ?? 12, align: "center", origin: "center" }));
     const theme = this.app.theme;
     if (this.menu.title) this.column.add(this.makeTitle(this.menu.title, this.menu.titleSize ?? 44));
-    if (this.menu.subtitle) this.column.add(new Label(this.menu.subtitle, 0, 0, { align: "center", color: theme.muted, wrap: Math.max(this.rowWidth(), Math.min(this.width - 40, 640)) }));
+    if (this.menu.subtitle) this.column.add(new Label(this.menu.subtitle, 0, 0, { align: "center", color: theme.muted, wrap: Math.max(this.rowWidth(), Math.min(this.uiWidth - 40, 640)) }));
+    const gap = this.menu.gap ?? 12;
+    this.list = this.column.add(new Column({ gap, lineGap: Math.max(16, gap), align: "center" }));
     this.build();
     for (const e of this.menu.entries ?? []) this.addEntry(e);
     if (this.menu.footer) this.column.add(new Label(this.menu.footer, 0, 0, { align: "center", color: theme.muted }));
+    this.fitRows();
     if (this.rows.length) this.focus.set(0);
     // Hit tests before the first draw see identity transforms; count hover from real movement only.
     const p = this.app.pointer;
@@ -120,6 +136,7 @@ export class MenuScene extends Scene {
   protected build(): void {}
 
   override drawTree(ctx: DrawContext): void {
+    if (this.list && this.fitKey() !== this.fitted) this.fitRows();
     if (this.hideWhenCovered && this.panel) {
       const all = this.app.scenes.all();
       let covered = false;
@@ -136,26 +153,87 @@ export class MenuScene extends Scene {
   }
 
   protected rowWidth(): number {
-    return this.menu.width ?? Math.min(380, this.width - 40);
+    return Math.max(120, Math.min(this.menu.width ?? 380, this.uiWidth - 40));
   }
 
+  /**
+   * 44 units, more with large text. On a touch screen, never under 44 points (a fingertip),
+   * however small the screen shows a unit. An explicit `rowHeight` option is used as given.
+   */
   protected rowHeight(): number {
-    return this.menu.rowHeight ?? Math.round(44 * Math.max(1, this.app.accessibility.textScale));
+    if (this.menu.rowHeight !== undefined) return this.menu.rowHeight;
+    const base = Math.round(44 * Math.max(1, this.app.accessibility.textScale));
+    const screen = this.screenInfo;
+    const pointsPerUnit = screen.pointsPerUnit * Math.abs(this.ui.scaleY || 1);
+    return screen.touch && pointsPerUnit > 0 ? Math.max(base, Math.ceil(44 / pointsPerUnit)) : base;
   }
 
   addEntry(e: MenuEntry): Button {
     const b = new Button(e.label, 0, 0, this.rowWidth(), this.rowHeight(), { onPress: () => e.onPick?.() });
     b.disabled = e.disabled ?? false;
+    this.sized.add(b);
     this.addRow(b);
     return b;
   }
 
   /** Add any control as a focusable row. */
   addRow<T extends Control>(control: T): T {
-    this.column.add(control);
+    (this.list ?? this.column).add(control);
     this.rows.push(control);
     this.focus.items = this.rows;
+    if (this.isStarted) this.fitRows();
     return control;
+  }
+
+  /** Mark a row the menu sized itself (`rowWidth` by `rowHeight`), so it follows screen changes. */
+  protected sizedRow<T extends Control>(control: T): T {
+    this.sized.add(control);
+    return control;
+  }
+
+  private fitKey(): string {
+    const s = this.screenInfo;
+    return `${this.uiWidth}x${this.uiHeight}@${s.pointsPerUnit}x${this.ui.scaleY}:${s.touch}:${this.rows.length}`;
+  }
+
+  /**
+   * Size the rows for this screen and let them flow into side-by-side columns when they are
+   * taller than it: the nine settings rows do not fit a phone held sideways in one column.
+   * Runs when the menu is built and whenever the screen changes.
+   */
+  protected fitRows(): void {
+    const list = this.list;
+    if (!list) return;
+    this.fitted = this.fitKey();
+    const w = this.rowWidth(),
+      h = this.rowHeight();
+    for (const r of this.sized) {
+      r.w = w;
+      r.h = h;
+    }
+    list.wrap = 0;
+    this.column.layout();
+    // Room for the rows: the screen less a margin, the panel's padding and the other lines.
+    const room = this.uiHeight - 32 - (this.menu.panel ? 40 : 0) - (this.column.h - list.h);
+    list.wrap = Math.max(h, room);
+    list.layout();
+    if (list.lines > 1) {
+      // Even the columns out (5 and 4 rather than 6 and 3) when that needs no extra column.
+      const lines = list.lines;
+      const per = Math.ceil(list.children.length / lines);
+      const tallest = Math.max(...list.children.map((c) => layoutBox(c).h));
+      list.wrap = Math.min(list.wrap, per * tallest + (per - 1) * list.gap);
+      list.layout();
+      if (list.lines > lines) {
+        list.wrap = Math.max(h, room);
+        list.layout();
+      }
+      // Narrow the rows so the columns fit side by side.
+      const across = this.uiWidth - 40 - (this.menu.panel ? 48 : 0) - (list.lines - 1) * (list.lineGap ?? list.gap);
+      const narrow = Math.max(120, Math.min(w, Math.floor(across / list.lines)));
+      for (const r of this.sized) r.w = narrow;
+    }
+    this.column.layout();
   }
 
   /** Back: the option's handler, else pop when a scene is under this one. */
@@ -190,6 +268,12 @@ export class MenuScene extends Scene {
     if (name === "left" || name === "right") {
       const c = this.focus.current;
       if (c instanceof Slider) c.nudge(name === "left" ? -1 : 1);
+      else if (c && this.list && this.list.lines > 1) {
+        // Rows in side-by-side columns: left and right move between them.
+        const per = Math.ceil(this.rows.length / this.list.lines);
+        const i = this.rows.indexOf(c) + (name === "left" ? -per : per);
+        if (i >= 0 && i < this.rows.length) this.focus.set(i);
+      }
       return;
     }
     this.focus.onAction(name, pressed);
@@ -317,7 +401,7 @@ export class SettingsScene extends MenuScene {
   }
 
   private slider(label: string, key: "masterVolume" | "musicVolume" | "sfxVolume" | "screenShake"): void {
-    const s = this.addRow(new Slider(0, 0, this.rowWidth(), this.rowHeight(), { label, labelWidth: this.sliderLabelWidth(), value: this.settings.data[key], step: 0.05, onChange: (v) => this.settings.set({ [key]: v }) }));
+    const s = this.addRow(this.sizedRow(new Slider(0, 0, this.rowWidth(), this.rowHeight(), { label, labelWidth: this.sliderLabelWidth(), value: this.settings.data[key], step: 0.05, onChange: (v) => this.settings.set({ [key]: v }) })));
     s.name = key;
   }
 

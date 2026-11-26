@@ -49,7 +49,10 @@ export function summarise(row: ScreenRow): string {
   if (off.length) parts.push(`${off.length} control${off.length > 1 ? "s" : ""} off screen (${off[0].name})`);
   const s = a.screen;
   const head = `${row.device.name.padEnd(26)} ${row.shot.name.padEnd(10)} ${(s.pointsPerUnit).toFixed(2)} pt/unit, UI ×${s.uiScale.toFixed(2)}`;
-  return `${head}  ${parts.length ? `✗ ${parts.join("; ")}` : "✓ readable"}`;
+  // Scenery (signs, map labels) is told apart from the UI and never fails a shot.
+  const world = a.smallWorldText ?? [];
+  const note = world.length ? `  (scenery: ${world.length} text${world.length > 1 ? "s" : ""} under ${a.minTextPoints} pt, smallest ${pt(world[0].points)} "${world[0].text}")` : "";
+  return `${head}  ${parts.length ? `✗ ${parts.join("; ")}` : "✓ readable"}${note}`;
 }
 
 function contactSheet(name: string, out: string, rows: ScreenRow[]): string {
@@ -61,7 +64,9 @@ function contactSheet(name: string, out: string, rows: ScreenRow[]): string {
       const texts = a ? a.smallText.slice(0, 8).map((t) => `${pt(t.points)}  ${t.text}`) : [];
       const targets = a ? a.smallTargets.slice(0, 6).map((t) => `${t.width.toFixed(0)}×${t.height.toFixed(0)} pt  ${t.name}`) : [];
       const off = (shot.offscreen ?? []).slice(0, 6).map((o) => `off screen: ${o.name}`);
-      return `<figure class="${bad ? "bad" : "ok"}"><img src="${esc(relative(out, shot.file))}" alt="${esc(device.name)} ${esc(shot.name)}" style="aspect-ratio:${device.width}/${device.height}"><figcaption><b>${esc(device.name)}</b> · ${esc(shot.name)} · ${device.width}×${device.height} pt${a ? ` · ${a.screen.pointsPerUnit.toFixed(2)} pt per unit · UI ×${a.screen.uiScale.toFixed(2)}` : ""}<br>${bad ? "Too small or off screen:" : "Readable"}${list(texts)}${list(targets)}${list(off)}</figcaption></figure>`;
+      const world = a?.smallWorldText ?? [];
+      const scenery = world.length ? `<p class="note">Scenery under ${a?.minTextPoints} pt (not counted): ${world.length} text${world.length > 1 ? "s" : ""}, smallest ${pt(world[0].points)} “${esc(world[0].text)}”</p>` : "";
+      return `<figure class="${bad ? "bad" : "ok"}"><img src="${esc(relative(out, shot.file))}" alt="${esc(device.name)} ${esc(shot.name)}" style="aspect-ratio:${device.width}/${device.height}"><figcaption><b>${esc(device.name)}</b> · ${esc(shot.name)} · ${device.width}×${device.height} pt${a ? ` · ${a.screen.pointsPerUnit.toFixed(2)} pt per unit · UI ×${a.screen.uiScale.toFixed(2)}` : ""}<br>${bad ? "Too small or off screen:" : "Readable"}${list(texts)}${list(targets)}${list(off)}${scenery}</figcaption></figure>`;
     })
     .join("\n");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(name)} screens</title>
@@ -76,6 +81,7 @@ figure.ok { border-color: #3f8f5a; }
 img { display: block; width: 100%; height: auto; border-radius: 4px; background: #000; }
 figcaption { margin-top: 6px; font-size: 13px; }
 ul { margin: 4px 0 0; padding-left: 18px; color: #f0b3aa; font-variant-numeric: tabular-nums; }
+.note { margin: 4px 0 0; color: #9aa3ad; font-size: 12px; }
 </style></head><body><h1>${esc(name)}: screens</h1><main>
 ${cards}
 </main></body></html>`;

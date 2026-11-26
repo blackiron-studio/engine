@@ -4,7 +4,7 @@
  *   bun scripts/shoot.ts <project dir> [--steps "frames:3;key:Enter;frames:60;shot:play"]
  *                        [--size 1280x720] [--dpr 2] [--device iphone-15] [--out dir] [--seed 7]
  *
- * Steps are described in cli/shoot.ts. Default steps: frames:3;shot:title;key:Enter;frames:90;shot:play.
+ * Steps are described in cli/shoot.ts. Default steps: frames:60;shot:title;key:Enter;frames:90;shot:play.
  * `--device` shows the game as on a phone or tablet (see DEVICES in src/app/screen.ts); for every
  * device at once with a size audit, use `blackiron screens`.
  */

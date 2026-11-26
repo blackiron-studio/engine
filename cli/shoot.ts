@@ -18,7 +18,8 @@ import type { DevicePreset, ScreenAudit } from "../src/app/screen.ts";
 
 const engine = resolve(import.meta.dir, "..");
 
-export const DEFAULT_STEPS = "frames:3;shot:title;key:Enter;frames:90;shot:play";
+/** A second for the title to fade in before its shot, then Enter and a second and a half of play. */
+export const DEFAULT_STEPS = "frames:60;shot:title;key:Enter;frames:90;shot:play";
 
 /** Playwright's chrome-headless-shell when installed, else Chrome (CHROME_PATH overrides). */
 export function findChrome(): string {
@@ -123,6 +124,10 @@ try {
         shot.audit = app.auditScreen();
         const scene = app.scenes.current;
         shot.offscreen = scene ? auditUILayout(scene).filter((i) => i.kind === 'outside').map((i) => ({ name: i.controls.map(controlName).join(', ') })) : [];
+        // Targets the game draws itself and reports with scene.reportTarget, in UI units.
+        if (scene) for (const t of scene.reportedTargets ?? []) {
+          if (t.x < -0.5 || t.y < -0.5 || t.x + t.w > scene.uiWidth + 0.5 || t.y + t.h > scene.uiHeight + 0.5) shot.offscreen.push({ name: t.name });
+        }
       }
       shots.push(shot);
     }

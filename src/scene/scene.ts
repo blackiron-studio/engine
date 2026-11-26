@@ -39,6 +39,15 @@ class FitBackdrop extends Node2D {
   }
 }
 
+/** A tap target a game draws itself, in `ui` units; see `Scene.reportTarget`. */
+export interface ReportedTarget {
+  name: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface FitOptions {
   /** Colour behind the fitted UI where it does not reach the edges; null for none. Black by default. */
   backdrop?: number | null;
@@ -137,12 +146,60 @@ export class Scene extends Node {
     return { x: l, y: t, w: Math.max(0, this.uiWidth - l - r), h: Math.max(0, this.uiHeight - t - b) };
   }
 
+  /** Whether `node` is drawn inside this scene's `ui` layer. */
+  inUI(node: Node): boolean {
+    for (let n: Node | null = node; n; n = n.parent) if (n === this.ui) return true;
+    return false;
+  }
+
+  /** A point in logical screen units (the pointer, a touch) in the `ui` layer's units. */
+  toUI(x: number, y: number): { x: number; y: number } {
+    return { x: (x - this.ui.x) / (this.ui.scaleX || 1), y: (y - this.ui.y) / (this.ui.scaleY || 1) };
+  }
+
   /**
-   * Visible, enabled controls in the UI layer and their size on screen in logical units, for
-   * `App.auditScreen`.
+   * The size and safe-area insets of the layer `node` is drawn in: `uiWidth` × `uiHeight` and
+   * `uiInsets` inside the `ui` layer (which `ui.minPoints` or `fitUI` may scale), the logical
+   * size and `app.safeInsets` elsewhere. Full-screen nodes size themselves from this, not from
+   * `ctx.width`, which is always the logical size.
+   */
+  areaOf(node: Node): { width: number; height: number; insets: Insets; ui: boolean } {
+    if (this.inUI(node)) return { width: this.uiWidth, height: this.uiHeight, insets: this.uiInsets, ui: true };
+    return { width: this.width, height: this.height, insets: this._app?.safeInsets ?? [0, 0, 0, 0], ui: false };
+  }
+
+  private readonly reported: ReportedTarget[] = [];
+  private reportedCount = 0;
+
+  /**
+   * Report a tap target the game draws itself rather than with a Control, in `ui` units, so
+   * `app.auditScreen()` and `blackiron screens` measure it with the engine's own buttons. Call
+   * it from `render` on every frame the target is shown: the list starts empty each frame.
+   */
+  reportTarget(name: string, x: number, y: number, w: number, h: number): void {
+    let t = this.reported[this.reportedCount];
+    if (!t) this.reported.push((t = { name, x, y, w, h }));
+    else Object.assign(t, { name, x, y, w, h });
+    this.reportedCount++;
+  }
+
+  /** The tap targets reported with `reportTarget` in the last frame drawn, in `ui` units. */
+  get reportedTargets(): readonly Readonly<ReportedTarget>[] {
+    return this.reported.slice(0, this.reportedCount);
+  }
+
+  /**
+   * Visible, enabled controls in the UI layer and the targets reported with `reportTarget`,
+   * with their size on screen in logical units, for `App.auditScreen`.
    */
   measureControls(): { name: string; width: number; height: number }[] {
     const out: { name: string; width: number; height: number }[] = [];
+    const kx = Math.abs(this.ui.scaleX),
+      ky = Math.abs(this.ui.scaleY);
+    for (let i = 0; i < this.reportedCount; i++) {
+      const t = this.reported[i];
+      if (t.w > 0 && t.h > 0) out.push({ name: t.name, width: t.w * kx, height: t.h * ky });
+    }
     for (const c of this.ui.findAllInDrawOrder(Control)) {
       if (c.disabled || c.w <= 0 || c.h <= 0) continue;
       let sx = 1,
@@ -328,6 +385,7 @@ export class Scene extends Node {
   }
 
   override drawTree(ctx: DrawContext): void {
+    this.reportedCount = 0;
     this.camera.matrix(this.cameraMatrix);
     ctx.beginPass("world");
     ctx.beginLayer(this.cameraMatrix, this.camera.visibleRect(), true, this.camera.projectionMatrix());

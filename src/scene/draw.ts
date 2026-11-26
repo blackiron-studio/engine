@@ -51,6 +51,12 @@ export interface TextOptions {
   spacing?: number;
   /** A web font, or "pixel" for the built-in 5x7 bitmap font (the default). */
   font?: FontSpec | "pixel";
+  /**
+   * Part of the scenery (a shop sign, a label painted on a map), not text the player has to
+   * read. `auditScreen` reports it apart from the UI's text. Text drawn in the world layer
+   * counts as scenery without this.
+   */
+  scenery?: boolean;
 }
 
 interface QueuedSprite {
@@ -402,8 +408,11 @@ export class DrawContext {
     return FONT_LINE * scale;
   }
 
-  /** Set by `App.auditScreen` for one frame: told every text drawn and its on-screen size in logical units. */
-  audit: ((text: string, size: number) => void) | null = null;
+  /**
+   * Set by `App.auditScreen` for one frame: told every text drawn, its on-screen size in logical
+   * units, and whether it is UI text or scenery (the world layer, or `scenery: true`).
+   */
+  audit: ((text: string, size: number, layer: "ui" | "world") => void) | null = null;
 
   /** Draw text with the bitmap font or a web font. Returns the width drawn. Supports "\n". */
   text(text: string, x: number, y: number, o: TextOptions = {}): number {
@@ -411,7 +420,7 @@ export class DrawContext {
       const t = this.transform;
       // A web font's size is its em; the bitmap font's 7-unit capitals read like a 10-unit em.
       const em = o.font && o.font !== "pixel" ? o.font.size : (FONT_H / 0.7) * (o.scale ?? 1);
-      this.audit(text, em * Math.sqrt(Math.abs(t[0] * t[3] - t[1] * t[2])));
+      this.audit(text, em * Math.sqrt(Math.abs(t[0] * t[3] - t[1] * t[2])), o.scenery || this.pass !== "overlay" ? "world" : "ui");
     }
     const color = o.color ?? 0xffffff;
     if (o.font && o.font !== "pixel" && this.renderer.features.text) {

@@ -309,7 +309,9 @@ constant physical size and Unreal's DPI curve do; desktops are unchanged. `Ancho
 `safeArea: true`, and `scene.uiInsets` and `scene.safeRect` give the notch in UI units.
 `createTestApp({ device: "iphone-15" })`, `app.emulateDevice()` and `?device=` show a game on a
 given device, and `blackiron screens` screenshots it on several and measures every text and touch
-target. See [docs/SCREENS.md](docs/SCREENS.md).
+target. Since 0.23.2 the engine's own hints, menus, sticks and tooltips follow the grown UI, menu
+rows reach 44 points on touch screens, and the audit tells scenery from UI text and measures tap
+targets a game draws itself (`scene.reportTarget`). See [docs/SCREENS.md](docs/SCREENS.md).
 
 ## Kernel
 

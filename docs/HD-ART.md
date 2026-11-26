@@ -93,7 +93,7 @@ scene.world3D.add(new Mesh3D(blobGeometry({ radius: 1, roughness: 0.3, flattenBe
 
 ## Seeing the result without windows
 
-`bun scripts/shoot.ts <project> --steps "frames:3;shot:title;key:Enter;frames:90;shot:play"`
+`bun scripts/shoot.ts <project> --steps "frames:60;shot:title;key:Enter;frames:90;shot:play"`
 renders the game in headless Chrome and writes PNGs to `.blackiron/shots/<project>/`. Steps:
 `frames:N`, `key:Code`, `hold:Code:N`, `press:action`, `tap:x,y`, `eval:js`, `shot:name`.
 Steps split only before a step name, so `eval` code may contain semicolons; `--size WxH`

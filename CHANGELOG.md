@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.23.2 — The engine's own UI on phones (2026-11-26)
+
+What the Backlane, Moonhorde and Lanternwatch phone passes had to work around, now in the engine.
+
+- Touch screens start in touch mode: `app.input.lastDevice` is `"touch"` from the first frame on a phone or tablet, and on `emulateDevice`. Hints and prompts no longer show key names before the first tap. A key or a controller still switches them; leaving an emulated phone goes back to keys.
+- The engine's own UI sizes itself in the `ui` layer's units, so it follows `ui.minPoints` and `fitUI`:
+  - `HintLayer` centres and wraps in `uiWidth` and sits above the home bar using `uiInsets`;
+  - the menu dim covers the whole screen, even under a letterboxed `fitUI`, and the menu panel is clamped to the UI size;
+  - `VirtualSticks` and `TouchControls` read touches in UI units, so their zones, rest positions and `size` grow with the HUD;
+  - tooltips stay inside the UI.
+- New scene helpers:
+  - `scene.toUI(x, y)` turns a pointer or touch position into `ui` units;
+  - `scene.inUI(node)` and `scene.areaOf(node)` give the size and insets of the layer a node draws in.
+- Menus on small screens:
+  - Rows are at least 44 points tall on touch screens (they were 44 units, 35 points on a phone). An explicit `rowHeight` is still used as given.
+  - When the rows are taller than the screen, they flow into side-by-side columns, evened out. The settings menu fits an iPhone SE held sideways. Left and right move between the columns, except on sliders.
+  - Rows the menu made itself are resized when the screen changes.
+  - `rowWidth` keeps 20 units clear of each edge, including an explicit `width`.
+- `Row` and `Column` take `wrap` (the longest a line may run) and `lineGap`; `lines` says how many lines the last layout used.
+- Sliders leave room for their widest value plus half the knob, so "100%" no longer overlaps the knob with a large font.
+- The screen audit:
+  - It tells UI text from scenery. Text drawn in the world layer, or with the new `scenery: true` text option, is scenery: street signs, map labels.
+  - `smallText` and `ok` count UI text only. Small scenery is listed in `smallWorldText`, and each entry in `text` has a `layer`.
+  - `blackiron screens` shows small scenery as a note, not as a failure.
+  - `scene.reportTarget(name, x, y, w, h)` reports a tap target a game draws itself, in `ui` units, from `render`. `auditScreen` measures it with the controls, and `blackiron screens` flags it when it is off screen. `scene.reportedTargets` lists the last frame's.
+  - `blackiron screens` waits a second (`frames:60`) before the title shot, so titles that fade in are measured.
+
 ## 0.23.1 — Scenes keep their own `screen` (2026-11-26)
 
 - The scene's screen getter is now `scene.screenInfo`; `app.screen` is unchanged.

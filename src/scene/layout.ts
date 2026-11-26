@@ -122,6 +122,13 @@ export interface StackOptions {
   auto?: boolean;
   /** Lay children out from the end: a Row runs right to left, for right-to-left locales. */
   reverse?: boolean;
+  /**
+   * Longest a line may run along the main axis before the next child starts a new one: a
+   * Column then flows into side-by-side columns, a Row into rows. 0 (the default) never wraps.
+   */
+  wrap?: number;
+  /** Space between wrapped lines; `gap` by default. */
+  lineGap?: number;
 }
 
 function fraction(o: Origin): number {
@@ -135,6 +142,10 @@ abstract class Stack extends Node2D {
   origin: Origin;
   auto: boolean;
   reverse: boolean;
+  wrap: number;
+  lineGap: number | null;
+  /** How many lines the last layout used: 1 unless `wrap` split the children. */
+  lines = 1;
   w = 0;
   h = 0;
 
@@ -145,6 +156,8 @@ abstract class Stack extends Node2D {
     this.origin = opts.origin ?? "start";
     this.auto = opts.auto ?? true;
     this.reverse = opts.reverse ?? false;
+    this.wrap = opts.wrap ?? 0;
+    this.lineGap = opts.lineGap ?? null;
   }
 
   protected abstract main: "x" | "y";
@@ -154,29 +167,53 @@ abstract class Stack extends Node2D {
     const boxes = this.children.map((c) => layoutBox(c));
     const cross = this.main === "x" ? "h" : "w";
     const along = this.main === "x" ? "w" : "h";
-    let extent = 0;
-    for (const b of boxes) extent = Math.max(extent, b[cross]);
-    let pos = 0;
     const f = fraction(this.align);
     const order = this.children.map((_, i) => i);
     if (this.reverse) order.reverse();
+    // Split into lines: one, unless `wrap` caps how far a line may run.
+    const lines: number[][] = [];
+    let line: number[] = [];
+    let run = 0;
     for (const i of order) {
-      const c = this.children[i];
-      const b = boxes[i];
-      if (c instanceof Node2D) {
-        // Round the origin's final position, so odd-width text still lands on a whole pixel.
-        const side = (extent - b[cross]) * f;
-        if (this.main === "x") {
-          c.x = Math.round(pos + b.ox);
-          c.y = Math.round(side + b.oy);
-        } else {
-          c.y = Math.round(pos + b.oy);
-          c.x = Math.round(side + b.ox);
-        }
+      const len = boxes[i][along];
+      if (this.wrap > 0 && line.length && run + this.gap + len > this.wrap) {
+        lines.push(line);
+        line = [];
+        run = 0;
       }
-      pos += b[along] + this.gap;
+      run += (line.length ? this.gap : 0) + len;
+      line.push(i);
     }
-    const total = Math.max(0, pos - this.gap);
+    if (line.length || !lines.length) lines.push(line);
+    const lineGap = this.lineGap ?? this.gap;
+    let total = 0,
+      offset = 0;
+    for (const ln of lines) {
+      let extent = 0;
+      for (const i of ln) extent = Math.max(extent, boxes[i][cross]);
+      let pos = 0;
+      for (const i of ln) {
+        const c = this.children[i];
+        const b = boxes[i];
+        if (c instanceof Node2D) {
+          // Round the origin's final position, so odd-width text still lands on a whole pixel.
+          const side = offset + (extent - b[cross]) * f;
+          if (this.main === "x") {
+            c.x = Math.round(pos + b.ox);
+            c.y = Math.round(side + b.oy);
+          } else {
+            c.y = Math.round(pos + b.oy);
+            c.x = Math.round(side + b.ox);
+          }
+        }
+        pos += b[along] + this.gap;
+      }
+      total = Math.max(total, pos - this.gap);
+      offset += extent + lineGap;
+    }
+    this.lines = lines.length;
+    total = Math.max(0, total);
+    const extent = Math.max(0, offset - lineGap);
     if (this.main === "x") {
       this.w = total;
       this.h = extent;

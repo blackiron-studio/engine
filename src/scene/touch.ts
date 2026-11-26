@@ -61,9 +61,14 @@ export class TouchControls extends Node2D {
     const app = this.scene?.app;
     if (!app) return;
     const active = this.active;
-    const w = this.scene?.width ?? 0;
-    const h = this.scene?.height ?? 0;
-    const touches = app.pointer.touches;
+    const scene = this.scene;
+    if (!scene) return;
+    // In the units of the layer the controls draw in: UI units inside a grown `ui` layer.
+    const area = scene.areaOf(this);
+    const w = area.width;
+    const h = area.height;
+    const touches = new Map<number, { x: number; y: number }>();
+    for (const [id, t] of app.pointer.touches) touches.set(id, area.ui ? scene.toUI(t.x, t.y) : t);
     const dead = this.size * 0.25;
     const press = (a: string) => {
       if (!this.held.has(a)) {
@@ -125,8 +130,9 @@ export class TouchControls extends Node2D {
 
   override render(ctx: DrawContext): void {
     if (!this.active) return;
-    const w = ctx.width;
-    const h = ctx.height;
+    const area = this.scene?.areaOf(this);
+    const w = area?.width ?? ctx.width;
+    const h = area?.height ?? ctx.height;
     if (this.stick) {
       const ox = this.st.id !== null ? this.st.ox : this.size * 1.4;
       const oy = this.st.id !== null ? this.st.oy : h - this.size * 1.4;

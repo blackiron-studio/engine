@@ -649,8 +649,10 @@ export class Tooltip extends Node2D {
     const [tx, ty] = this.target.positionIn(parent);
     let x = Math.round(tx + this.target.w / 2 - w / 2);
     let y = this.side === "above" ? Math.round(ty - h - 6) : Math.round(ty + this.target.h + 6);
-    x = Math.max(4, Math.min(ctx.width - w - 4, x));
-    y = Math.max(4, Math.min(ctx.height - h - 4, y));
+    // Keep it on screen, in the units of the layer it draws in (UI units inside `ui`).
+    const area = this.scene?.areaOf(this) ?? { width: ctx.width, height: ctx.height };
+    x = Math.max(4, Math.min(area.width - w - 4, x));
+    y = Math.max(4, Math.min(area.height - h - 4, y));
     ctx.rect(x - this.x, y - this.y, w, h, t.fill, 0.95);
     if (t.border !== null) ctx.frame(x - this.x, y - this.y, w, h, t.border);
     ctx.text(this.text, x - this.x + pad, y - this.y + pad, { font: this.font, color: t.text });
@@ -708,9 +710,19 @@ export class Slider extends Control {
   private track(): { x: number; w: number } {
     // Render and pointer handling must use identical geometry. Previously clicks used a
     // 40%-width guess while rendering measured each label, shifting the clicked value.
-    const labelW = this.label ? Math.min(this.w - 76, this.labelWidth ?? measure(this, this.label, this.font) + 12) : 0;
-    const valueW = 56;
+    const valueW = this.valueWidth();
+    const labelW = this.label ? Math.min(this.w - valueW - 20, this.labelWidth ?? measure(this, this.label, this.font) + 12) : 0;
     return { x: labelW, w: Math.max(20, this.w - labelW - valueW) };
+  }
+
+  /** Room right of the track for the value: its widest text, half the knob and a gap. */
+  private valueWidth(): number {
+    const widest = Math.max(measure(this, this.format(this.min), this.font), measure(this, this.format(this.max), this.font), measure(this, this.format(this.value), this.font));
+    return Math.max(56, Math.ceil(widest + this.knobSize() / 2 + 10));
+  }
+
+  private knobSize(): number {
+    return Math.round(Math.max(4, Math.round(this.h * 0.28)) * 1.6);
   }
 
   private setValue(v: number): void {
@@ -757,7 +769,7 @@ export class Slider extends Control {
     ctx.rect(t.x, by, t.w, barH, theme.input.fill, theme.input.fillAlpha);
     ctx.rect(t.x, by, Math.round(t.w * frac), barH, theme.accent, this.disabled ? 0.4 : 0.9);
     ctx.frame(t.x, by, t.w, barH, this.focused || this.hovered ? theme.input.focusBorder : theme.input.border ?? theme.muted);
-    const knob = Math.round(barH * 1.6);
+    const knob = this.knobSize();
     ctx.rect(Math.round(t.x + t.w * frac - knob / 2), Math.round((this.h - knob) / 2), knob, knob, this.focused ? theme.accent : theme.button.text);
     const text = this.format(this.value);
     const tw = measure(this, text, this.font);

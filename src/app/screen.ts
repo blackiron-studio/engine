@@ -161,6 +161,8 @@ export interface TextAudit {
   size: number;
   /** In points on this screen. */
   points: number;
+  /** UI text (HUD, menus, buttons) or scenery: text in the world layer, or drawn with `scenery: true`. */
+  layer: "ui" | "world";
 }
 
 /** One control (button, slider, field) as laid out, for `auditScreen`. */
@@ -175,14 +177,19 @@ export interface ScreenAudit {
   screen: ScreenInfo;
   minTextPoints: number;
   minTouchPoints: number;
-  /** Every distinct text drawn in the frame, smallest first. */
+  /** Every distinct text drawn in the frame, UI and scenery, smallest first. */
   text: TextAudit[];
-  /** Text under `minTextPoints`. */
+  /** UI text under `minTextPoints`. */
   smallText: TextAudit[];
-  /** Every visible, enabled control, smallest first. */
+  /**
+   * Scenery under `minTextPoints`: street signs, map labels, text in the world layer. Reported
+   * for information; it does not make the screen fail, since the player need not read it.
+   */
+  smallWorldText: TextAudit[];
+  /** Every visible, enabled control and every target reported with `scene.reportTarget`, smallest first. */
   targets: TargetAudit[];
   /** Controls narrower or shorter than `minTouchPoints` (only checked on touch screens). */
   smallTargets: TargetAudit[];
-  /** No small text, and no small targets on a touch screen. */
+  /** No small UI text, and no small targets on a touch screen. Scenery does not count. */
   ok: boolean;
 }

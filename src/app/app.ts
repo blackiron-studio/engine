@@ -22,7 +22,7 @@ import { FixedStep } from "../core/clock.ts";
 import { Rng } from "../core/rng.ts";
 import { Tweens } from "../core/tween.ts";
 import { Profiler } from "./profiler.ts";
-import { type DevicePreset, type Insets, type ScreenAudit, type ScreenInfo, type UIConfig, describeScreen, devicePreset, sameScreen } from "./screen.ts";
+import { type DevicePreset, type Insets, type ScreenAudit, type ScreenInfo, type TextAudit, type UIConfig, describeScreen, devicePreset, sameScreen } from "./screen.ts";
 import { ActionMap } from "../input/actions.ts";
 import { GamepadInput } from "../input/gamepad.ts";
 import { Pointer } from "../input/pointer.ts";
@@ -615,13 +615,13 @@ export class App {
       minTouchPoints = ui.minTouchPoints ?? 44;
     const screen = this.screenInfo,
       ppu = screen.pointsPerUnit;
-    const seen = new Map<string, { text: string; size: number; points: number }>();
-    this.draw.audit = (text, size) => {
+    const seen = new Map<string, TextAudit>();
+    this.draw.audit = (text, size, layer) => {
       const key = text.replace(/\s+/g, " ").trim();
       if (!key) return;
       const points = size * ppu;
-      const prev = seen.get(key);
-      if (!prev || points < prev.points) seen.set(key, { text: key.length > 60 ? `${key.slice(0, 57)}…` : key, size, points });
+      const prev = seen.get(`${layer}:${key}`);
+      if (!prev || points < prev.points) seen.set(`${layer}:${key}`, { text: key.length > 60 ? `${key.slice(0, 57)}…` : key, size, points, layer });
     };
     try {
       this.render();
@@ -634,9 +634,11 @@ export class App {
       .flatMap((s) => s.measureControls())
       .map((t) => ({ name: t.name, width: t.width * ppu, height: t.height * ppu }))
       .sort((a, b) => Math.min(a.width, a.height) - Math.min(b.width, b.height));
-    const smallText = text.filter((t) => t.points < minTextPoints - 1e-6);
+    const small = text.filter((t) => t.points < minTextPoints - 1e-6);
+    const smallText = small.filter((t) => t.layer === "ui");
+    const smallWorldText = small.filter((t) => t.layer === "world");
     const smallTargets = screen.touch ? targets.filter((t) => Math.min(t.width, t.height) < minTouchPoints - 1e-6) : [];
-    return { screen, minTextPoints, minTouchPoints, text, smallText, targets, smallTargets, ok: !smallText.length && !smallTargets.length };
+    return { screen, minTextPoints, minTouchPoints, text, smallText, smallWorldText, targets, smallTargets, ok: !smallText.length && !smallTargets.length };
   }
 
   get scene(): Scene | null {
@@ -941,6 +943,10 @@ export class App {
     const k = lw / Math.max(1, cssW);
     const safe: Insets = [Math.max(0, insets[0] - viewY) * k, Math.max(0, insets[1] - viewX) * k, Math.max(0, insets[2] - viewY) * k, Math.max(0, insets[3] - viewX) * k];
     const changed = !sameScreen(this.screenInfo, next) || safe.some((v, i) => Math.abs(v - this.safeInsets[i]) > 1e-6);
+    // On a phone or tablet, hints and menus speak touch before the first tap; a key or a
+    // controller button switches them as usual. Leaving an emulated phone goes back to keys.
+    if (next.touch && !this.screenInfo.touch) this.input.lastDevice = "touch";
+    else if (!next.touch && this.screenInfo.touch && this.input.lastDevice === "touch") this.input.lastDevice = "keyboard";
     this.screenInfo = next;
     for (let i = 0; i < 4; i++) this.safeInsets[i] = safe[i];
     return changed;
