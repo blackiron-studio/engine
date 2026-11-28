@@ -5,8 +5,8 @@ import type { DrawContext } from "./draw.ts";
 import { Node, Node2D } from "./node.ts";
 import { Control } from "./ui.ts";
 
-export type AnchorX = "left" | "center" | "right";
-export type AnchorY = "top" | "center" | "bottom";
+export type AnchorX = "left" | "center" | "right" | "stretch";
+export type AnchorY = "top" | "center" | "bottom" | "stretch";
 
 export interface AnchorOptions {
   x?: AnchorX;
@@ -21,6 +21,19 @@ export interface AnchorOptions {
   safe?: number;
   /** Also stay clear of the notch, rounded corners and home bar on the edges it is anchored to. */
   safeArea?: boolean;
+  /**
+   * Width and height as a fraction of the screen (0.5 is half of it), instead of `w` and `h`.
+   * With "stretch" the box runs from edge to edge, less `safe` and the insets.
+   */
+  wFrac?: number;
+  hFrac?: number;
+  /** Limits on a stretched or fractional size; a stretched box that hits `maxW` is centred. */
+  minW?: number;
+  maxW?: number;
+  minH?: number;
+  maxH?: number;
+  /** Called when the box's size changes, to lay its children out again. */
+  onLayout?: (w: number, h: number) => void;
 }
 
 /**
@@ -36,9 +49,23 @@ export class Anchor extends Node2D {
   h: number;
   safe: number;
   safeArea: boolean;
+  wFrac: number | null;
+  hFrac: number | null;
+  minW: number;
+  maxW: number;
+  minH: number;
+  maxH: number;
+  onLayout: ((w: number, h: number) => void) | null;
 
   constructor(opts: AnchorOptions = {}) {
     super();
+    this.wFrac = opts.wFrac ?? null;
+    this.hFrac = opts.hFrac ?? null;
+    this.minW = opts.minW ?? 0;
+    this.maxW = opts.maxW ?? Infinity;
+    this.minH = opts.minH ?? 0;
+    this.maxH = opts.maxH ?? Infinity;
+    this.onLayout = opts.onLayout ?? null;
     this.ax = opts.x ?? "left";
     this.ay = opts.y ?? "top";
     this.dx = opts.dx ?? 0;
@@ -59,8 +86,17 @@ export class Anchor extends Node2D {
       }
     }
     const [t, r, b, l] = this.safeArea && scene ? (inUI ? scene.uiInsets : (scene.attachedApp?.safeInsets ?? [0, 0, 0, 0])) : [0, 0, 0, 0];
-    this.x = this.ax === "left" ? this.safe + l + this.dx : this.ax === "right" ? width - this.safe - r - this.w + this.dx : Math.round((width - this.w) / 2) + this.dx;
-    this.y = this.ay === "top" ? this.safe + t + this.dy : this.ay === "bottom" ? height - this.safe - b - this.h + this.dy : Math.round((height - this.h) / 2) + this.dy;
+    // Sizes that follow the screen: a fraction of it, or stretched between two edges.
+    const roomW = Math.max(0, width - 2 * this.safe - l - r),
+      roomH = Math.max(0, height - 2 * this.safe - t - b);
+    const oldW = this.w,
+      oldH = this.h;
+    if (this.ax === "stretch" || this.wFrac !== null) this.w = Math.max(this.minW, Math.min(this.maxW, this.ax === "stretch" && this.wFrac === null ? roomW : Math.min(roomW, width * (this.wFrac ?? 1))));
+    if (this.ay === "stretch" || this.hFrac !== null) this.h = Math.max(this.minH, Math.min(this.maxH, this.ay === "stretch" && this.hFrac === null ? roomH : Math.min(roomH, height * (this.hFrac ?? 1))));
+    // A stretched box narrower than the room (maxW, wFrac) sits in the middle of it.
+    this.x = this.ax === "left" ? this.safe + l + this.dx : this.ax === "right" ? width - this.safe - r - this.w + this.dx : this.ax === "stretch" ? Math.round(this.safe + l + (roomW - this.w) / 2) + this.dx : Math.round((width - this.w) / 2) + this.dx;
+    this.y = this.ay === "top" ? this.safe + t + this.dy : this.ay === "bottom" ? height - this.safe - b - this.h + this.dy : this.ay === "stretch" ? Math.round(this.safe + t + (roomH - this.h) / 2) + this.dy : Math.round((height - this.h) / 2) + this.dy;
+    if ((this.w !== oldW || this.h !== oldH) && this.onLayout) this.onLayout(this.w, this.h);
   }
 
   override ready(): void {

@@ -250,7 +250,8 @@ export class Scene extends Node {
     if (!d) {
       // Without a fixed design, `ui.minPoints` grows the UI on small screens; layouts then work
       // in uiWidth × uiHeight. A scene that scales its UI itself keeps doing so while this is 1.
-      const s = this._app?.config.ui?.minPoints ? this._app.screen.uiScale : 1;
+      const ui = this._app?.config.ui;
+      const s = ui?.minPoints || ui?.tabletPoints ? this._app!.screen.uiScale : 1;
       if (s !== 1 || this.autoScale !== 1) {
         this.ui.scale = s;
         this.ui.x = 0;

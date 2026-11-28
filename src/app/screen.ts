@@ -17,8 +17,20 @@ export interface UIConfig {
    * 44-point touch target into 55 units on every phone.
    */
   minPoints?: number;
+  /**
+   * The same floor for tablets (touch screens 600 points across or more), where it is usually
+   * higher: a tablet is held like a phone but shows a desktop design at nearly full size, so
+   * 9-unit desktop text comes out at 8 points. 1.2 turns it into 11. Phones use `minPoints`,
+   * as they have no room for more; desktops are never grown by this.
+   */
+  tabletPoints?: number;
   /** The most the UI grows (2). */
   maxScale?: number;
+  /**
+   * Follow the text size the player chose in the system settings (Dynamic Type on iOS, the
+   * browser's font size on the web): on by default. false ignores it.
+   */
+  systemText?: boolean;
   /** Smallest text, in points, that `auditScreen` accepts (11, Apple's smallest text style). */
   minTextPoints?: number;
   /** Smallest touch target, in points, that `auditScreen` accepts on touch screens (44). */
@@ -44,8 +56,13 @@ export interface ScreenInfo {
   readonly compact: boolean;
   /** Points one logical unit covers on screen (0.55 for a 720-unit-tall design on a phone held sideways). */
   readonly pointsPerUnit: number;
-  /** What `ui.minPoints` asks the UI to grow by here: 1 or more (1 when it is off). */
+  /** What `ui.minPoints` (or `ui.tabletPoints` on a tablet) asks the UI to grow by here: 1 or more (1 when off). */
   readonly uiScale: number;
+  /**
+   * The text size the player asked the system for, as a factor: 1 is the default, 1.35 a large
+   * Dynamic Type setting. Clamped to 0.8–2. `Settings` multiplies its own text size by it.
+   */
+  readonly systemTextScale: number;
 }
 
 /** Screens shorter than this (in points) are phone-sized. */
@@ -64,6 +81,14 @@ export interface ScreenFacts {
   insets: Readonly<Insets>;
   touch: boolean;
   pointsPerUnit: number;
+  /** The system's text size factor, when the platform reports one. */
+  textScale?: number;
+}
+
+/** The points-per-unit floor these settings ask for on a screen: `tabletPoints` on tablets, else `minPoints`. */
+export function uiFloor(ui: UIConfig, touch: boolean, compact: boolean): number {
+  const min = ui.minPoints ?? 0;
+  return touch && !compact ? Math.max(min, ui.tabletPoints ?? 0) : min;
 }
 
 /** The screen description for these facts and UI settings. Pure, so tests and tools can use it. */
@@ -83,7 +108,8 @@ export function describeScreen(f: ScreenFacts, ui: UIConfig = {}): ScreenInfo {
     sizeClass: !f.touch ? "desktop" : compact ? "phone" : "tablet",
     compact,
     pointsPerUnit: f.pointsPerUnit,
-    uiScale: legibleScale(f.pointsPerUnit, ui.minPoints ?? 0, ui.maxScale ?? 2),
+    uiScale: legibleScale(f.pointsPerUnit, uiFloor(ui, f.touch, compact), ui.maxScale ?? 2),
+    systemTextScale: ui.systemText === false || !(f.textScale! > 0) ? 1 : Math.max(0.8, Math.min(2, f.textScale!)),
   };
 }
 
@@ -94,6 +120,7 @@ export const sameScreen = (a: ScreenInfo, b: ScreenInfo): boolean =>
   a.touch === b.touch &&
   Math.abs(a.pointsPerUnit - b.pointsPerUnit) < 1e-9 &&
   a.uiScale === b.uiScale &&
+  a.systemTextScale === b.systemTextScale &&
   a.insets.every((v, i) => v === b.insets[i]);
 
 export interface DevicePreset {
@@ -104,6 +131,8 @@ export interface DevicePreset {
   pixelRatio: number;
   insets: Insets;
   touch: boolean;
+  /** The system text size to emulate (1 by default). */
+  textScale?: number;
 }
 
 interface DeviceSpec {

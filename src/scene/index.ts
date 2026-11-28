@@ -17,7 +17,7 @@ export { TransitionScene, type TransitionKind, type TransitionOptions } from "./
 export { PhysicsBody2D, RigidBody2D, StaticBody2D, KinematicBody2D, Area2D, CharacterBody2D, dispatchCollisions, type PhysicsNodeOptions, type CharacterOptions } from "./physics.ts";
 export { Motes, CloudShadows, type MotesOptions, type CloudShadowsOptions } from "./atmosphere.ts";
 export { LightLayer, Light2D, LightOccluder2D, type LightOptions, type Occluding, pointIn } from "./light.ts";
-export { Label, wrapText, type LabelOptions } from "./text.ts";
+export { Label, wrapText, ellipsize, type LabelOptions } from "./text.ts";
 export { Control, Panel, NineSlice, Button, Bar, routePointer, type PointerSnapshot, type PanelStyle, type ButtonStyle } from "./ui.ts";
 export { Anchor, Row, Column, FocusGroup, Margin, Pages, Tabs, layoutBox, textBox, type AnchorOptions, type AnchorX, type AnchorY, type LayoutBox, type Origin, type StackOptions } from "./layout.ts";
 export { TouchControls, type TouchControlsOptions, type TouchButton } from "./touch.ts";

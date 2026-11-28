@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.24.0 — Layouts that follow the screen (2026-11-28)
+
+Four things other engines have for small screens and we did not.
+
+- **A tablet tier.** `ui.tabletPoints` is the points-per-unit floor on tablets (touch screens 600 points across or more), next to `ui.minPoints` for phones.
+  - An iPad shows a desktop design at 0.92 points per unit, so 9-unit text comes out at 8 points. `"tabletPoints": 1.2` grows the UI there by 1.3.
+  - Phones keep `minPoints`; desktops are never grown.
+- **Anchors that stretch.** `Anchor` takes `x: "stretch"` and `y: "stretch"` (edge to edge, less `safe` and the insets), `wFrac` and `hFrac` (a fraction of the screen), `minW`, `maxW`, `minH`, `maxH`, and `onLayout(w, h)` to lay the children out when the size changes.
+- **Text that fits.**
+  - `Label` takes `maxWidth`: wider text shrinks to fit, down to `minScale` (0.7), and is cut with "…" past that. `overflow: "ellipsis"` cuts without shrinking. `fitScale` says how much it shrank.
+  - A `Button`'s label does the same inside the button, so a long label never draws over its edges.
+  - `ellipsize(text, maxWidth, measure)` is exported.
+- **The system's text size.** `app.screen.systemTextScale` is the size the player chose in the system settings: Dynamic Type on iOS (native and Safari), the browser's default font size elsewhere on the web. It is clamped to 0.8–2.
+  - `Settings` multiplies its own text size by it, so `app.accessibility.textScale` and the theme font follow, also when it changes while the game runs.
+  - `"ui": { "systemText": false }` turns it off. Device presets take `textScale` to try it.
+  - Not reported yet by the Rust host (Android, desktop), where it stays 1.
+
 ## 0.23.2 — The engine's own UI on phones (2026-11-26)
 
 What the Backlane, Moonhorde and Lanternwatch phone passes had to work around, now in the engine.

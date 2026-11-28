@@ -98,9 +98,12 @@ export class Settings {
     const a = this.app.accessibility;
     a.shakeScale = d.screenShake;
     a.reducedMotion = d.reducedMotion;
-    a.textScale = d.textScale;
+    // The player's own choice on top of the system's text size (Dynamic Type, browser font size).
+    const textScale = d.textScale * this.app.screen.systemTextScale;
+    a.textScale = textScale;
+    this.app.onSystemTextScale = () => this.apply();
     const base = this.baseFont;
-    if (base !== "pixel") this.app.setTheme({ font: { ...base, size: Math.max(6, Math.round(base.size * d.textScale)) } });
+    if (base !== "pixel") this.app.setTheme({ font: { ...base, size: Math.max(6, Math.round(base.size * textScale)) } });
     for (const [action, codes] of Object.entries(d.bindings)) this.app.input.bind(action, codes);
   }
 

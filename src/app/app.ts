@@ -434,6 +434,7 @@ export class App {
    * Player preferences the engine honours: camera shake scale, shorter transitions, text size;
    * and `announce(text)`, which reads text out through the platform's screen reader when one is on.
    */
+  /** `textScale` is the size text should be drawn at: the player's own setting times the system's (`screen.systemTextScale`). */
   readonly accessibility = { shakeScale: 1, reducedMotion: false, textScale: 1, announce: (text: string): void => this.platform.announce?.(text) };
   private typed: string[] = [];
   readonly tweens = new Tweens();
@@ -939,7 +940,8 @@ export class App {
    * (`viewX`, `viewY`). True when anything changed.
    */
   private updateScreen(availW: number, availH: number, cssW: number, lw: number, pixelRatio: number, insets: Readonly<Insets>, viewX: number, viewY: number): boolean {
-    const next = describeScreen({ width: availW, height: availH, pixelRatio, insets, touch: this.touchScreen(), pointsPerUnit: lw > 0 && cssW > 0 ? cssW / lw : 1 }, this.config.ui);
+    const next = describeScreen({ width: availW, height: availH, pixelRatio, insets, touch: this.touchScreen(), pointsPerUnit: lw > 0 && cssW > 0 ? cssW / lw : 1, textScale: this.systemTextScale() }, this.config.ui);
+    const textChanged = next.systemTextScale !== this.screenInfo.systemTextScale;
     const k = lw / Math.max(1, cssW);
     const safe: Insets = [Math.max(0, insets[0] - viewY) * k, Math.max(0, insets[1] - viewX) * k, Math.max(0, insets[2] - viewY) * k, Math.max(0, insets[3] - viewX) * k];
     const changed = !sameScreen(this.screenInfo, next) || safe.some((v, i) => Math.abs(v - this.safeInsets[i]) > 1e-6);
@@ -949,8 +951,34 @@ export class App {
     else if (!next.touch && this.screenInfo.touch && this.input.lastDevice === "touch") this.input.lastDevice = "keyboard";
     this.screenInfo = next;
     for (let i = 0; i < 4; i++) this.safeInsets[i] = safe[i];
+    if (textChanged) this.onSystemTextScale?.(next.systemTextScale);
     return changed;
   }
+
+  /** Called when the system's text size changes; `Settings` uses it to re-apply the text size. */
+  onSystemTextScale: ((scale: number) => void) | null = null;
+
+  /** The text size the player chose in the system settings, as a factor of the default. */
+  private systemTextScale(): number {
+    if (this.preview) return this.preview.textScale ?? 1;
+    if (this.mode === "native") return ((this.platform as NativePlatform).host.screen as { textScale?: number }).textScale ?? 1;
+    if (this.mode !== "web" || typeof document === "undefined" || typeof getComputedStyle !== "function" || !document.body) return 1;
+    let p = this.textProbe;
+    if (!p) {
+      p = document.createElement("div");
+      // iOS Safari resolves this keyword to the Dynamic Type body size (17 px by default).
+      p.style.cssText = "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;font:-apple-system-body";
+      document.body.appendChild(p);
+      this.textProbe = p;
+      const probe = p;
+      this.cleanups.push(() => probe.remove());
+    }
+    const dynamic = p.style.font !== "" && /apple-system/.test(p.style.font);
+    if (dynamic) return (parseFloat(getComputedStyle(p).fontSize) || 17) / 17;
+    // Elsewhere, the browser's default font size (16 px unless the player changed it).
+    return (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16;
+  }
+  private textProbe: HTMLElement | null = null;
 
   /** The safe-area insets the browser reports (CSS env()), in CSS pixels. */
   private webInsets(): Insets {

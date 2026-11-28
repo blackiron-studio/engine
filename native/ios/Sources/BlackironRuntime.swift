@@ -433,7 +433,7 @@ final class BlackironRuntime: NSObject {
     }
 
     private func pushScreen() {
-        host.screen = ["width": Double(lastSize.width), "height": Double(lastSize.height), "scale": Double(scale), "insets": [Double(lastInsets.top), Double(lastInsets.right), Double(lastInsets.bottom), Double(lastInsets.left)], "touch": true]
+        host.screen = ["width": Double(lastSize.width), "height": Double(lastSize.height), "scale": Double(scale), "insets": [Double(lastInsets.top), Double(lastInsets.right), Double(lastInsets.bottom), Double(lastInsets.left)], "touch": true, "textScale": Double(UIFontMetrics.default.scaledValue(for: 1))]
     }
 
     /// Drive frames from the display's refresh.

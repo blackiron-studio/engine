@@ -2,7 +2,10 @@ import { FONT_ADVANCE, FONT_LINE, measureText } from "../art/font.ts";
 import type { FontSpec } from "../render/types.ts";
 import type { DrawContext } from "./draw.ts";
 import { type LayoutBox, textBox } from "./layout.ts";
+import { ellipsize } from "./fit.ts";
 import { Node2D } from "./node.ts";
+
+export { ellipsize };
 
 export interface LabelOptions {
   color?: number;
@@ -15,6 +18,15 @@ export interface LabelOptions {
   wrap?: number;
   /** A web font, or "pixel" (default) for the built-in bitmap font. */
   font?: FontSpec | "pixel";
+  /**
+   * The widest the text may be. Text that is wider is shrunk to fit, down to `minScale`, and
+   * cut with "…" past that; `overflow: "ellipsis"` cuts it without shrinking. With `wrap`, it
+   * applies to each wrapped line.
+   */
+  maxWidth?: number;
+  overflow?: "shrink" | "ellipsis";
+  /** The smallest a shrunk text gets, as a factor of its size (0.7). */
+  minScale?: number;
 }
 
 /** A line or paragraph of text, bitmap or web font. */
@@ -31,6 +43,11 @@ export class Label extends Node2D {
   shadow: number | null;
   additive: boolean;
   wrap: number;
+  maxWidth: number;
+  overflow: "shrink" | "ellipsis";
+  minScale: number;
+  /** How much `maxWidth` shrank the text: 1 when it fits. */
+  fitScale = 1;
   private _text = "";
   private lines: string[] = [];
   private measured = 0;
@@ -43,6 +60,9 @@ export class Label extends Node2D {
     this.shadow = opts.shadow ?? null;
     this.additive = opts.additive ?? false;
     this.wrap = opts.wrap ?? 0;
+    this.maxWidth = opts.maxWidth ?? 0;
+    this.overflow = opts.overflow ?? "shrink";
+    this.minScale = opts.minScale ?? 0.7;
     if (opts.font !== undefined) this.font = opts.font;
     this.text = text;
   }
@@ -70,6 +90,25 @@ export class Label extends Node2D {
     this.lines = this.wrap > 0 ? wrapText(this._text, this.wrap, (l) => this.measureLine(l)) : this._text.split("\n");
     this.measured = 0;
     for (const l of this.lines) this.measured = Math.max(this.measured, this.measureLine(l));
+    this.fitScale = 1;
+    if (this.maxWidth > 0 && this.measured > this.maxWidth) {
+      if (this.overflow === "shrink") this.fitScale = Math.max(this.minScale, this.maxWidth / this.measured);
+      // Still too wide at the smallest size (or never shrunk): cut each line.
+      const room = this.maxWidth / this.fitScale;
+      if (this.measured > room + 0.5) {
+        const mark = this.font === "pixel" ? "..." : "…";
+        this.lines = this.lines.map((l) => ellipsize(l, room, (s) => this.measureLine(s), mark));
+        this.measured = 0;
+        for (const l of this.lines) this.measured = Math.max(this.measured, this.measureLine(l));
+      }
+      this.measured *= this.fitScale;
+    }
+  }
+
+  /** The font as drawn, after `maxWidth` shrank it. */
+  private drawnFont(): FontSpec | "pixel" {
+    const f = this.font;
+    return f === "pixel" || this.fitScale === 1 ? f : { ...f, size: f.size * this.fitScale };
   }
 
   /** Text scale, separate from the node's transform scale so hit boxes stay simple. */
@@ -93,9 +132,9 @@ export class Label extends Node2D {
     this.ensureReflow();
     if (this.font !== "pixel") {
       const r = this.scene?.app.renderer;
-      return (r ? r.measureText("Hg", this.font).height : this.font.size * 1.2) * this.lines.length;
+      return (r ? r.measureText("Hg", this.font).height : this.font.size * 1.2) * this.lines.length * this.fitScale;
     }
-    return this.lines.length * FONT_LINE * this.scale2 - 2 * this.scale2;
+    return (this.lines.length * FONT_LINE * this.scale2 - 2 * this.scale2) * this.fitScale;
   }
 
   /** The box containers place: centred and right-aligned text draws around its origin. */
@@ -111,11 +150,11 @@ export class Label extends Node2D {
     this.ensureReflow();
     ctx.text(this.lines.join("\n"), 0, 0, {
       color: this.color,
-      scale: this.scale2,
+      scale: this.scale2 * this.fitScale,
       align: this.align,
       shadow: this.shadow,
       additive: this.additive,
-      font: this.font,
+      font: this.drawnFont(),
     });
   }
 }

@@ -77,6 +77,18 @@ is Unity's "constant physical size" with a floor, and it plays the role of Unrea
   - without `minPoints` the engine never touches `ui.scale`;
   - `fitUI` designs are scaled by `fitUI`, not by `minPoints`.
 
+### Tablets: `ui.tabletPoints` (0.24)
+
+```json
+"ui": { "minPoints": 0.8, "tabletPoints": 1.2 }
+```
+
+A tablet is held as close as a phone but shows a 1280 × 720 design at about 0.92 points per
+unit, so `minPoints` leaves it alone and 9-unit desktop text comes out at 8 points.
+`tabletPoints` is a second floor for tablets only (touch, 600 points across or more). Phones
+keep `minPoints`, since they have no room for more, and desktops are never grown. This is the
+two-step form of Unreal's DPI curve.
+
 ### Inside the grown UI
 
 `ctx.width` and `ctx.height` are always the logical size, and the pointer is always in logical
@@ -135,6 +147,39 @@ game's own layout scale.
 ```ts
 const pad = this.ui.add(new Anchor({ x: "left", y: "bottom", w: 180, h: 180, safe: 16, safeArea: true }));
 ```
+
+### Boxes that follow the screen (0.24)
+
+`Anchor` can size its box from the screen, the way Unity's and Godot's stretch anchors do:
+
+```ts
+// A bottom bar from edge to edge, clear of the notch and home bar.
+const bar = this.ui.add(new Anchor({ x: "stretch", y: "bottom", h: 64, safe: 12, safeArea: true,
+  onLayout: (w) => this.layoutBar(w) }));
+// A side panel a quarter of the screen wide, never under 220 units, full height.
+this.ui.add(new Anchor({ x: "right", y: "stretch", wFrac: 0.25, minW: 220, safe: 12 }));
+// A sheet that fills a phone and stops growing at 560 units, centred.
+this.ui.add(new Anchor({ x: "stretch", y: "center", h: 400, maxW: 560, safe: 16 }));
+```
+
+`onLayout(w, h)` runs when the size changes; place the children there.
+
+## Text that fits (0.24)
+
+- `new Label(text, x, y, { maxWidth: 180 })` shrinks text wider than 180 units, down to
+  `minScale` (0.7), then cuts it with "…". `overflow: "ellipsis"` cuts without shrinking.
+- A `Button` does this to its own label.
+- `ellipsize(text, maxWidth, measure)` does the cut for text you draw yourself.
+
+## The system's text size (0.24)
+
+`app.screen.systemTextScale` is the text size the player chose for the whole device: Dynamic
+Type on iOS (the native host and Safari), the browser's default font size elsewhere on the
+web. 1 is the default; it is clamped to 0.8–2. `Settings` multiplies its own "Text size" by
+it, so `app.accessibility.textScale` and the theme font follow it, including when it changes
+while the game runs. A game that draws its own text multiplies its sizes by
+`app.accessibility.textScale`. `"ui": { "systemText": false }` turns it off. The Rust host
+(Android, desktop) does not report it yet.
 
 ## Trying a device
 

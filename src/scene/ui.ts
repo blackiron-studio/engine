@@ -5,6 +5,7 @@ import { type Atlas, type Region, sliceNine } from "../art/atlas.ts";
 import { measureText } from "../art/font.ts";
 import type { FontSpec } from "../render/types.ts";
 import type { DrawContext } from "./draw.ts";
+import { ellipsize } from "./fit.ts";
 import { Node, Node2D } from "./node.ts";
 import type { ButtonSkin } from "./theme.ts";
 
@@ -272,12 +273,30 @@ export class Button extends Control {
       if (s.border !== null) ctx.frame(0, dy, this.w, this.h, lit ? 0xf1ecff : s.border, 1, this.focused ? 2 : 1);
     }
     const color = this.disabled ? 0x777390 : s.text;
+    // A label wider than the button shrinks to fit (to 70%), then is cut with an ellipsis.
+    const room = Math.max(8, this.w - 12);
     if (s.font !== "pixel") {
-      const m = ctx.renderer.measureText(this.text, s.font);
-      ctx.text(this.text, Math.round(this.w / 2), Math.round((this.h - m.height) / 2) + dy, { color, font: s.font, align: "center", shadow: s.textShadow ?? undefined });
+      let font = s.font;
+      let text = this.text;
+      let m = ctx.renderer.measureText(text, font);
+      if (m.width > room) {
+        font = { ...font, size: font.size * Math.max(0.7, room / m.width) };
+        const f = font;
+        text = ellipsize(text, room, (t) => ctx.renderer.measureText(t, f).width);
+        m = ctx.renderer.measureText(text, font);
+      }
+      ctx.text(text, Math.round(this.w / 2), Math.round((this.h - m.height) / 2) + dy, { color, font, align: "center", shadow: s.textShadow ?? undefined });
     } else {
-      const tw = measureText(this.text, s.textScale);
-      ctx.text(this.text, Math.round((this.w - tw) / 2), Math.round((this.h - 7 * s.textScale) / 2) + dy, { color, scale: s.textScale, shadow: s.textShadow ?? undefined });
+      let scale = s.textScale;
+      let text = this.text;
+      let tw = measureText(text, scale);
+      if (tw > room) {
+        scale *= Math.max(0.7, room / tw);
+        const k = scale;
+        text = ellipsize(text, room, (t) => measureText(t, k), "...");
+        tw = measureText(text, scale);
+      }
+      ctx.text(text, Math.round((this.w - tw) / 2), Math.round((this.h - 7 * scale) / 2) + dy, { color, scale, shadow: s.textShadow ?? undefined });
     }
   }
 }
