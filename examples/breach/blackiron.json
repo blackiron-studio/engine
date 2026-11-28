@@ -21,6 +21,10 @@
   },
   "pixelSnap": false,
   "fps": false,
+  "ui": {
+    "minPoints": 0.8,
+    "tabletPoints": 1
+  },
   "seed": 27,
   "background": "#b6c9c8",
   "post": {

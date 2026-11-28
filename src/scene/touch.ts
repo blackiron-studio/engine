@@ -1,6 +1,7 @@
 // On-screen touch controls: a virtual stick on the left and action buttons on the right.
 // They press the same named actions as the keyboard, so games need no special code.
 
+import type { FontSpec } from "../render/types.ts";
 import type { DrawContext } from "./draw.ts";
 import { Node2D } from "./node.ts";
 
@@ -16,6 +17,8 @@ export interface TouchControlsOptions {
   /** Show even without a touch pointer, for testing. */
   always?: boolean;
   size?: number;
+  /** The face for the button labels; the 10-unit bitmap font by default, which is small on a phone. */
+  font?: FontSpec;
 }
 
 interface StickState {
@@ -31,6 +34,7 @@ export class TouchControls extends Node2D {
   readonly buttons: TouchButton[];
   readonly always: boolean;
   readonly size: number;
+  font: FontSpec | null;
   private st: StickState = { id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
   private held = new Set<string>();
   private buttonDown = new Map<string, number | null>();
@@ -41,6 +45,7 @@ export class TouchControls extends Node2D {
     this.buttons = opts.buttons ?? [];
     this.always = opts.always ?? false;
     this.size = opts.size ?? 48;
+    this.font = opts.font ?? null;
     this.name = "touch";
   }
 
@@ -146,7 +151,10 @@ export class TouchControls extends Node2D {
       const k = (r * 2.1) / 32;
       const held = this.held.has(b.action);
       ctx.sprite("__ring", x, y, { sx: k, sy: k, alpha: held ? 0.9 : 0.4 });
-      ctx.text(b.label, x, y - 4, { align: "center", color: 0xffffff, alpha: held ? 1 : 0.6 });
+      if (this.font) ctx.text(b.label, x, y - ctx.lineHeight(1, this.font) / 2, { align: "center", color: 0xffffff, alpha: held ? 1 : 0.6, font: this.font });
+      else ctx.text(b.label, x, y - 4, { align: "center", color: 0xffffff, alpha: held ? 1 : 0.6 });
+      // Measured by `auditScreen` and `blackiron screens` like any other tap target.
+      if (area?.ui) this.scene?.reportTarget(b.label || b.action, x - r, y - r, r * 2, r * 2);
     });
   }
 

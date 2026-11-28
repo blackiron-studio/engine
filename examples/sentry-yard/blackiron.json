@@ -3,6 +3,7 @@
   "entry": "src/main.ts",
   "art": "src/art.ts",
   "viewport": { "width": 1280, "height": 720, "scale": "fit" },
+  "ui": { "minPoints": 0.8, "tabletPoints": 1.2 },
   "render": { "scale": "native", "snap": "world" },
   "renderer": "auto",
   "fps": false,

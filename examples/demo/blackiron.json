@@ -11,6 +11,10 @@
     "scale": "native",
     "snap": "none"
   },
+  "ui": {
+    "minPoints": 0.8,
+    "tabletPoints": 1.05
+  },
   "renderer": "auto",
   "fps": true,
   "fallback": true,

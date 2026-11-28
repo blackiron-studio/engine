@@ -32,6 +32,16 @@ export class CityRun {
   noticeTime = 0;
   impact = 0;
   event = "";
+  /** Notices speak of taps and thumbs, not keys (set by the scene on a touch screen). */
+  touch = false;
+  /** What the interact key (or the touch action button) would do right now, or "". */
+  get context(): "collect" | "deliver" | "exit" | "enter" | "" {
+    if (this.phase !== "playing") return "";
+    if (this.mission === 1 && distance(this.position, PICKUP) < 90) return "collect";
+    if (this.mission === 3 && distance(this.position, DROP) < 100) return "deliver";
+    if (this.vehicle) return Math.abs(this.vehicle.motor.speed) > 45 ? "" : "exit";
+    return this.cars.some((c) => c.kind !== "police" && distance(c.motor, this.player) < 72 && Math.abs(c.motor.speed) < 100) ? "enter" : "";
+  }
   get position() {
     return this.vehicle?.motor ?? this.player;
   }
@@ -52,7 +62,7 @@ export class CityRun {
   }
   start() {
     this.phase = "playing";
-    this.say("E enters a car. WASD drives. Space is the handbrake.");
+    this.say(this.touch ? "Walk to a car and tap ENTER. The left thumb steers." : "E enters a car. WASD drives. Space is the handbrake.");
   }
   say(text: string) {
     this.notice = text;
@@ -101,7 +111,7 @@ export class CityRun {
       c.stop();
       this.player = { ...exit };
       this.vehicle = null;
-      this.say("On foot / E to enter a nearby car.");
+      this.say(this.touch ? "On foot / Tap ENTER beside a car." : "On foot / E to enter a nearby car.");
       return;
     }
     const c = this.cars

@@ -5,11 +5,15 @@
 // a sound and, for the big ones, a hit-stop and a shake. Shots are travelling tracer beams,
 // bolts leave trails and carry a light, sparks streak along their flight, flashes light the
 // yard, and hits leave marks on the walls and floor.
+//
+// On a touch screen (a phone, a tablet) the left thumb moves and the right thumb aims and
+// fires on two virtual sticks, with aim assist as on a controller; the HUD moves to the top
+// edge, clear of the thumbs, and carries buttons for the grenade, reload, weapon and pause.
 
 import { AimAssist, TwinStickAim, pickGround, screenDirToWorld } from "@blackiron-studio/engine/combat";
 import { Heading } from "@blackiron-studio/engine/core";
 import type { DrawContext } from "@blackiron-studio/engine/scene";
-import { AnimatedSprite, Anchor, Beams, Button, Decals, IsoTileMap, Label, LightLayer, LightPool, Node2D, Scene, Sprite, SpritePool, Trails } from "@blackiron-studio/engine/scene";
+import { AnimatedSprite, Anchor, Beams, Button, Decals, IsoTileMap, Label, LightLayer, LightPool, Node2D, Scene, Sprite, SpritePool, Trails, VirtualSticks } from "@blackiron-studio/engine/scene";
 import { PauseScene } from "@blackiron-studio/engine/shell";
 import { CELL, TILE } from "../art.ts";
 import { UI_FONT, title } from "../main.ts";
@@ -42,6 +46,15 @@ const HERO_TURN = 0.12;
 const SENTRY_TURN = 0.3;
 /** World units the muzzle flash sits in front of the figure, so it sorts over the body. */
 const MUZZLE_FORWARD = 4;
+/** How far out the aiming thumb is pushed, 0..1, before it fires. */
+const TOUCH_FIRE = 0.6;
+
+interface Box {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 interface Pop {
   label: Label;
@@ -83,6 +96,10 @@ export class PlayScene extends Scene {
   private hurtFlash = 0;
   private ended = false;
   private hud!: Hud;
+  /** Touch screens: the two sticks, the fingers already seen, and the one holding the grenade button. */
+  private sticks: VirtualSticks | null = null;
+  private readonly fingers = new Set<number>();
+  private grenadeFinger: number | null = null;
 
   constructor(save: YardSave | null = null) {
     super();
@@ -146,6 +163,7 @@ export class PlayScene extends Scene {
     this.lights = this.world.add(new LightLayer(AMBIENT)).add(new LightPool({ capacity: 24 }));
 
     this.hud = this.ui.add(new Hud(this));
+    this.syncTouch();
     this.retint(true);
     this.app.audio.setMood("yard", { crossfade: 1 });
   }
@@ -187,6 +205,57 @@ export class PlayScene extends Scene {
     }
   }
 
+  override onResize(): void {
+    if (this.hud) this.syncTouch();
+  }
+
+  /** The virtual sticks exist on touch screens only; their zones follow the HUD's layout. */
+  private syncTouch(): void {
+    const L = this.hud.layout();
+    if (!L.touch) {
+      this.sticks?.destroy();
+      this.sticks = null;
+      return;
+    }
+    if (!this.sticks) {
+      this.sticks = this.ui.add(new VirtualSticks({ sticks: [{ zone: "left" }, { zone: "right" }], size: 52, always: true }));
+      // A thumb aims like a controller's stick: along a direction, with assist.
+      this.aim.device = "stick";
+      this.aim.angle = this.yard.player.aim;
+    }
+    const H = Math.max(1, this.uiHeight);
+    // Under the HUD's top row on the left; under the grenade and reload buttons on the right.
+    const left = Math.min(0.6, (L.vitals.y + L.vitals.h + 12) / H);
+    const right = Math.min(0.7, (L.reload.y + L.reload.h + 8) / H);
+    this.sticks.specs[0] = { zone: { x: 0, y: left, w: 0.5, h: 1 - left }, rest: [0.14, 0.8] };
+    this.sticks.specs[1] = { zone: { x: 0.5, y: right, w: 0.5, h: 1 - right }, rest: [0.86, 0.8] };
+  }
+
+  /** Taps on the HUD's touch buttons: each finger counts once, and the grenade is held. */
+  private readTouch(): void {
+    const L = this.hud.layout();
+    if (!L.touch) return;
+    const touches = this.app.pointer.touches;
+    for (const id of this.fingers) if (!touches.has(id)) this.fingers.delete(id);
+    if (this.grenadeFinger !== null && !touches.has(this.grenadeFinger)) {
+      this.grenadeFinger = null;
+      this.setGrenade(false);
+    }
+    const inside = (r: Box, p: { x: number; y: number }) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h;
+    for (const [id, t] of touches) {
+      if (this.fingers.has(id)) continue;
+      this.fingers.add(id);
+      const p = this.toUI(t.x, t.y);
+      if (inside(L.pause, p)) this.pauseGame();
+      else if (inside(L.weapon, p)) this.wantWeapon = (this.yard.weapon + 1) % this.yard.weapons.length;
+      else if (inside(L.reload, p)) this.wantReload = true;
+      else if (inside(L.grenade, p) && this.grenadeFinger === null) {
+        this.grenadeFinger = id;
+        this.setGrenade(true);
+      }
+    }
+  }
+
   private pointerGround(): { x: number; y: number; z: number } {
     const p = this.app.pointer;
     return pickGround(this.camera, p.x, p.y, (x, y) => this.yard.heightAt(x, y), { maxZ: TILE.rise * 2 + 4, step: 4 });
@@ -205,6 +274,13 @@ export class PlayScene extends Scene {
       iy = stick.y;
       app.input.lastDevice = "gamepad";
     }
+    this.readTouch();
+    const sticks = this.sticks;
+    const thumb = sticks ? sticks.vector(0) : null;
+    if (thumb && Math.hypot(thumb.x, thumb.y) > 0.18) {
+      ix = thumb.x;
+      iy = thumb.y;
+    }
     let moveX = 0;
     let moveY = 0;
     const mag = Math.min(1, Math.hypot(ix, iy));
@@ -215,8 +291,13 @@ export class PlayScene extends Scene {
     }
     const pointer = app.pointer;
     const pick = this.pointerGround();
-    const right = app.gamepad.connected ? app.gamepad.rightStick : null;
-    let aim = this.aim.update({ from: p, stick: right, pointer: { x: pointer.x, y: pointer.y }, pointerGround: pick, camera: this.camera });
+    let right = app.gamepad.connected ? app.gamepad.rightStick : null;
+    // The right thumb aims past the stick's deadzone and fires when pushed further out.
+    const aimThumb = sticks ? sticks.vector(1) : null;
+    const push = aimThumb ? Math.hypot(aimThumb.x, aimThumb.y) : 0;
+    if (aimThumb && push > this.aim.deadzone) right = aimThumb;
+    // With sticks on screen the pointer is a finger on a control, never a cursor to aim at.
+    let aim = this.aim.update(sticks ? { from: p, stick: right, camera: this.camera } : { from: p, stick: right, pointer: { x: pointer.x, y: pointer.y }, pointerGround: pick, camera: this.camera });
     let aimZ: number | undefined;
     let aimDist: number | undefined;
     if (this.aim.device === "stick") {
@@ -235,7 +316,7 @@ export class PlayScene extends Scene {
       this.grenadeTarget = { x: pick.x, y: pick.y };
     }
     const mouseFire = pointer.down && pointer.button === 0 && pointer.type === "mouse" && !this.hud.covers(pointer.x, pointer.y);
-    const fire = !this.aimingGrenade && (app.input.isDown("fire") || mouseFire);
+    const fire = !this.aimingGrenade && (app.input.isDown("fire") || mouseFire || push > TOUCH_FIRE);
     const c: Controls = { moveX, moveY, aim, aimZ, aimDist, fire, weapon: this.wantWeapon, reload: this.wantReload };
     this.wantWeapon = undefined;
     this.wantReload = false;
@@ -557,6 +638,7 @@ export class PlayScene extends Scene {
 
   private pauseGame(): void {
     this.aimingGrenade = false;
+    this.grenadeFinger = null;
     this.app.scenes.push(new PauseScene({ settings: shell.settings ?? undefined, onQuit: () => this.quit() }), { overlay: true });
   }
 
@@ -568,14 +650,18 @@ export class PlayScene extends Scene {
   private finish(won: boolean): void {
     this.ended = true;
     this.aimingGrenade = false;
+    this.grenadeFinger = null;
+    if (this.sticks) this.sticks.visible = false;
     shell.saves?.delete(0);
-    const card = this.ui.add(new Anchor({ x: "center", y: "center" }));
+    const L = this.hud.layout();
+    // A phone's HUD row reaches further down the screen: the card sits a little lower.
+    const card = this.ui.add(new Anchor({ x: "center", y: "center", dy: this.compact && L.touch ? 14 : 0 }));
     card.add(new Plate(-250, -110, 500, 220));
     card.add(new Label(won ? "YARD CLEAR" : "OPERATIVE DOWN", 0, -76, { align: "center", color: won ? 0xffb547 : 0xff6a56, shadow: INK, font: { ...UI_FONT, size: 34, weight: 700 } }));
     const y = this.yard;
     const line = won ? `All six sentries down in ${Math.round(y.time)} s, ${y.grenades} grenades to spare.` : `${y.remaining} of 6 sentries still hold the yard.`;
     card.add(new Label(line, 0, -22, { align: "center", color: 0xe9edf0, font: { ...UI_FONT, size: 16, weight: 600 } }));
-    card.add(new Button(won ? "Run it again" : "Try again", -120, 26, 240, 50, { onPress: () => this.app.scenes.change(new PlayScene(), { transition: "fade", duration: 0.4 }) }));
+    card.add(new Button(won ? "Run it again" : "Try again", -120, 26, 240, L.tap(50), { onPress: () => this.app.scenes.change(new PlayScene(), { transition: "fade", duration: 0.4 }) }));
   }
 
   /** For the HUD. */
@@ -589,6 +675,15 @@ export class PlayScene extends Scene {
 
   get aimDevice(): "pointer" | "stick" {
     return this.aim.device;
+  }
+
+  get over(): boolean {
+    return this.ended;
+  }
+
+  /** Whether a thumb holds stick `i` (0 moves, 1 aims). */
+  stickHeld(i: number): boolean {
+    return !!this.sticks?.held(i);
   }
 }
 
@@ -613,6 +708,39 @@ class Hud extends Node2D {
     super();
   }
 
+  /**
+   * Where everything sits, in UI units. On a laptop the HUD keeps its four corners. On a touch
+   * screen `ui.minPoints` / `ui.tabletPoints` (blackiron.json) grow the UI layer, so it is about
+   * 830-980 units by 470-550: the bottom corners belong to the thumbs, so the weapon joins the
+   * vitals in a row along the top with a pause button, the grenade and reload buttons sit under
+   * the map, text is raised to 11 points and buttons to 44.
+   */
+  layout() {
+    const scene = this.scene;
+    const info = scene?.screenInfo;
+    const touch = !!info?.touch;
+    const W = scene?.uiWidth ?? 1280;
+    const H = scene?.uiHeight ?? 720;
+    const [it, ir, ib, il] = scene?.uiInsets ?? [0, 0, 0, 0];
+    // Points one UI unit shows at, after the engine grew the layer.
+    const per = (info?.pointsPerUnit ?? 1) * Math.abs(scene?.ui.scaleX || 1);
+    const text = (size: number) => (touch ? Math.max(size, Math.ceil(11 / per - 1e-6)) : size);
+    const tap = (size: number) => (touch ? Math.max(size, Math.ceil(44 / per - 1e-6)) : size);
+    const y = this.play.yard;
+    const head = text(12), small = text(10);
+    const bar1 = 30 + head + 12, bar2 = bar1 + 18 + small;
+    const vitals: Box = { x: 20 + il, y: 20 + it, w: 270, h: bar2 + 12 + small + 8 - 20 };
+    const cs = 6;
+    const map: Box = { x: W - 20 - ir - y.cols * cs, y: 20 + it, w: y.cols * cs, h: y.rows * cs };
+    const weapon: Box = touch ? { x: vitals.x + vitals.w + 12, y: vitals.y, w: 250, h: vitals.h } : { x: W - 270, y: H - 112, w: 250, h: 92 };
+    const side = tap(56);
+    const pause: Box = { x: weapon.x + weapon.w + 12, y: vitals.y, w: side, h: side };
+    const bw = Math.max(88, side), bh = side, by = map.y + map.h + 6 + 10;
+    const reload: Box = { x: W - 20 - ir - bw, y: by, w: bw, h: bh };
+    const grenade: Box = { x: reload.x - 12 - bw, y: by, w: bw, h: bh };
+    return { touch, W, H, text, tap, head, small, bar1, bar2, vitals, map, cs, weapon, pause, reload, grenade, bottom: ib };
+  }
+
   /** Screen rectangles the HUD owns, so a click there does not fire. */
   covers(x: number, y: number): boolean {
     const w = this.scene?.app.width ?? 1280;
@@ -622,28 +750,31 @@ class Hud extends Node2D {
   override render(ctx: DrawContext): void {
     const play = this.play;
     const y = play.yard;
-    const app = this.scene!.app;
-    const W = app.width;
-    const H = app.height;
-    const f = (size: number, weight = 700) => ({ ...UI_FONT, size, weight });
+    const scene = this.scene!;
+    const app = scene.app;
+    const L = this.layout();
+    const { W, H, touch } = L;
+    const f = (size: number, weight = 700) => ({ ...UI_FONT, size: L.text(size), weight });
     if (play.hurt > 0) {
       ctx.rect(0, 0, W, H, 0xb3261e, play.hurt * 0.22);
     }
     // Vitals.
-    ctx.rect(20, 20, 270, 92, 0x10161c, 0.88);
-    ctx.rect(20, 20, 3, 92, 0xffb547);
-    ctx.text("SENTRY YARD", 36, 30, { color: 0xffb547, font: f(12) });
-    ctx.text(`${y.remaining} / 6 SENTRIES`, 150, 30, { color: y.remaining ? 0xff8a76 : 0x9be38a, font: f(12) });
+    const v = L.vitals, vx = v.x - 20, vy = v.y - 20;
+    ctx.rect(v.x, v.y, v.w, v.h, 0x10161c, 0.88);
+    ctx.rect(v.x, v.y, 3, v.h, 0xffb547);
+    ctx.text("SENTRY YARD", vx + 36, vy + 30, { color: 0xffb547, font: f(12) });
+    if (touch) ctx.text(`${y.remaining} / 6 SENTRIES`, vx + 274, vy + 30, { color: y.remaining ? 0xff8a76 : 0x9be38a, font: f(12), align: "right" });
+    else ctx.text(`${y.remaining} / 6 SENTRIES`, vx + 150, vy + 30, { color: y.remaining ? 0xff8a76 : 0x9be38a, font: f(12) });
     const hp = y.player.health;
     const bar = (yy: number, value: number, max: number, color: number, label: string) => {
-      ctx.rect(36, yy, 238, 10, 0x262f38);
-      ctx.rect(36, yy, Math.max(0, (238 * value) / max), 10, color);
-      ctx.text(label, 36, yy + 12, { color: 0x8d9aa6, font: f(10, 600) });
+      ctx.rect(vx + 36, yy, 238, 10, 0x262f38);
+      ctx.rect(vx + 36, yy, Math.max(0, (238 * value) / max), 10, color);
+      ctx.text(label, vx + 36, yy + 12, { color: 0x8d9aa6, font: f(10, 600) });
     };
-    bar(54, hp.hp, hp.max, 0xe0503a, `HEALTH ${Math.ceil(hp.hp)}`);
-    bar(82, hp.armour, Math.max(1, hp.maxArmour), 0x5aa7e0, `ARMOUR ${Math.ceil(hp.armour)}`);
+    bar(vy + L.bar1, hp.hp, hp.max, 0xe0503a, `HEALTH ${Math.ceil(hp.hp)}`);
+    bar(vy + L.bar2, hp.armour, Math.max(1, hp.maxArmour), 0x5aa7e0, `ARMOUR ${Math.ceil(hp.armour)}`);
     // Tactical map: what has been explored, the sentries seen, the operative.
-    const cs = 6, mx = W - 20 - y.cols * cs, my = 20;
+    const cs = L.cs, mx = L.map.x, my = L.map.y;
     ctx.rect(mx - 6, my - 6, y.cols * cs + 12, y.rows * cs + 12, 0x10161c, 0.88);
     for (let r = 0; r < y.rows; r++) {
       for (let c = 0; c < y.cols; c++) {
@@ -661,11 +792,12 @@ class Hud extends Node2D {
     ctx.rect(mx + pc * cs - 2.5, my + pr * cs - 2.5, 5, 5, 0xffffff);
     // Weapon and ammo.
     const gun = y.gun;
-    const bx = W - 270, by = H - 112;
-    ctx.rect(bx, by, 250, 92, 0x10161c, 0.88);
-    ctx.rect(bx + 247, by, 3, 92, 0xffb547);
+    const bx = L.weapon.x, by = L.weapon.y, wh = L.weapon.h;
+    ctx.rect(bx, by, 250, wh, 0x10161c, 0.88);
+    ctx.rect(bx + 247, by, 3, wh, 0xffb547);
     ctx.text(gun.def.id === "rifle" ? "RIFLE" : "SHOTGUN", bx + 16, by + 12, { color: 0xe9edf0, font: f(14) });
-    ctx.text(gun.def.id === "rifle" ? "1 · Q" : "2 · Q", bx + 200, by + 14, { color: 0x6c7a86, font: f(11, 600), align: "right" });
+    if (touch) ctx.text("TAP TO SWAP", bx + 234, by + 12, { color: 0x8d9aa6, font: f(11, 600), align: "right" });
+    else ctx.text(gun.def.id === "rifle" ? "1 · Q" : "2 · Q", bx + 200, by + 14, { color: 0x6c7a86, font: f(11, 600), align: "right" });
     if (gun.reloading) {
       ctx.text("RELOADING", bx + 16, by + 38, { color: 0xffb547, font: f(22) });
       ctx.rect(bx + 16, by + 70, 200, 6, 0x262f38);
@@ -674,17 +806,55 @@ class Hud extends Node2D {
       ctx.text(String(gun.ammo), bx + 16, by + 32, { color: gun.ammo <= gun.def.magazine * 0.25 ? 0xff8a76 : 0xffffff, font: f(36) });
       ctx.text(`/ ${gun.def.magazine}`, bx + 84, by + 48, { color: 0x8d9aa6, font: f(14, 600) });
     }
-    ctx.text("GRENADES", bx + 150, by + 44, { color: 0x8d9aa6, font: f(10, 600) });
-    for (let i = 0; i < 5; i++) ctx.rect(bx + 150 + i * 16, by + 60, 11, 11, i < y.grenades ? 0x9db07c : 0x262f38);
-    // Controls.
-    const pad = app.input.lastDevice === "gamepad";
-    const lines = pad
-      ? ["Left stick  move", "Right stick  aim · RT fire", "LT  hold to aim a grenade, release to throw", "X reload · Y swap · Start pause"]
-      : ["WASD  move · mouse aim · click fire", "Right-click or G  hold to aim a grenade", "R reload · 1 2 Q weapons · Esc pause"];
-    ctx.rect(20, H - 22 - lines.length * 18 - 12, 330, lines.length * 18 + 16, 0x10161c, 0.8);
-    lines.forEach((l, i) => ctx.text(l, 32, H - 22 - lines.length * 18 + i * 18 - 4, { color: 0xb9c3cc, font: f(12, 600) }));
-    if (play.grenadeAiming) ctx.text("RELEASE TO THROW", W / 2, H - 60, { align: "center", color: 0xffb547, shadow: INK, font: f(16) });
-    if (y.grenades === 0 && play.grenadeAiming) ctx.text("NO GRENADES", W / 2, H - 84, { align: "center", color: 0xff8a76, font: f(14) });
+    // On a touch screen the taller type would run into the reload bar, which takes this room.
+    if (!(touch && gun.reloading)) {
+      ctx.text("GRENADES", bx + 150, by + 44, { color: 0x8d9aa6, font: f(10, 600) });
+      for (let i = 0; i < 5; i++) ctx.rect(bx + 150 + i * 16, by + 50 + L.small, 11, 11, i < y.grenades ? 0x9db07c : 0x262f38);
+    }
+    if (touch) {
+      this.renderTouch(ctx, L);
+    } else {
+      // Controls.
+      const pad = app.input.lastDevice === "gamepad";
+      const lines = pad
+        ? ["Left stick  move", "Right stick  aim · RT fire", "LT  hold to aim a grenade, release to throw", "X reload · Y swap · Start pause"]
+        : ["WASD  move · mouse aim · click fire", "Right-click or G  hold to aim a grenade", "R reload · 1 2 Q weapons · Esc pause"];
+      ctx.rect(20, H - 22 - lines.length * 18 - 12, 330, lines.length * 18 + 16, 0x10161c, 0.8);
+      lines.forEach((l, i) => ctx.text(l, 32, H - 22 - lines.length * 18 + i * 18 - 4, { color: 0xb9c3cc, font: f(12, 600) }));
+    }
+    if (play.grenadeAiming) ctx.text("RELEASE TO THROW", W / 2, H - 60 - L.bottom, { align: "center", color: 0xffb547, shadow: INK, font: f(16) });
+    if (y.grenades === 0 && play.grenadeAiming) ctx.text("NO GRENADES", W / 2, H - 84 - L.bottom, { align: "center", color: 0xff8a76, font: f(14) });
+  }
+
+  /** The touch buttons, and what each thumb does, said where it rests. */
+  private renderTouch(ctx: DrawContext, L: ReturnType<Hud["layout"]>): void {
+    const play = this.play;
+    const scene = this.scene!;
+    if (play.over) return;
+    const y = play.yard;
+    const f = (size: number, weight = 700) => ({ ...UI_FONT, size: L.text(size), weight });
+    const plate = (b: Box, lit: boolean) => {
+      ctx.rect(b.x, b.y, b.w, b.h, lit ? 0x2a3540 : 0x10161c, 0.88);
+      ctx.frame(b.x, b.y, b.w, b.h, lit ? 0xffb547 : 0x4a5866, 1, 1);
+    };
+    const label = (b: Box, s: string, color: number) => ctx.text(s, b.x + b.w / 2, b.y + b.h / 2 - L.text(12) * 0.62, { align: "center", color, font: f(12) });
+    plate(L.pause, false);
+    const p = L.pause;
+    ctx.rect(p.x + p.w / 2 - 9, p.y + p.h / 2 - 10, 6, 20, 0xe9edf0);
+    ctx.rect(p.x + p.w / 2 + 3, p.y + p.h / 2 - 10, 6, 20, 0xe9edf0);
+    plate(L.grenade, play.grenadeAiming);
+    label(L.grenade, "GRENADE", y.grenades > 0 ? 0xe9edf0 : 0x6c7a86);
+    plate(L.reload, y.gun.reloading);
+    label(L.reload, "RELOAD", y.gun.reloading ? 0xffb547 : 0xe9edf0);
+    scene.reportTarget("Pause", p.x, p.y, p.w, p.h);
+    scene.reportTarget("Swap weapon", L.weapon.x, L.weapon.y, L.weapon.w, L.weapon.h);
+    scene.reportTarget("Grenade", L.grenade.x, L.grenade.y, L.grenade.w, L.grenade.h);
+    scene.reportTarget("Reload", L.reload.x, L.reload.y, L.reload.w, L.reload.h);
+    // Under each resting stick, until a thumb takes it.
+    const rest = (i: number, fx: number, s: string) => {
+      if (!play.stickHeld(i)) ctx.text(s, L.W * fx, L.H * 0.8 + 62, { align: "center", color: 0xb9c3cc, shadow: INK, font: f(12, 600) });
+    };
+    rest(0, 0.14, "MOVE");
+    rest(1, 0.86, play.grenadeAiming ? "AIM THE THROW" : "AIM · PUSH TO FIRE");
   }
 }
-

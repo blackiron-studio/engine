@@ -4,6 +4,7 @@
   "art": "src/art.ts",
   "viewport": { "width": 1280, "height": 720, "scale": "fit" },
   "render": { "scale": "native", "snap": "world" },
+  "ui": { "minPoints": 0.8 },
   "renderer": "auto",
   "fps": false,
   "seed": 3,

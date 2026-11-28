@@ -44,6 +44,7 @@ class BenchScene extends Scene {
   private readonly emitters: ParticleEmitter[] = [];
   private pool: SpritePool | null = null;
   private hud!: Label;
+  private note!: Label;
   private t = 0;
 
   override ready(): void {
@@ -95,10 +96,21 @@ class BenchScene extends Scene {
     for (let i = 0; i < 3; i++) lights.add(new Light2D({ radius: 360, color: [0xffc080, 0x80c0ff, 0xc0ff90][i], flicker: 0.05 }, W / 2 + (i - 1) * 260, H / 2 + (i % 2) * 140));
 
     this.camera.bounds = { x: 0, y: 0, w: W, h: H };
-    const top = this.ui.add(new Anchor({ x: "left", y: "top", safe: 12 }));
+    const top = this.ui.add(new Anchor({ x: "left", y: "top", safe: 12, safeArea: true }));
     this.hud = top.add(new Label("", 0, 0, { font: FONT, shadow: 0x000000 }));
-    const bottom = this.ui.add(new Anchor({ x: "center", y: "bottom", safe: 12 }));
-    bottom.add(new Label(this.p.pool ? "Blackiron bench: sprites move in the kernel node table (?pool=0 for script nodes)" : "Blackiron bench: sprites move as script nodes (?pool=1 for the kernel node table)", 0, 0, { font: FONT, align: "center", shadow: 0x000000 }));
+    // On phones and tablets the note sits a line above the bottom edge. A desktop keeps it as designed.
+    const bottom = this.ui.add(new Anchor({ x: "center", y: "bottom", h: this.compact || this.screenInfo.touch ? 24 : 0, safe: 12, safeArea: true }));
+    this.note = bottom.add(new Label(this.p.pool ? "Blackiron bench: sprites move in the kernel node table (?pool=0 for script nodes)" : "Blackiron bench: sprites move as script nodes (?pool=1 for the kernel node table)", 0, 0, { font: FONT, align: "center", shadow: 0x000000 }));
+    this.fitText();
+  }
+
+  /** Both lines stay inside the screen: on a phone the UI layer is only about 850 units wide (`ui.minPoints`). */
+  private fitText(): void {
+    this.hud.maxWidth = this.note.maxWidth = Math.max(200, this.safeRect.w - 24);
+  }
+
+  override onResize(): void {
+    if (this.hud) this.fitText();
   }
 
   override update(dt: number): void {

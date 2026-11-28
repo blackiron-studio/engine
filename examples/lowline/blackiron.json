@@ -19,6 +19,9 @@
     "windows",
     "linux"
   ],
+  "ui": {
+    "minPoints": 0.8
+  },
   "background": "#132e3b",
   "pixelSnap": false,
   "seed": 71,

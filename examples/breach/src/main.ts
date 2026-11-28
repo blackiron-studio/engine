@@ -1,5 +1,5 @@
 import type { App } from "@blackiron-studio/engine/app";
-import { Node, type DrawContext } from "@blackiron-studio/engine/scene";
+import { Node, VirtualSticks, type DrawContext } from "@blackiron-studio/engine/scene";
 import { NativePointerLockInput, PointerLockInput } from "@blackiron-studio/engine/input";
 import {
   Scene3D,
@@ -31,6 +31,7 @@ import {
   RELAYS,
   ENEMY_SPAWNS,
 } from "./level.ts";
+import { inBox, renderTouchHud, touchLayout } from "./touch.ts";
 interface Enemy {
   id: number;
   health: number;
@@ -127,6 +128,16 @@ export class BreachScene extends Scene3D {
   private destroyed = false;
   private flash = 0;
   private debugHud = false;
+  // Touch screens: a move stick on the left, a look stick under the right thumb (shown while
+  // held), and the buttons drawn by touch.ts.
+  private moveStick: VirtualSticks | null = null;
+  private lookStick: VirtualSticks | null = null;
+  private touchSeen = new Set<number>();
+  private fireTouch: number | null = null;
+  private touchSprint = false;
+  /** Menu taps are ignored until this time, so the tap that ended play does not also pick a menu row. */
+  private tapGuard = 0;
+  touchFiring = false;
   settings: Settings;
   constructor(
     readonly physicsWorld: PhysicsBackend3D,
@@ -199,8 +210,105 @@ export class BreachScene extends Scene3D {
     physicsWorld.step(1 / 60);
     this.placeCamera();
   }
+  /** Phones and tablets get the touch layout and on-screen controls; laptops never do. */
+  get touchUI(): boolean {
+    return this.screenInfo.touch;
+  }
+  /** Create or drop the sticks to match the screen, and place them clear of the notch. */
+  private syncTouch(): void {
+    if (!this.touchUI) {
+      this.moveStick?.destroy();
+      this.lookStick?.destroy();
+      this.moveStick = this.lookStick = null;
+      this.touchFiring = this.touchSprint = false;
+      return;
+    }
+    if (!this.moveStick || !this.lookStick) {
+      this.moveStick = this.ui.add(new VirtualSticks({ sticks: [{ zone: { x: 0, y: 0.2, w: 0.45, h: 0.8 } }], size: 56 }));
+      this.lookStick = this.ui.add(new VirtualSticks({ sticks: [{ zone: { x: 0.5, y: 0.2, w: 0.5, h: 0.8 } }], size: 56, opacity: 0 }));
+    }
+    const l = touchLayout(this);
+    this.moveStick.specs[0].rest = [(l.L + 92) / l.W, (l.B - 80) / l.H];
+  }
+  override onResize(): void {
+    if (this.attachedApp) this.syncTouch();
+  }
+  /** Show and read the sticks only while playing (called by the HUD each frame). */
+  showSticks(): void {
+    const on = this.state.phase === "playing";
+    for (const stick of [this.moveStick, this.lookStick])
+      if (stick) {
+        stick.always = on;
+        stick.visible = on;
+      }
+  }
+  /** The on-screen buttons: new touches press them, and the finger on FIRE holds the trigger. */
+  private pollTouch(): void {
+    const l = touchLayout(this),
+      touches = this.app.pointer.touches,
+      relay = this.nearestRelay >= 0;
+    for (const [id, t] of touches) {
+      if (this.touchSeen.has(id)) continue;
+      const p = this.toUI(t.x, t.y);
+      if (inBox(l.pause, p)) this.pause();
+      else if (inBox(l.fire, p)) this.fireTouch = id;
+      else if (inBox(l.jump, p)) this.onAction("jump", true);
+      else if (inBox(l.reload, p)) this.onAction("reload", true);
+      else if (inBox(l.swap, p)) this.onAction(this.weaponIndex === 0 ? "weapon2" : "weapon1", true);
+      else if (relay && inBox(l.use, p)) this.interact();
+      if (this.state.phase !== "playing") {
+        this.tapGuard = this.app.time + 0.3;
+        break;
+      }
+    }
+    this.touchSeen = new Set(touches.keys());
+    if (this.fireTouch !== null && !touches.has(this.fireTouch)) this.fireTouch = null;
+    this.touchFiring = this.fireTouch !== null && this.state.phase === "playing";
+  }
+  /** A tap on the title or a menu, on a touch screen. `x`, `y` are logical; the layout is in UI units. */
+  private touchTap(x: number, y: number): void {
+    if (this.state.phase === "playing" || this.app.time < this.tapGuard) return;
+    const p = this.toUI(x, y),
+      l = touchLayout(this);
+    if (this.settingsOpen) {
+      if (inBox(l.less, p) || inBox(l.more, p)) {
+        this.look.sensitivity = Math.max(0.0006, Math.min(0.006, this.look.sensitivity + (inBox(l.less, p) ? -0.0003 : 0.0003)));
+        this.settings.sensitivity = this.look.sensitivity;
+      } else if (inBox(l.invert, p)) {
+        this.look.invertY = !this.look.invertY;
+        this.settings.invertY = this.look.invertY;
+      } else if (inBox(l.fov, p)) {
+        this.settings.fov = this.settings.fov === 68 ? 82 : 68;
+        this.camera3D.fov = this.settings.fov;
+      } else if (inBox(l.sound, p)) {
+        this.settings.muted = !this.settings.muted;
+        this.app.audio.setMuted(this.settings.muted);
+      } else if (inBox(l.back, p)) this.settingsOpen = false;
+      else return;
+      this.saveSettings();
+      return;
+    }
+    if (this.state.phase === "title") {
+      if (inBox(l.start, p)) this.start();
+      else if (inBox(l.titleSettings, p)) this.settingsOpen = true;
+    } else if (this.state.phase === "paused") {
+      if (inBox(l.resume, p)) this.resume();
+      else if (inBox(l.pauseSettings, p)) this.settingsOpen = true;
+      else if (inBox(l.restart, p)) void this.restart();
+    } else if (inBox(l.again, p)) void this.restart();
+  }
   override ready(): void {
     this.app.audio.setMuted(this.settings.muted);
+    this.syncTouch();
+    if (this.touchUI) {
+      // No mouse to capture: the sticks and buttons drive the game.
+      this.resources.defer(
+        this.app.platform.onVisibility((v) => {
+          if (!v) this.pause();
+        }),
+      );
+      return;
+    }
     if (this.app.platform.kind === "native") {
       const host = (
         this.app.platform as import("@blackiron-studio/engine/platform").NativePlatform
@@ -293,6 +401,7 @@ export class BreachScene extends Scene3D {
     this.look.pitch = -0.025;
     this.spawnWave();
     this.placeCamera();
+    this.touchSeen = new Set(this.app.pointer.touches.keys());
     if (this.lock instanceof NativePointerLockInput) void this.lock.request();
   }
   pause(): void {
@@ -301,6 +410,8 @@ export class BreachScene extends Scene3D {
     this.timeScale = 0;
     this.jump = false;
     this.firePressed = false;
+    this.fireTouch = null;
+    this.touchFiring = this.touchSprint = false;
     this.lock?.release();
     this.app.input.reset();
     for (const w of this.weapons) w.release();
@@ -311,6 +422,7 @@ export class BreachScene extends Scene3D {
     this.state.phase = "playing";
     this.timeScale = 1;
     this.app.input.reset();
+    this.touchSeen = new Set(this.app.pointer.touches.keys());
     this.lock?.clear();
     if (this.lock instanceof NativePointerLockInput) void this.lock.request();
   }
@@ -561,6 +673,7 @@ export class BreachScene extends Scene3D {
     return false;
   }
   override onPointerDown(x: number, y: number): void {
+    if (this.touchUI) return this.touchTap(x, y);
     if (this.lock?.locked) return;
     if (this.settingsOpen) {
       if (x < 400 || x > 880) return;
@@ -611,17 +724,35 @@ export class BreachScene extends Scene3D {
     this.recoil *= Math.exp(-dt * 14);
     const mouse = this.lock?.consume();
     if (mouse) this.look.mouse(mouse.x, mouse.y);
+    let stickX = 0,
+      stickY = 0;
+    this.touchSprint = false;
+    if (this.touchUI && this.moveStick && this.lookStick) {
+      this.pollTouch();
+      if (s.phase !== "playing") return;
+      const m = this.moveStick.vector(0),
+        v = this.lookStick.vector(0),
+        // Finer near the centre, and scaled by the sensitivity setting.
+        k = this.look.sensitivity / DEFAULT_SETTINGS.sensitivity;
+      stickX = m.x;
+      stickY = -m.y;
+      // Pushing the stick to its edge sprints.
+      this.touchSprint = Math.hypot(m.x, m.y) > 0.95 && -m.y > 0.5;
+      this.lookStick.opacity = this.lookStick.held(0) ? 1 : 0;
+      this.look.turn(v.x * Math.abs(v.x) * dt * 2.6 * k, -v.y * Math.abs(v.y) * dt * 1.7 * k * (this.look.invertY ? -1 : 1));
+    }
     this.look.turn(
       input.axis("lookLeft", "lookRight") * dt * 1.8,
       input.axis("lookDown", "lookUp") * dt * 1.35,
     );
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
     const movement = this.look.movement(
-      input.axis("left", "right"),
-      input.axis("down", "up"),
+      clamp(input.axis("left", "right") + stickX),
+      clamp(input.axis("down", "up") + stickY),
     );
     this.player.move(movement, dt, {
       jump: this.jump,
-      sprint: input.isDown("sprint"),
+      sprint: input.isDown("sprint") || this.touchSprint,
     });
     this.jump = false;
     if (this.player.position.y < -8) {
@@ -633,7 +764,7 @@ export class BreachScene extends Scene3D {
     if (movement.length > 0.1 && this.player.grounded) {
       this.footsteps -= dt;
       if (this.footsteps <= 0) {
-        this.footsteps = input.isDown("sprint") ? 0.26 : 0.36;
+        this.footsteps = input.isDown("sprint") || this.touchSprint ? 0.26 : 0.36;
         this.app.audio.play("breach-step", { volume: 0.4 });
       }
     }
@@ -653,7 +784,7 @@ export class BreachScene extends Scene3D {
     for (const w of this.weapons) w.update(dt);
     const weapon = this.weapons[this.weaponIndex],
       directions = weapon.trigger(
-        input.isDown("fire") || this.firePressed,
+        input.isDown("fire") || this.firePressed || this.touchFiring,
         this.look.forward(),
       );
     this.firePressed = false;
@@ -691,7 +822,7 @@ export class BreachScene extends Scene3D {
       }
     }
     if (
-      input.isDown("fire") &&
+      (input.isDown("fire") || this.touchFiring) &&
       weapon.ammo === 0 &&
       weapon.reserve > 0 &&
       weapon.reloadRemaining === 0
@@ -904,7 +1035,7 @@ export class BreachScene extends Scene3D {
   private animateGun(dt: number): void {
     const input = this.app.input,
       speed = Math.hypot(this.player.velocity.x, this.player.velocity.z);
-    const sprinting = input.isDown("sprint") && speed > 5 && this.player.grounded && !input.isDown("fire") && this.flash <= 0;
+    const sprinting = (input.isDown("sprint") || this.touchSprint) && speed > 5 && this.player.grounded && !input.isDown("fire") && !this.touchFiring && this.flash <= 0;
     this.sprintBlend += ((sprinting ? 1 : 0) - this.sprintBlend) * (1 - Math.exp(-dt * 8));
     this.raise = Math.min(1, this.raise + dt / 0.4);
     this.heat = Math.max(0, this.heat - dt * 0.45);
@@ -1094,6 +1225,10 @@ class BreachHud extends Node {
     super();
   }
   override render(ctx: DrawContext): void {
+    if (this.game.touchUI) {
+      this.game.showSticks();
+      return renderTouchHud(ctx, this.game);
+    }
     const g = this.game,
       s = g.state,
       w = g.weapons[g.weaponIndex],

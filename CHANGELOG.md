@@ -16,6 +16,8 @@ Four things other engines have for small screens and we did not.
   - `Settings` multiplies its own text size by it, so `app.accessibility.textScale` and the theme font follow, also when it changes while the game runs.
   - `"ui": { "systemText": false }` turns it off. Device presets take `textScale` to try it.
   - Not reported yet by the Rust host (Android, desktop), where it stays 1.
+- `TouchControls` takes a `font` for its button labels (the default bitmap face is 8 points on a phone) and reports its buttons as tap targets, so the screens check measures them.
+- Every example is laid out for phones and tablets: Wisp Hollow, Signal Breach, Lowline, Lumen Salvage, Sentry Yard, Knight and the bench. Each grows its UI with `ui.minPoints`, keeps text at 11 points and taps at 44, and shows touch controls on touch screens; Signal Breach, Lowline and Sentry Yard gained them. Laptops look as before. Each has a phone test.
 
 ## 0.23.2 — The engine's own UI on phones (2026-11-26)
 

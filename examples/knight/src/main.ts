@@ -11,14 +11,25 @@ import { Anchor, AnimatedSprite, type DrawContext, Label, Node2D, Rig2D, Scene, 
 const UI = { family: "Instrument Sans", size: 18, weight: 500 } as const;
 const FRAMES = 16;
 
-/** Every imported frame with its index, so the import can be read at a glance. */
+/** Text on a phone: `ui.minPoints` shows a unit at 0.8 pt there, so 15 units is 12 pt. */
+const UI_PHONE = { ...UI, size: 15 } as const;
+const CELL = 76;
+
+/**
+ * Every imported frame with its index, so the import can be read at a glance. On a small screen
+ * the UI layer is only about 850 units wide, so the strip shrinks to fit it; the numbers do not.
+ */
 class Strip extends Node2D {
   override render(ctx: DrawContext): void {
+    const scene = this.scene;
+    const compact = scene?.compact ?? false;
+    // The strip is 16 cells from 6 units left of this node; the anchor keeps 10 units to the edge.
+    const k = compact && scene ? Math.min(1, (scene.safeRect.w - 20) / (FRAMES * CELL)) : 1;
     for (let i = 0; i < FRAMES; i++) {
-      const x = i * 76 + 40;
-      ctx.rect(x - 34, 0, 68, 78, 0x0e0c14, 0.5);
-      ctx.sprite(`knight.${i}`, x, 72, { sx: 1, sy: 1 });
-      ctx.text(String(i), x, 80, { align: "center", color: 0xc8d0dc, font: UI });
+      const x = (i * CELL + 40) * k;
+      ctx.rect(x - 34 * k, 0, 68 * k, 78 * k, 0x0e0c14, 0.5);
+      ctx.sprite(`knight.${i}`, x, 72 * k, { sx: k, sy: k });
+      ctx.text(String(i), x, 80 * k, { align: "center", color: 0xc8d0dc, font: compact ? UI_PHONE : UI });
     }
   }
 }
@@ -28,6 +39,10 @@ class KnightScene extends Scene {
   private rig!: Rig2D;
   private busy = false;
   private hint!: Label;
+  private about!: Label;
+  private foot: Anchor | null = null;
+  private builtStacked = false;
+  private builtWidth = 0;
 
   override ready(): void {
     this.name = "knight";
@@ -64,10 +79,48 @@ class KnightScene extends Scene {
 
     this.camera.x = 640;
     this.camera.y = 360;
-    this.ui.add(new Anchor({ x: "left", y: "top", dy: 12, safe: 10 })).add(new Strip());
-    const foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -28, safe: 12 }));
-    this.hint = foot.add(new Label("Move with WASD or the arrows. Space attacks, H hurts, V celebrates, E picks up, Shift guards. Click to attack.", 0, 0, { align: "center", color: 0xc8d0dc, font: UI, shadow: 0x000000 }));
-    foot.add(new Label("Left: the sheet's frames, picked by facing (blackiron art import). Right: the same knight as a cutout rig, seven parts from frame 3 posed by clips (blackiron art parts).", 0, -26, { align: "center", color: 0x8a98a8, font: UI, shadow: 0x000000 }));
+    this.ui.add(new Anchor({ x: "left", y: "top", dy: 12, safe: 10, safeArea: true })).add(new Strip());
+    this.buildFoot();
+  }
+
+  /** On a touch screen the only input is a tap, so the hint says so. */
+  private hintText(): string {
+    const touch = this.screenInfo.touch || this.app.input.lastDevice === "touch" || this.app.pointer.type === "touch";
+    return touch
+      ? "Tap to attack. With a keyboard or a gamepad the knight walks, and is hurt, celebrates, picks up and guards."
+      : "Move with WASD or the arrows. Space attacks, H hurts, V celebrates, E picks up, Shift guards. Click to attack.";
+  }
+
+  /** The two captions. One line each on a desktop; on a phone or tablet they wrap to the screen and stack up from the bottom. */
+  private buildFoot(): void {
+    this.foot?.destroy();
+    // Wrapped on phones and tablets. A desktop keeps its one-line captions as designed.
+    const stacked = (this.builtStacked = this.compact || this.screenInfo.touch);
+    const font = this.compact ? UI_PHONE : UI;
+    const about = "Left: the sheet's frames, picked by facing (blackiron art import). Right: the same knight as a cutout rig, seven parts from frame 3 posed by clips (blackiron art parts).";
+    if (!stacked) {
+      const foot = (this.foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -28, safe: 12, safeArea: true })));
+      this.hint = foot.add(new Label(this.hintText(), 0, 0, { align: "center", color: 0xc8d0dc, font: UI, shadow: 0x000000 }));
+      this.about = foot.add(new Label(about, 0, -26, { align: "center", color: 0x8a98a8, font: UI, shadow: 0x000000 }));
+    } else {
+      const wrap = Math.max(200, this.safeRect.w - 40);
+      const foot = (this.foot = this.ui.add(new Anchor({ x: "center", y: "bottom", safe: 10, safeArea: true })));
+      this.hint = foot.add(new Label(this.hintText(), 0, 0, { align: "center", color: 0xc8d0dc, font, shadow: 0x000000, wrap }));
+      this.about = foot.add(new Label(about, 0, 0, { align: "center", color: 0x8a98a8, font, shadow: 0x000000, wrap }));
+    }
+    this.builtWidth = this.uiWidth;
+    this.placeFoot();
+  }
+
+  private placeFoot(): void {
+    this.hint.text = this.hintText();
+    if (!this.builtStacked) return;
+    this.hint.y = -this.hint.textHeight;
+    this.about.y = this.hint.y - 6 - this.about.textHeight;
+  }
+
+  override onResize(): void {
+    if (this.foot && ((this.compact || this.screenInfo.touch) !== this.builtStacked || (this.builtStacked && this.uiWidth !== this.builtWidth))) this.buildFoot();
   }
 
   /** One-shots on both: the sheet's animation and the rig's clip, on a layer when the legs should keep going. */
@@ -102,6 +155,7 @@ class KnightScene extends Scene {
   }
 
   override update(dt: number): void {
+    this.placeFoot();
     const app = this.app;
     if (app.input.isDown("guard") && !this.busy) {
       this.knight.play("knight.guard");

@@ -17,6 +17,25 @@ export const C = {
   pink: 0xff4fa0,
   cyan: 0x45e3f0,
 };
+/**
+ * The smallest size HUD text is drawn at, in UI units. 0 on a desktop; on phones and tablets
+ * the HUD raises it so nothing reads under 11 points. World text (street signs) is never
+ * drawn inside `withTextFloor`, so it keeps its painted size.
+ */
+let textFloor = 0;
+/** Run `draw` with HUD text no smaller than `floor` units, then restore the old floor. */
+export function withTextFloor(floor: number, draw: () => void) {
+  const old = textFloor;
+  textFloor = floor;
+  try {
+    draw();
+  } finally {
+    textFloor = old;
+  }
+}
+/** The size `size` is drawn at under the current floor. */
+export const textSize = (size: number) => Math.max(size, textFloor);
+
 export function text(
   ctx: DrawContext,
   s: string,
@@ -28,7 +47,7 @@ export function text(
   weight = 600,
   alpha = 1,
 ) {
-  ctx.text(s, x, y, { font: { family: "Arial", size, weight }, color, align, alpha });
+  ctx.text(s, x, y, { font: { family: "Arial", size: textSize(size), weight }, color, align, alpha });
 }
 
 const LAND = { x0: 140, y0: 140, x1: 2328, y1: 2008 };

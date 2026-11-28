@@ -1,6 +1,6 @@
 import { Anchor, Button, FocusGroup, Label, NineSlice, Scene, Sprite } from "@blackiron-studio/engine/scene";
-import { BUTTON_SKINS } from "../look.ts";
-import { BUTTON, CAPTION, DISPLAY, UI, UI_SMALL } from "../fonts.ts";
+import { BUTTON_SKINS, PHONE_TAP, touchFirst } from "../look.ts";
+import { BUTTON, DISPLAY, UI, UI_SMALL, captionFor } from "../fonts.ts";
 import { WORLD_H, WORLD_W, createGame } from "../game.ts";
 import { saves } from "../store.ts";
 import { buildHollow } from "./hollow.ts";
@@ -9,6 +9,8 @@ import { TitleScene } from "./title.ts";
 
 export class OverScene extends Scene {
   private focus = new FocusGroup();
+  private builtCompact = false;
+  private hint: Label | null = null;
 
   constructor(
     private readonly score: number,
@@ -29,14 +31,22 @@ export class OverScene extends Scene {
     this.post.saturation = 0.7;
     this.post.vignette = 0.7;
 
+    this.buildUI();
+  }
+
+  /** The score plate. A phone gets 14-unit captions and 56-unit buttons; a touch screen needs no key hint. */
+  private buildUI(): void {
+    for (const child of [...this.ui.children]) child.destroy();
+    const compact = (this.builtCompact = this.compact);
+    const bh = compact ? PHONE_TAP : 46;
     const pw = 480;
-    const ph = 300;
+    const ph = 254 + bh;
     const box = this.ui.add(new Anchor({ x: "center", y: "center", w: pw, h: ph }));
     box.add(new NineSlice("wh.ui.plate", -6, -6, pw + 12, ph + 12, 16));
     box.add(new Label("THE LANTERN WENT OUT", pw / 2, 26, { font: UI, align: "center", color: 0xd8e8e4, shadow: 0x02060c }));
         box.add(new Label(`${this.score}`, pw / 2, 58, { font: DISPLAY, align: "center", color: 0xffd98a, shadow: 0x2a1406 }));
     box.add(new Sprite("wh.ui.rule", pw / 2, 138));
-    box.add(new Label(this.score === 1 ? "EMBER GATHERED" : "EMBERS GATHERED", pw / 2, 148, { font: CAPTION, align: "center", color: 0xffe3ae }));
+    box.add(new Label(this.score === 1 ? "EMBER GATHERED" : "EMBERS GATHERED", pw / 2, 148, { font: captionFor(compact), align: "center", color: 0xffe3ae }));
     const best = saves.load().best;
     box.add(new Label(this.isBest ? "NEW BEST!" : `BEST ${best}`, pw / 2, 172, { font: UI_SMALL, align: "center", color: this.isBest ? 0x8de9d8 : 0x8fb0aa, shadow: 0x02060c }));
     if (this.isBest) {
@@ -47,12 +57,22 @@ export class OverScene extends Scene {
       glow.additive = true;
       glow.alpha = 0.25;
     }
-    const again = box.add(new Button("PLAY AGAIN", 32, 216, 200, 46, { action: "again", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
-    const title = box.add(new Button("TITLE", pw - 32 - 200, 216, 200, 46, { action: "title", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xd8e8e4 } }));
+    const again = box.add(new Button("PLAY AGAIN", 32, 216, 200, bh, { action: "again", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
+    const title = box.add(new Button("TITLE", pw - 32 - 200, 216, 200, bh, { action: "title", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xd8e8e4 } }));
     this.focus.items = [again, title];
     this.focus.set(0);
-    const foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -40, safe: 12 }));
-    foot.add(new Label("Enter to play again", 0, 0, { font: UI_SMALL, align: "center", color: 0x8fb0aa, shadow: 0x02060c }));
+    const foot = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -40, safe: 12, safeArea: true }));
+    this.hint = foot.add(new Label("Enter to play again", 0, 0, { font: UI_SMALL, align: "center", color: 0x8fb0aa, shadow: 0x02060c }));
+    this.hint.visible = !touchFirst(this);
+  }
+
+  override onResize(): void {
+    if (this.attachedApp && this.hint && this.compact !== this.builtCompact) this.buildUI();
+  }
+
+  override update(): void {
+    // The key hint is for keys: hidden while the player is on touch, where the two buttons say it all.
+    if (this.hint) this.hint.visible = !touchFirst(this);
   }
 
   override onAction(name: string, pressed: boolean): void {

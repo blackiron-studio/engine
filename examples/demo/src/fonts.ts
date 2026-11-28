@@ -10,3 +10,8 @@ export const UI: FontSpec = { family: "Instrument Sans", size: 21, weight: 600 }
 export const UI_SMALL: FontSpec = { family: "Instrument Sans", size: 15, weight: 600 };
 export const CAPTION: FontSpec = { family: "Instrument Sans", size: 12, weight: 700 };
 export const BUTTON: FontSpec = { family: "Instrument Sans", size: 18, weight: 700 };
+
+/** Captions on a small screen. The UI layer shows a unit at 0.8 pt there (`ui.minPoints`), so 14 units is 11 pt. */
+export const CAPTION_PHONE: FontSpec = { ...CAPTION, size: 14 };
+/** The caption face for a scene: larger on a phone, the designed 12 units everywhere else. */
+export const captionFor = (compact: boolean): FontSpec => (compact ? CAPTION_PHONE : CAPTION);

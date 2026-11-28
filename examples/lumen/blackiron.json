@@ -7,6 +7,10 @@
     "height": 720,
     "scale": "fit"
   },
+  "ui": {
+    "minPoints": 0.8,
+    "tabletPoints": 1.2
+  },
   "renderer": "webgl2",
   "fallback": false,
   "background": "#b9cdd0",

@@ -1,8 +1,8 @@
 import { TAU } from "@blackiron-studio/engine/core";
-import { Anchor, AnimatedSprite, Button, Label, Light2D, NineSlice, Node2D, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
-import { BUTTON_SKINS } from "../look.ts";
+import { Anchor, AnimatedSprite, Button, type DrawContext, Label, Light2D, NineSlice, Node2D, ParticleEmitter, Rig2D, Scene, Sprite, TouchControls } from "@blackiron-studio/engine/scene";
+import { BUTTON_SKINS, PHONE_TAP, touchFirst } from "../look.ts";
 import { LanternKeeper, EmberCompass } from "../scenery.ts";
-import { BUTTON, CAPTION, DISPLAY_SMALL, SCORE, UI_SMALL } from "../fonts.ts";
+import { BUTTON, DISPLAY_SMALL, SCORE, UI_SMALL, captionFor } from "../fonts.ts";
 import { type GameEvent, type GameState, RULES, WORLD_H, WORLD_W, createGame, tick } from "../game.ts";
 import { saves } from "../store.ts";
 import { type Hollow, buildHollow } from "./hollow.ts";
@@ -21,6 +21,35 @@ class Glowing extends Node2D {
     this.halo.alpha = haloAlpha;
     this.body = this.add(new AnimatedSprite(anim));
     this.body.emissive = true;
+  }
+}
+
+const TOUCH_SIZE = 64;
+const TOUCH_BUTTONS = [
+  { action: "pause", label: "II", name: "Pause" },
+  { action: "swap", label: "HERO", name: "Hero" },
+] as const;
+
+/**
+ * The words on the touch buttons, in the HUD's face. The engine's `TouchControls` writes its labels
+ * in a fixed 10-unit face, 8 pt on a phone, so it gets empty labels and these sit on its rings
+ * (same places: see `TouchControls.buttonRect`). Also tells the screen audit where the buttons are.
+ */
+class TouchLabels extends Node2D {
+  constructor(private readonly always: boolean) {
+    super();
+  }
+  override render(ctx: DrawContext): void {
+    const scene = this.scene;
+    if (!scene || !(this.always || scene.app.pointer.type === "touch")) return;
+    const area = scene.areaOf(this);
+    const r = TOUCH_SIZE * 0.55;
+    TOUCH_BUTTONS.forEach((b, i) => {
+      const x = area.width - TOUCH_SIZE * 1.2 - i * TOUCH_SIZE * 1.4;
+      const y = area.height - TOUCH_SIZE * 1.2;
+      ctx.text(b.label, x, y - (b.label.length > 2 ? 9 : 11), { align: "center", color: 0xffffff, alpha: 0.75, font: b.label.length > 2 ? UI_SMALL : BUTTON });
+      scene.reportTarget(b.name, x - r, y - r, r * 2, r * 2);
+    });
   }
 }
 
@@ -50,6 +79,9 @@ export class PlayScene extends Scene {
   private score!: Label;
   private best!: Label;
   private pausePanel!: Node2D;
+  private keyHints!: Node2D;
+  private hud: Node2D[] = [];
+  private builtCompact = false;
   private pausedFlag = false;
   private t = 0;
   private ending = false;
@@ -99,45 +131,81 @@ export class PlayScene extends Scene {
     for (const e of this.state.embers) this.addEmber(e.id);
     for (const w of this.state.wisps) this.addWisp(w.id);
 
-    // HUD: glass plates, vector icons and one 16-unit margin, anchored for any aspect ratio.
-    const topLeft = this.ui.add(new Anchor({ x: "left", y: "top", safe: 16 }));
-    topLeft.add(new NineSlice("wh.ui.plate", -4, -4, 132, 76, 16));
-    topLeft.add(new Label("LANTERN", 14, 10, { font: CAPTION, color: 0x8fb8b0 }));
-    for (let i = 0; i < RULES.lives; i++) this.hearts.push(topLeft.add(new Sprite("heart", 10 + i * 34, 28)));
-    const topRight = this.ui.add(new Anchor({ x: "right", y: "top", safe: 16 }));
-    topRight.add(new NineSlice("wh.ui.plate", -160, -4, 164, 76, 16));
-    topRight.add(new Sprite("wh.ui.ember", -124, 34)).scale = 1.25;
-    topRight.add(new Label("EMBERS", -16, 10, { font: CAPTION, align: "right", color: 0x8fb8b0 }));
-    const scoreBox = topRight.add(new Node2D(-16, 24));
-    this.score = scoreBox.add(new Label("0", 0, 0, { font: SCORE, align: "right", color: 0xffd98a, shadow: 0x2a1406 }));
     this.bestScore = saves.load().best;
-    this.best = topRight.add(new Label(this.bestScore > 0 ? `BEST ${this.bestScore}` : "", -146, 10, { font: CAPTION, color: 0x8fb8b0 }));
+    this.buildHud();
+    // On a touch screen the stick and buttons show from the start, not only after the first touch.
+    const always = this.screenInfo.touch;
+    this.ui.add(new TouchControls({ stick: { left: "left", right: "right", up: "up", down: "down" }, buttons: TOUCH_BUTTONS.map((b) => ({ action: b.action, label: "" })), size: TOUCH_SIZE, always }));
+    this.ui.add(new TouchLabels(always));
+    this.syncPresentation();
+    app.audio.setMood("night");
+  }
 
-    const compass = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -78 }));
+  /**
+   * HUD: glass plates, vector icons and one 16-unit margin, anchored for any aspect ratio and clear
+   * of the notch. A phone (`ui.minPoints` shows a unit at 0.8 pt there) gets 14-unit captions, a
+   * wider score plate to hold them and 56-unit pause buttons.
+   */
+  private buildHud(): void {
+    for (const node of this.hud) node.destroy();
+    this.hearts = [];
+    const compact = (this.builtCompact = this.compact);
+    const caption = captionFor(compact);
+    const capY = compact ? 8 : 10;
+
+    const topLeft = this.ui.add(new Anchor({ x: "left", y: "top", safe: 16, safeArea: true }));
+    topLeft.add(new NineSlice("wh.ui.plate", -4, -4, 132, 76, 16));
+    topLeft.add(new Label("LANTERN", 14, capY, { font: caption, color: 0x8fb8b0 }));
+    for (let i = 0; i < RULES.lives; i++) this.hearts.push(topLeft.add(new Sprite("heart", 10 + i * 34, 28)));
+    const topRight = this.ui.add(new Anchor({ x: "right", y: "top", safe: 16, safeArea: true }));
+    const wide = compact ? 30 : 0;
+    topRight.add(new NineSlice("wh.ui.plate", -160 - wide, -4, 164 + wide, 76, 16));
+    topRight.add(new Sprite("wh.ui.ember", -124 - wide, 34)).scale = 1.25;
+    topRight.add(new Label("EMBERS", -16, capY, { font: caption, align: "right", color: 0x8fb8b0 }));
+    const scoreBox = topRight.add(new Node2D(-16, 24));
+    this.score = scoreBox.add(new Label(`${this.state.score}`, 0, 0, { font: SCORE, align: "right", color: 0xffd98a, shadow: 0x2a1406 }));
+    this.best = topRight.add(new Label(this.bestScore > 0 ? `BEST ${this.bestScore}` : "", -146 - wide, capY, { font: caption, color: 0x8fb8b0 }));
+
+    const compass = this.ui.add(new Anchor({ x: "center", y: "bottom", dy: -78, safeArea: true }));
     compass.add(new EmberCompass(this.state));
-    compass.add(new NineSlice("wh.ui.pill", -84, 36, 168, 28, 12));
-    compass.add(new Label("FOLLOW THE EMBERS", 0, 43, { font: CAPTION, align: "center", color: 0xd8e8dc }));
-    const hint = this.ui.add(new Anchor({ x: "left", y: "bottom", safe: 16, dy: -34 }));
+    const pillW = compact ? 188 : 168;
+    compass.add(new NineSlice("wh.ui.pill", -pillW / 2, 36, pillW, 28, 12));
+    compass.add(new Label("FOLLOW THE EMBERS", 0, compact ? 42 : 43, { font: caption, align: "center", color: 0xd8e8dc }));
+    // Key hints, for keys: hidden while the player is on touch, where the stick and buttons sit in the corners.
+    const hint = this.ui.add(new Anchor({ x: "left", y: "bottom", safe: 16, dy: -34, safeArea: true }));
     let hx = 0;
     for (const [key, what] of [["WASD", "Move"], ["ESC", "Pause"], ["K", "Hero"]] as const) {
       const kw = key.length > 1 ? 18 + key.length * 9 : 28;
       hint.add(new NineSlice("wh.ui.key", hx, 0, kw, 28, 9));
-      hint.add(new Label(key, hx + kw / 2, 6, { font: CAPTION, align: "center", color: 0xe8f2ee }));
+      hint.add(new Label(key, hx + kw / 2, compact ? 5 : 6, { font: caption, align: "center", color: 0xe8f2ee }));
       hint.add(new Label(what, hx + kw + 8, 5, { font: UI_SMALL, color: 0xa9c6c0, shadow: 0x02060c }));
       hx += kw + 8 + what.length * 8 + 22;
     }
+    hint.visible = !this.touchHud();
+    this.keyHints = hint;
 
-    this.pausePanel = this.ui.add(new Anchor({ x: "center", y: "center", w: 360, h: 240 }));
-    this.pausePanel.add(new NineSlice("wh.ui.plate", -6, -6, 372, 252, 16));
-    this.pausePanel.add(new Label("PAUSED", 180, 24, { font: DISPLAY_SMALL, align: "center", color: 0xffd98a, shadow: 0x2a1406 }));
-    this.pausePanel.add(new Sprite("wh.ui.rule", 180, 82));
-    this.pausePanel.add(new Button("RESUME", 30, 104, 300, 48, { action: "pause", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
-    this.pausePanel.add(new Button("QUIT TO TITLE", 30, 164, 300, 48, { action: "quit", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xe8f2ee } }));
-    this.pausePanel.visible = false;
+    const bh = compact ? PHONE_TAP : 48;
+    const panelH = 144 + bh * 2;
+    // On a phone the taller panel sits a little higher, clear of the compass.
+    const panel = this.ui.add(new Anchor({ x: "center", y: "center", dy: compact ? -24 : 0, w: 360, h: panelH }));
+    panel.add(new NineSlice("wh.ui.plate", -6, -6, 372, panelH + 12, 16));
+    panel.add(new Label("PAUSED", 180, 24, { font: DISPLAY_SMALL, align: "center", color: 0xffd98a, shadow: 0x2a1406 }));
+    panel.add(new Sprite("wh.ui.rule", 180, 82));
+    panel.add(new Button("RESUME", 30, 104, 300, bh, { action: "pause", style: { font: BUTTON, skin: BUTTON_SKINS.primary, text: 0x2a1406, textShadow: null } }));
+    panel.add(new Button("QUIT TO TITLE", 30, 116 + bh, 300, bh, { action: "quit", style: { font: BUTTON, skin: BUTTON_SKINS.quiet, text: 0xe8f2ee } }));
+    panel.visible = this.pausedFlag;
+    this.pausePanel = panel;
+    this.hud = [topLeft, topRight, compass, hint, panel];
+    this.uiChanged();
+  }
 
-    this.ui.add(new TouchControls({ stick: { left: "left", right: "right", up: "up", down: "down" }, buttons: [{ action: "pause", label: "II" }], size: 64 }));
-    this.syncPresentation();
-    app.audio.setMood("night");
+  /** The player is on touch, so the key hints stay out of the way of the stick. */
+  private touchHud(): boolean {
+    return touchFirst(this);
+  }
+
+  override onResize(): void {
+    if (this.attachedApp && this.hud.length && this.compact !== this.builtCompact) this.buildHud();
   }
 
   private addEmber(id: number): void {
@@ -297,6 +365,7 @@ export class PlayScene extends Scene {
     }
 
     // HUD.
+    this.keyHints.visible = !this.touchHud();
     for (let i = 0; i < this.hearts.length; i++) this.hearts[i].sprite = i < p.lives ? "heart" : "heart.empty";
     this.score.text = `${s.score}`;
     if (s.score > this.bestScore) {

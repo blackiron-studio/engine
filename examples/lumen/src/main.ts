@@ -4,8 +4,10 @@ import type { App } from "@blackiron-studio/engine/app";
 import {
   Anchor,
   Button,
+  type DrawContext,
   Graphics2D,
   Label,
+  Node2D,
   TouchControls,
 } from "@blackiron-studio/engine/scene";
 import {
@@ -44,6 +46,23 @@ const palette = {
   gold: 0xf4b961,
   leaf: 0x639679,
 };
+const PAD_SIZE = 60;
+/** Letters the touch buttons and reports them as tap targets; laid out as `TouchControls` lays its buttons. */
+class PadLabels extends Node2D {
+  constructor(private readonly labels: string[], private readonly size: number) {
+    super();
+  }
+  override render(ctx: DrawContext): void {
+    const scene = this.scene;
+    if (!scene) return;
+    const r = PAD_SIZE * 0.55;
+    this.labels.forEach((label, i) => {
+      const x = scene.uiWidth - PAD_SIZE * 1.2 - i * PAD_SIZE * 1.4, y = scene.uiHeight - PAD_SIZE * 1.2;
+      ctx.text(label, x, y - this.size * 0.62, { align: "center", color: 0xffffff, alpha: 0.85, font: { ...UI, size: this.size, weight: 700 }, shadow: 0x0b1d24 });
+      scene.reportTarget(label, x - r, y - r, r * 2, r * 2);
+    });
+  }
+}
 export class SalvageScene extends Scene3D {
   state = createSalvage();
   private hero = new Node3D();
@@ -283,64 +302,7 @@ export class SalvageScene extends Scene3D {
       const warning = this.mesh(d, this.ring(0.92, 0.86), 0xc46a58, 0, 0.055, 0);
       warning.castShadow = false;
     }
-    const brand = this.ui.add(new Anchor({ x: "left", y: "top", safe: 34 }));
-    brand.add(new Graphics2D().roundedRect(-12, -12, 360, 68, 12, { color: 0x173e49, alpha: 0.9 }));
-    brand.add(new Graphics2D().roundedRect(0, 0, 44, 44, 8, 0x0f2c36).polygon([[22, 6], [34, 22], [22, 38], [10, 22]], 0xe5c47c));
-    brand.add(new Label("LUMEN SALVAGE", 60, 0, { font: { ...UI, size: 26, weight: 700 }, color: 0xf3ead2 }));
-    brand.add(new Label("COURTYARD 07  /  RECOVERY EXPEDITION", 61, 32, { font: { ...SMALL, size: 11 }, color: 0x9fc8bd }));
-    const progress = this.ui.add(new Anchor({ x: "right", y: "top", w: 236, h: 98, safe: 30 }));
-    progress.add(new Graphics2D().roundedRect(0, 0, 236, 98, 8, { color: 0x173e49, alpha: 0.94 }));
-    progress.add(new Label("ENERGY CORES RECOVERED", 18, 13, { font: { ...SMALL, size: 11 }, color: 0xb6d2c2 }));
-    this.status = progress.add(new Label("00 / 06", 18, 31, { font: { ...TITLE, size: 32 }, color: 0xf6d895 }));
-    this.objective = progress.add(new Label("FIND THE SIX GOLDEN SIGNALS", 18, 74, { font: { ...SMALL, size: 10 }, color: 0xc5ded1 }));
-    const hull = this.ui.add(new Anchor({ x: "left", y: "bottom", w: 250, h: 92, safe: 30 }));
-    hull.add(new Graphics2D().roundedRect(0, 0, 250, 92, 8, { color: 0x173e49, alpha: 0.94 }));
-    this.energy = hull.add(new Label("COURIER INTEGRITY  /  3", 14, 10, { font: { ...SMALL, size: 12 }, color: 0xdbe6d6 }));
-    for (let i = 0; i < 3; i++) {
-      hull.add(new Graphics2D(14 + i * 75, 38).rect(0, 0, 68, 6, 0x41626a));
-      this.hullBars.push(hull.add(new Graphics2D(14 + i * 75, 38).rect(0, 0, 68, 6, 0xb4e3c9)));
-    }
-    this.viewLabel = hull.add(new Label("PERSPECTIVE VIEW  /  V TO SWITCH", 14, 53, { font: { ...SMALL, size: 9 }, color: 0xaecdc6 }));
-    this.dashLabel = hull.add(new Label("SHIFT / DASH  READY", 14, 71, { font: { ...SMALL, size: 9 }, color: 0xe5d6a1 }));
-    hull.add(new Graphics2D(160, 77).rect(0, 0, 72, 3, 0x41626a));
-    this.dashFill = hull.add(new Graphics2D(160, 77).rect(0, 0, 72, 3, 0xe5d6a1));
-    const foot = this.ui.add(new Anchor({ x: "right", y: "bottom", safe: 36, dy: -8 }));
-    foot.add(
-      new Label(
-        "WASD  Move    SPACE  Jump    SHIFT  Dash    Q / E  Orbit    V  View    ESC  Pause",
-        0,
-        0,
-        { font: { ...SMALL, size: 12 }, color: 0xf3ead2, align: "right", shadow: 0x0b1d24 },
-      ),
-    );
-    const notice = this.ui.add(new Anchor({ x: "center", y: "top", dy: 110 }));
-    this.notification = notice.add(new Label("", 0, 0, { font: UI, align: "center", color: 0x173e49 }));
-    this.intro = this.introPanel();
-    this.pauseMenu = this.panel(
-      "Taking a breather",
-      "Your courier is safe here.",
-      "RESUME",
-      "pause",
-    );
-    this.pauseMenu.visible = false;
-    this.winMenu = this.panel(
-      "The light returns",
-      "All six energy cores recovered. The courtyard is alive.",
-      "PLAY AGAIN",
-      "restart",
-    );
-    this.winMenu.visible = false;
-    this.ui.add(
-      new TouchControls({
-        stick: { left: "left", right: "right", up: "up", down: "down" },
-        buttons: [
-          { action: "jump", label: "UP" },
-          { action: "dash", label: "DASH" },
-          { action: "pause", label: "II" },
-        ],
-        size: 60,
-      }),
-    );
+    this.buildUI();
     this.sync(0);
   }
   private surfaces: ReturnType<SalvageScene["buildMaterials"]> | null = null;
@@ -450,57 +412,229 @@ export class SalvageScene extends Scene3D {
       }
     }
   }
-  private introPanel(): Anchor {
-    const p = this.ui.add(new Anchor({ x: "left", y: "center", safe: 64, w: 350, h: 368 }));
+  /**
+   * How the interface is laid out on this screen. On a laptop everything keeps its designed
+   * size and place. On a touch screen `ui.minPoints` / `ui.tabletPoints` (blackiron.json) grow
+   * the UI layer, so it is only about 830-980 units wide and 470-550 tall: text is raised to
+   * 11 points, buttons to 44, the on-screen controls take the bottom corners and the courier's
+   * panel moves up under the title.
+   */
+  private look() {
+    const s = this.screenInfo;
+    const touch = s.touch;
+    // Points one UI unit shows at, after the engine grew the layer.
+    const per = s.pointsPerUnit * (this.width / Math.max(1, this.uiWidth));
+    const text = (size: number) => (touch ? Math.max(size, Math.ceil(11 / per - 1e-6)) : size);
+    const tap = (size: number) => (touch ? Math.max(size, Math.ceil(44 / per - 1e-6)) : size);
+    return { touch, text, tap, short: this.uiHeight < 640, compact: touch && s.compact };
+  }
+  private uiKey = "";
+  private uiNodes: Node2D[] = [];
+  private brand!: Anchor;
+  private progress!: Anchor;
+  private hull!: Anchor;
+  private touchPad!: TouchControls;
+  private touchUI = false;
+  private shortUI = false;
+  private keyOfUI(): string {
+    const s = this.screenInfo;
+    return `${Math.round(this.uiWidth)}x${Math.round(this.uiHeight)}:${s.touch}:${s.pointsPerUnit.toFixed(4)}`;
+  }
+  override onResize(): void {
+    if (this.uiKey && this.uiKey !== this.keyOfUI()) this.buildUI();
+  }
+  /** Builds the HUD and the panels for the screen at hand; again when the screen changes. */
+  private buildUI(): void {
+    for (const n of this.uiNodes) n.destroy();
+    this.uiNodes = [];
+    this.hullBars.length = 0;
+    this.uiKey = this.keyOfUI();
+    const L = this.look();
+    this.touchUI = L.touch;
+    this.shortUI = L.short;
+    const top = <T extends Node2D>(n: T): T => this.addTop(n);
+    const brand = (this.brand = top(new Anchor({ x: "left", y: "top", safe: 34, safeArea: true })));
+    const brandSub = new Label("COURTYARD 07  /  RECOVERY EXPEDITION", 61, 32, { font: { ...SMALL, size: L.text(11) }, color: 0x9fc8bd });
+    const brandBox = brand.add(new Graphics2D());
+    brand.add(new Graphics2D().roundedRect(0, 0, 44, 44, 8, 0x0f2c36).polygon([[22, 6], [34, 22], [22, 38], [10, 22]], 0xe5c47c));
+    brand.add(new Label("LUMEN SALVAGE", 60, 0, { font: { ...UI, size: 26, weight: 700 }, color: 0xf3ead2 }));
+    brand.add(brandSub);
+    // Sizes follow the type size, not a measurement: the web font may still be loading here.
+    const brandW = 360 + (L.text(11) - 11) * 12;
+    const brandH = 68 + (L.text(11) - 11);
+    brandBox.roundedRect(-12, -12, brandW, brandH, 12, { color: 0x173e49, alpha: 0.9 });
+    const brandBottom = 34 - 12 + brandH;
+
+    const a = L.text(11), b = L.text(10), d = a - 11;
+    const progress = (this.progress = top(new Anchor({ x: "right", y: "top", w: 236, h: 98, safe: 30, safeArea: true })));
+    const progressBox = progress.add(new Graphics2D());
+    progress.add(new Label("ENERGY CORES RECOVERED", 18, 13, { font: { ...SMALL, size: a }, color: 0xb6d2c2 }));
+    this.status = progress.add(new Label("00 / 06", 18, 31 + d, { font: { ...TITLE, size: 32 }, color: 0xf6d895 }));
+    this.objective = progress.add(new Label("FIND THE SIX GOLDEN SIGNALS", 18, 74 + d, { font: { ...SMALL, size: b }, color: 0xc5ded1 }));
+    progress.w = Math.max(236, 36 + Math.ceil(28 * b * 0.6));
+    progress.h = 98 + d + (b - 10);
+    progressBox.roundedRect(0, 0, progress.w, progress.h, 8, { color: 0x173e49, alpha: 0.94 });
+
+    // The courier's panel: bottom left on a laptop. On a touch screen the stick lives there, so
+    // the panel sits under the title.
+    const e = L.text(12), v = L.text(9);
+    const barsY = 22 + e + 4, viewY = barsY + 15, dashY = viewY + v + 9, hullH = dashY + v + 12;
+    const hull = (this.hull = top(
+      L.touch
+        ? new Anchor({ x: "left", y: "top", w: 250, h: hullH, safe: 22, dy: brandBottom + 8 - 22, safeArea: true })
+        : new Anchor({ x: "left", y: "bottom", w: 250, h: hullH, safe: 30 }),
+    ));
+    hull.add(new Graphics2D().roundedRect(0, 0, 250, hullH, 8, { color: 0x173e49, alpha: 0.94 }));
+    this.energy = hull.add(new Label("COURIER INTEGRITY  /  3", 14, 10, { font: { ...SMALL, size: e }, color: 0xdbe6d6 }));
+    for (let i = 0; i < 3; i++) {
+      hull.add(new Graphics2D(14 + i * 75, barsY).rect(0, 0, 68, 6, 0x41626a));
+      this.hullBars.push(hull.add(new Graphics2D(14 + i * 75, barsY).rect(0, 0, 68, 6, 0xb4e3c9)));
+    }
+    this.viewLabel = hull.add(new Label(this.viewText(), 14, viewY, { font: { ...SMALL, size: v }, color: 0xaecdc6 }));
+    this.dashLabel = hull.add(new Label(this.dashText(0), 14, dashY, { font: { ...SMALL, size: v }, color: 0xe5d6a1 }));
+    const dashBarY = Math.round(dashY + v / 2 + 1.5);
+    hull.add(new Graphics2D(160, dashBarY).rect(0, 0, 72, 3, 0x41626a));
+    this.dashFill = hull.add(new Graphics2D(160, dashBarY).rect(0, 0, 72, 3, 0xe5d6a1));
+
+    // Keys are listed for a keyboard; the on-screen controls label themselves.
+    if (!L.touch) {
+      const foot = top(new Anchor({ x: "right", y: "bottom", safe: 36, dy: -8 }));
+      foot.add(
+        new Label(
+          "WASD  Move    SPACE  Jump    SHIFT  Dash    Q / E  Orbit    V  View    ESC  Pause",
+          0,
+          0,
+          { font: { ...SMALL, size: 12 }, color: 0xf3ead2, align: "right", shadow: 0x0b1d24 },
+        ),
+      );
+    }
+    // Notices: under the top panels on a laptop; on a touch screen in the clear strip above
+    // the stick and the buttons.
+    const notice = top(L.touch ? new Anchor({ x: "center", y: "bottom", dy: -168, safeArea: true }) : new Anchor({ x: "center", y: "top", dy: 110 }));
+    const previous = this.notification?.text ?? "";
+    this.notification = notice.add(new Label(previous, 0, 0, { font: UI, align: "center", color: 0x173e49, maxWidth: L.touch ? Math.max(200, this.uiWidth - 340) : 0 }));
+    this.notification.alpha = Math.min(1, this.noticeTime * 3);
+    this.intro = this.introPanel(L, brandBottom);
+    this.pauseMenu = top(this.panel(L, "Taking a breather", "Your courier is safe here.", "RESUME", "pause"));
+    this.winMenu = top(this.panel(L, "The light returns", "All six energy cores recovered. The courtyard is alive.", "PLAY AGAIN", "restart"));
+    // The engine's touch buttons letter themselves in the 10-unit bitmap font, 8 points on a
+    // phone. On a touch screen they are left blank and lettered here, in the game's face.
+    const pad = [
+      { action: "jump", label: "UP" },
+      { action: "dash", label: "DASH" },
+      ...(L.touch ? [{ action: "view", label: "VIEW" }] : []),
+      { action: "pause", label: L.touch ? "PAUSE" : "II" },
+    ];
+    this.touchPad = top(
+      new TouchControls({
+        stick: { left: "left", right: "right", up: "up", down: "down" },
+        buttons: L.touch ? pad.map((b) => ({ action: b.action, label: "" })) : pad,
+        // A touch screen shows its controls from the first frame, not after the first tap.
+        always: L.touch,
+        size: PAD_SIZE,
+      }),
+    );
+    if (L.touch) this.touchPad.add(new PadLabels(pad.map((b) => b.label), L.text(13)));
+    this.showPanels();
+  }
+  /** Adds a top-level piece of the interface, remembered so a new screen can rebuild it. */
+  private addTop<T extends Node2D>(n: T): T {
+    this.uiNodes.push(n);
+    return this.ui.add(n);
+  }
+  private viewText(): string {
+    const view = `${this.orthographic ? "ORTHOGRAPHIC" : "PERSPECTIVE"} VIEW`;
+    return this.touchUI ? view : `${view}  /  V TO SWITCH`;
+  }
+  private dashText(cooldown: number): string {
+    const state = cooldown > 0 ? `${cooldown.toFixed(1)}s` : "READY";
+    return this.touchUI ? `DASH  ${state}` : `SHIFT / DASH  ${state}`;
+  }
+  /**
+   * Which panels show now. A short screen (a phone, a tablet) has no room for the HUD next to
+   * a panel, so the intro hides the courier's panel and pause and victory hide the HUD.
+   */
+  private showPanels(): void {
+    const intro = !this.started, modal = this.pausedFlag || this.state.won;
+    this.intro.visible = intro;
+    this.pauseMenu.visible = this.pausedFlag;
+    this.winMenu.visible = this.state.won;
+    this.brand.visible = this.progress.visible = !(this.shortUI && modal);
+    this.hull.visible = !(this.shortUI && (intro || modal));
+    if (this.touchUI) this.touchPad.visible = !intro && !modal;
+    this.uiChanged();
+  }
+  private introPanel(L: ReturnType<SalvageScene["look"]>, brandBottom: number): Anchor {
+    const button = { font: { ...UI, size: 17 }, fill: 0xe4d59e, text: 0x173c47, textShadow: null, hover: 0xffeabb, border: null, bevel: null };
+    const hint = L.touch ? "DRAG ON THE LEFT TO MOVE   /   UP TO JUMP" : "ENTER TO BEGIN     /     SPACE TO JUMP";
+    if (L.compact) {
+      // A phone: wider and shorter, with the text set wide, in the room under the title.
+      const w = Math.min(470, this.uiWidth - 80), inner = w - 48, small = L.text(12), bh = L.tap(48);
+      const p = this.addTop(new Anchor({ x: "left", y: "top", safe: 22, w, h: 0, safeArea: true }));
+      const box = p.add(new Graphics2D());
+      p.add(new Label("RECOVERY EXPEDITION / 01", 24, 18, { font: { ...SMALL, size: small }, color: 0xaed4c3 }));
+      p.add(new Label("Bring back", 24, 40, { font: { ...TITLE, size: 38 }, color: 0xe5ebe0 }));
+      p.add(new Label("the light.", 24, 80, { font: { ...TITLE, size: 38 }, color: 0xf2d391 }));
+      p.add(new Label("Six lost cores. One quiet courtyard. Leap over patrols\nand return the energy to the central beacon.", 24, 134, { font: { ...SMALL, size: 16 }, color: 0xb6cdc6, maxWidth: inner }));
+      p.add(new Button("BEGIN SALVAGE", 24, 186, inner, bh, { action: "start", style: button }));
+      p.add(new Label(hint, 24, 186 + bh + 12, { font: { ...SMALL, size: small }, color: 0x94bcb2, maxWidth: inner, minScale: 1 }));
+      p.h = 186 + bh + 12 + small + 16;
+      box.roundedRect(0, 0, w, p.h, 12, { color: 0x173b47, alpha: 0.97 }).rect(0, 0, w, 3, 0xe7c886);
+      p.dy = Math.max(brandBottom + 8, Math.round(brandBottom + (this.uiHeight - brandBottom - p.h) / 2)) - 22;
+      return p;
+    }
+    // On a short screen the panel sits in the middle of the room under the title.
+    const p = this.addTop(L.short
+      ? new Anchor({ x: "left", y: "top", safe: 64, w: 350, h: 368, safeArea: true, dy: Math.max(brandBottom + 8, Math.round(brandBottom + (this.uiHeight - brandBottom - 368) / 2)) - 64 })
+      : new Anchor({ x: "left", y: "center", safe: 64, w: 350, h: 368 }));
     p.add(new Graphics2D().roundedRect(0, 0, 350, 368, 12, { color: 0x173b47, alpha: 0.97 }).rect(0, 0, 350, 3, 0xe7c886));
     p.add(new Label("RECOVERY EXPEDITION / 01", 28, 26, { font: { ...SMALL, size: 12 }, color: 0xaed4c3 }));
     p.add(new Label("Bring back", 28, 68, { font: { ...TITLE, size: 46 }, color: 0xe5ebe0 }));
     p.add(new Label("the light.", 28, 118, { font: { ...TITLE, size: 46 }, color: 0xf2d391 }));
     p.add(new Label("Six lost cores. One quiet courtyard.\nLeap over patrols and return the\nenergy to the central beacon.", 28, 187, { font: { ...SMALL, size: 16 }, color: 0xb6cdc6 }));
-    p.add(new Button("BEGIN SALVAGE", 28, 278, 294, 48, {
-      action: "start", style: { font: { ...UI, size: 17 }, fill: 0xe4d59e, text: 0x173c47, textShadow: null, hover: 0xffeabb, border: null, bevel: null },
-    }));
-    p.add(new Label("ENTER TO BEGIN     /     SPACE TO JUMP", 28, 342, { font: { ...SMALL, size: 10 }, color: 0x94bcb2 }));
+    p.add(new Button("BEGIN SALVAGE", 28, 278, 294, 48, { action: "start", style: button }));
+    p.add(new Label(hint, 28, 342, { font: { ...SMALL, size: L.text(10) }, color: 0x94bcb2 }));
     return p;
   }
   private panel(
+    L: ReturnType<SalvageScene["look"]>,
     title: string,
     sub: string,
     button: string,
     action: string,
   ): Anchor {
-    const p = this.ui.add(
-      new Anchor({ x: "center", y: "center", w: 680, h: 272 }),
-    );
+    const w = Math.min(680, Math.round(this.uiWidth - 80)), mid = w / 2, bh = L.tap(48);
+    const h = 272 + (bh - 48);
+    const p = new Anchor({ x: "center", y: "center", w, h });
     p.add(
-      new Graphics2D().roundedRect(0, 0, 680, 272, 20, {
+      new Graphics2D().roundedRect(0, 0, w, h, 20, {
         color: 0x163b49,
         alpha: 0.96,
       }),
     );
     p.add(
-      new Label("BLACKIRON  /  THE 3D COLLECTION", 340, 26, {
+      new Label("BLACKIRON  /  THE 3D COLLECTION", mid, 26, {
         font: SMALL,
         align: "center",
         color: 0x9acabc,
       }),
     );
     p.add(
-      new Label(title, 340, 61, {
+      new Label(title, mid, 61, {
         font: TITLE,
         align: "center",
         color: 0xf8e4b6,
       }),
     );
     p.add(
-      new Label(sub, 340, 135, {
+      new Label(sub, mid, 135, {
         font: SMALL,
         align: "center",
         color: 0xe0e6d8,
       }),
     );
     p.add(
-      new Button(button, 190, 195, 300, 48, {
+      new Button(button, mid - 150, 195, 300, bh, {
         action,
         style: {
           font: UI,
@@ -520,19 +654,17 @@ export class SalvageScene extends Scene3D {
     if (name === "view" && !this.pausedFlag) {
       this.orthographic = !this.orthographic;
       this.camera3D.projection = this.orthographic ? "orthographic" : "perspective";
-      this.viewLabel.text = `${this.orthographic ? "ORTHOGRAPHIC" : "PERSPECTIVE"} VIEW  /  V TO SWITCH`;
+      this.viewLabel.text = this.viewText();
       this.uiChanged();
     } else if (name === "start" || (!this.started && name === "confirm")) {
       this.started = true;
-      this.intro.visible = false;
-      this.uiChanged();
+      this.showPanels();
     } else if (name === "restart" || (this.state.won && name === "confirm"))
       this.app.scenes.change(new SalvageScene());
     else if (name === "pause" && this.started && !this.state.won) {
       this.pausedFlag = !this.pausedFlag;
-      this.pauseMenu.visible = this.pausedFlag;
       this.timeScale = this.pausedFlag ? 0 : 1;
-      this.uiChanged();
+      this.showPanels();
     } else if (name === "jump" && this.started && !this.pausedFlag)
       this.jump = true;
     else if (name === "dash" && this.started && !this.pausedFlag)
@@ -575,9 +707,8 @@ export class SalvageScene extends Scene3D {
     }
     if (event.won) {
       this.debris.burst({ x: 0, y: 1.8, z: 0, color: palette.gold, count: 64, speed: 5.5, lifetime: 1.4 });
-      this.winMenu.visible = true;
       this.beacon.emissiveIntensity = 2;
-      this.uiChanged();
+      this.showPanels();
       this.app.audio.play("win");
     }
     if (beforeY > 0.02 && this.state.y === 0 && !event.hurt) {
@@ -616,7 +747,7 @@ export class SalvageScene extends Scene3D {
     this.objective.text = count === 6 ? "RETURN TO THE CENTRAL BEACON" : "FIND THE SIX GOLDEN SIGNALS";
     this.energy.text = `COURIER INTEGRITY  /  ${s.energy}`;
     this.dashFill.scaleX = 1 - s.dashCooldown / SALVAGE_DASH.cooldown;
-    this.dashLabel.text = s.dashCooldown > 0 ? `SHIFT / DASH  ${s.dashCooldown.toFixed(1)}s` : "SHIFT / DASH  READY";
+    this.dashLabel.text = this.dashText(s.dashCooldown);
     for (let i = 0; i < this.hullBars.length; i++) this.hullBars[i].visible = i < s.energy;
   }
   private placeCamera(): void {
